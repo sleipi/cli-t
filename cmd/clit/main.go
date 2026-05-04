@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -77,9 +78,10 @@ func main() {
 	start := time.Now()
 
 	type fileResult struct {
-		pass int
-		fail int
-		file string
+		pass     int
+		fail     int
+		file     string
+		failures []compactFailure
 	}
 
 	results := make([]fileResult, len(files))
@@ -111,26 +113,11 @@ func main() {
 						f := files[idx]
 						var buf bytes.Buffer
 
-						content, err := os.ReadFile(f)
+						entries, err := loadAndParse(f, varFlags.values)
 						if err != nil {
-							buf.WriteString(fmt.Sprintf("  %sError reading %s: %v%s\n", colorRed, f, err, colorReset))
+							buf.WriteString(fmt.Sprintf("  %s%v%s\n", colorRed, err, colorReset))
 							mu.Lock()
-							overwriteHeaderLine(idx, filepath.Base(f), false, headerLines, appendedLines)
-							fmt.Print(buf.String())
-							appendedLines += countLines(buf.String())
-							mu.Unlock()
-							results[idx] = fileResult{fail: 1, file: f}
-							continue
-						}
-
-						input := string(content)
-						input = substituteVars(input, varFlags.values)
-
-						entries, err := parser.Parse(input)
-						if err != nil {
-							buf.WriteString(fmt.Sprintf("  %sError parsing %s: %v%s\n", colorRed, f, err, colorReset))
-							mu.Lock()
-							overwriteHeaderLine(idx, filepath.Base(f), false, headerLines, appendedLines)
+							overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
 							fmt.Print(buf.String())
 							appendedLines += countLines(buf.String())
 							mu.Unlock()
@@ -145,7 +132,7 @@ func main() {
 						vd.EndFile(0)
 
 						mu.Lock()
-						overwriteHeaderLine(idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
+						overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
 						fmt.Print(buf.String())
 						appendedLines += countLines(buf.String())
 						mu.Unlock()
@@ -175,19 +162,9 @@ func main() {
 						vd := NewVerboseDisplay(&buf, true)
 						vd.Start([]string{f})
 
-						content, err := os.ReadFile(f)
+						entries, err := loadAndParse(f, varFlags.values)
 						if err != nil {
-							vd.FileError(0, fmt.Sprintf("Error reading %s: %v", f, err))
-							vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
-							continue
-						}
-
-						input := string(content)
-						input = substituteVars(input, varFlags.values)
-
-						entries, err := parser.Parse(input)
-						if err != nil {
-							vd.FileError(0, fmt.Sprintf("Error parsing %s: %v", f, err))
+							vd.FileError(0, err.Error())
 							vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
 							continue
 						}
@@ -219,32 +196,48 @@ func main() {
 				for idx := range jobs {
 					f := files[idx]
 
-					content, err := os.ReadFile(f)
+					entries, err := loadAndParse(f, varFlags.values)
 					if err != nil {
-						pd.FileError(idx, fmt.Sprintf("Error reading %s: %v", f, err))
-						results[idx] = fileResult{fail: 1, file: f}
-						continue
-					}
-
-					input := string(content)
-					input = substituteVars(input, varFlags.values)
-
-					entries, err := parser.Parse(input)
-					if err != nil {
-						pd.FileError(idx, fmt.Sprintf("Error parsing %s: %v", f, err))
+						pd.FileError(idx, err.Error())
 						results[idx] = fileResult{fail: 1, file: f}
 						continue
 					}
 
 					pd.UpdateProgress(idx, 0, len(entries))
-					pass, fail := runEntriesCompact(pd, idx, entries, varFlags.values)
+					pass, fail, details := runEntriesCompact(pd, idx, entries, varFlags.values)
 					pd.FinishFile(idx, fail == 0)
-					results[idx] = fileResult{pass: pass, fail: fail, file: f}
+					results[idx] = fileResult{pass: pass, fail: fail, file: f, failures: details}
 				}
 			}()
 		}
 		wg.Wait()
 		pd.Finish()
+
+		// Print failure details after progress bars
+		for _, r := range results {
+			if len(r.failures) > 0 {
+				fmt.Printf("%s▶ %s%s\n", colorBold, filepath.Base(r.file), colorReset)
+				for _, f := range r.failures {
+					fmt.Printf("  %s✗%s %s\n", colorRed, colorReset, truncateCmd(f.command, 60))
+					for _, msg := range f.failures {
+						fmt.Printf("    %sFAIL: %s%s\n", colorRed, msg, colorReset)
+					}
+					if f.stdout != "" {
+						fmt.Printf("    %s--- stdout ---%s\n", colorGray, colorReset)
+						for _, line := range strings.Split(strings.TrimSuffix(f.stdout, "\n"), "\n") {
+							fmt.Printf("    %s%s%s\n", colorGray, line, colorReset)
+						}
+					}
+					if f.stderr != "" {
+						fmt.Printf("    %s--- stderr ---%s\n", colorYellow, colorReset)
+						for _, line := range strings.Split(strings.TrimSuffix(f.stderr, "\n"), "\n") {
+							fmt.Printf("    %s%s%s\n", colorYellow, line, colorReset)
+						}
+					}
+				}
+				fmt.Println()
+			}
+		}
 	}
 
 	elapsed := time.Since(start)
@@ -279,7 +272,7 @@ func runEntriesVerbose(vd *VerboseDisplay, entries []types.Entry, vars map[strin
 	captures := map[string]string{}
 
 	for _, entry := range entries {
-		cmd := substituteVars(entry.Command, captures)
+		cmd := substituteCaptureVars(entry.Command, captures)
 		result := runner.Run(cmd)
 		entryPass := true
 		var failures []string
@@ -334,12 +327,21 @@ func runEntriesVerbose(vd *VerboseDisplay, entries []types.Entry, vars map[strin
 	return
 }
 
+// compactFailure records a failure in compact mode for post-run reporting.
+type compactFailure struct {
+	command  string
+	failures []string
+	stdout   string
+	stderr   string
+}
+
 // runEntriesCompact executes entries and reports progress to ProgressDisplay.
-func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, vars map[string]string) (pass, fail int) {
+// Returns pass/fail counts and any failure details for post-run reporting.
+func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, vars map[string]string) (pass, fail int, details []compactFailure) {
 	captures := map[string]string{}
 
 	for i, entry := range entries {
-		cmd := substituteVars(entry.Command, captures)
+		cmd := substituteCaptureVars(entry.Command, captures)
 
 		// Set subtitle: comment (stripped of leading "# ") or command
 		subtitle := cmd
@@ -350,15 +352,18 @@ func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, 
 
 		result := runner.Run(cmd)
 		entryPass := true
+		var failures []string
 
 		if result.ExitCode != entry.ExitCode {
 			entryPass = false
+			failures = append(failures, fmt.Sprintf("exit code: expected %d, got %d", entry.ExitCode, result.ExitCode))
 		}
 
 		if len(entry.Body) > 0 {
 			res := assert.EvaluateBody(entry.Body, result)
 			if !res.Pass {
 				entryPass = false
+				failures = append(failures, res.Message)
 			}
 		}
 
@@ -366,6 +371,7 @@ func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, 
 			res := assert.Evaluate(a, result)
 			if !res.Pass {
 				entryPass = false
+				failures = append(failures, res.Message)
 			}
 		}
 
@@ -378,6 +384,12 @@ func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, 
 			pass++
 		} else {
 			fail++
+			details = append(details, compactFailure{
+				command:  cmd,
+				failures: failures,
+				stdout:   result.Stdout,
+				stderr:   result.Stderr,
+			})
 		}
 
 		pd.UpdateProgress(fileIdx, i+1, len(entries))
@@ -387,24 +399,24 @@ func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, 
 
 // overwriteHeaderLine moves the cursor up to the header line at fileIdx,
 // overwrites it with OK/FAIL status, then moves back down.
-func overwriteHeaderLine(fileIdx int, filename string, passed bool, headerLines, appendedLines int) {
+func overwriteHeaderLine(w io.Writer, fileIdx int, filename string, passed bool, headerLines, appendedLines int) {
 	// Current cursor is at the bottom (after header block + appended lines)
 	// Line fileIdx is (headerLines - 1 - fileIdx) lines above end of header block
 	// Plus appendedLines below header block
 	cursorUp := (headerLines - fileIdx) + appendedLines
 
 	// Move up
-	fmt.Printf("\033[%dA", cursorUp)
+	fmt.Fprintf(w, "\033[%dA", cursorUp)
 	// Clear and overwrite
-	fmt.Printf("\r\033[K")
+	fmt.Fprintf(w, "\r\033[K")
 	if passed {
-		fmt.Printf("  %s▶ %s%s %sOK%s\n", colorBold, filename, colorReset, colorGreen, colorReset)
+		fmt.Fprintf(w, "  %s▶ %s%s %sOK%s\n", colorBold, filename, colorReset, colorGreen, colorReset)
 	} else {
-		fmt.Printf("  %s▶ %s%s %sFAIL%s\n", colorBold, filename, colorReset, colorRed, colorReset)
+		fmt.Fprintf(w, "  %s▶ %s%s %sFAIL%s\n", colorBold, filename, colorReset, colorRed, colorReset)
 	}
 	// Move back down (cursorUp - 1 because the \n above already moved us one line down)
 	if cursorUp-1 > 0 {
-		fmt.Printf("\033[%dB", cursorUp-1)
+		fmt.Fprintf(w, "\033[%dB", cursorUp-1)
 	}
 }
 
@@ -472,6 +484,30 @@ func substituteVars(input string, vars map[string]string) string {
 	}
 	result = os.ExpandEnv(result)
 	return result
+}
+
+// substituteCaptureVars substitutes only capture variables ({{name}}) without
+// expanding environment variables again (those are already expanded on the raw file content).
+func substituteCaptureVars(input string, captures map[string]string) string {
+	result := input
+	for k, v := range captures {
+		result = strings.ReplaceAll(result, "{{"+k+"}}", v)
+	}
+	return result
+}
+
+// loadAndParse reads a .clit file, substitutes variables, and parses it into entries.
+func loadAndParse(path string, vars map[string]string) ([]types.Entry, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+	input := substituteVars(string(content), vars)
+	entries, err := parser.Parse(input)
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	return entries, nil
 }
 
 func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error) {

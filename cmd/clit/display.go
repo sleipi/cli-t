@@ -20,20 +20,6 @@ type EntryInfo struct {
 	Stderr      string
 }
 
-// Display is the interface for rendering test execution progress.
-type Display interface {
-	// Start initializes the display with the list of file paths.
-	Start(files []string)
-	// UpdateProgress reports entry completion within a file.
-	UpdateProgress(fileIdx int, completed, total int)
-	// FinishFile marks a file as done (passed or failed).
-	FinishFile(fileIdx int, passed bool)
-	// FileError reports a read/parse error for a file.
-	FileError(fileIdx int, msg string)
-	// Finish performs final cleanup (newlines, cursor restore).
-	Finish()
-}
-
 // --- ProgressDisplay (compact progress bars) ---
 
 type fileState struct {
@@ -243,9 +229,4 @@ func renderBar(completed, total int, done bool) string {
 	return "[" + bar + "]"
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
+

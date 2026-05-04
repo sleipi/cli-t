@@ -51,12 +51,6 @@ func (d *VerboseDisplay) EndFile(fileIdx int) {
 
 func (d *VerboseDisplay) Finish() {}
 
-// UpdateProgress is a no-op for verbose display.
-func (d *VerboseDisplay) UpdateProgress(fileIdx int, completed, total int) {}
-
-// FinishFile is a no-op for verbose display (output is per-entry).
-func (d *VerboseDisplay) FinishFile(fileIdx int, passed bool) {}
-
 // FileError prints an error message for the file.
 func (d *VerboseDisplay) FileError(fileIdx int, msg string) {
 	fmt.Fprintf(d.w, "%s%s%s\n", colorRed, msg, colorReset)
