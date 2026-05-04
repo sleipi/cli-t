@@ -10,9 +10,14 @@
 
 ## Tech Stack
 
-* go-lang
-* write Code using TTL
-* always test the App with a CLIT Test Case
+* Go
+
+## Workflow
+
+* Always work on a feature branch — never commit directly to main.
+* Follow the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification for all commit messages.
+* Write code using a TDD approach — write/update tests before implementation.
+* Always write E2E tests (in `test/e2e/`) for any new or changed behaviour.
 
 ## Commands
 
