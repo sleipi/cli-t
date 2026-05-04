@@ -10,6 +10,9 @@
 - [x] Output v2 — Compact progress bars as default output; verbose (`-v`) becomes the detailed per-entry display. TTY-aware with dynamic ANSI updates, static fallback for non-TTY. Progress counter `(n/total)`, per-file timing, and entry subtitle (comment or command) shown while running.
 - [x] Multi-line commands — Support commands that span multiple lines (trailing `\` continuation)
 - [x] GitHub Actions to run CI (unit + e2e)
+- [x] Directives — Generic `@directive` system with frontmatter (`---` block) for file-level and entry-level metadata
+- [x] `@group` — Tag entries/files with space-separated tags for filtering (`--group TAG`, `--exclude-group TAG`, OR logic)
+- [x] `@skip` — Skip entries/files with optional reason, displayed as SKIP in output with skip count in summary
 
 ## Planned
 
@@ -18,8 +21,154 @@
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
-- [ ] `--timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds)
-- [ ] `--filter GLOB` — Only run entries whose comment matches the given glob pattern
-- [ ] `--shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`)
-- [ ] Dependencies between entries — Allow entries to declare dependencies on other entries or captures
+- [ ] `@timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds)
+- [ ] `@retry N` — Retry on failure N times
+- [ ] `@env KEY=VALUE` — Set env vars for entry
+- [ ] `@workdir ./path` — Run command in specific directory
+- [ ] `@shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`)
 - [ ] Add file parser Plugin for Intellj
+- [ ] Release for Homebrew
+- [ ] Better CLI Help and Usage output
+
+## Bugs
+
+make all not update lines
+```
+RUN [>         ] - verbose.clit (0/2) 23ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 23ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 23ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [>         ] - verbose.clit (0/2) 23ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 23ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 23ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [>         ] - verbose.clit (0/2) 23ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 23ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 25ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [>         ] - verbose.clit (0/2) 25ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 25ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 26ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [>         ] - verbose.clit (0/2) 26ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 26ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 26ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [>         ] - verbose.clit (0/2) 26ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 26ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 26ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [>         ] - verbose.clit (0/2) 26ms
+    Verbose shows stdout on passing tests
+RUN [>         ] - output.clit (0/7) 26ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 26ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 26ms
+    Verbose shows stdout on passing tests
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 26ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 26ms
+    Without verbose, passing tests don't show stdout
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 27ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 27ms
+    Without verbose, passing tests don't show stdout
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [>         ] - parallel.clit (0/2) 27ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 27ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 27ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 27ms
+    Parallel flag sets worker count
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 27ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 27ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 28ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 28ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 28ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 29ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 29ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 29ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 29ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 29ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 29ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 30ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 30ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 30ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 30ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 30ms
+    Without verbose, passing tests don't show stdout
+RUN [>         ] - output.clit (0/7) 30ms
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 30ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 30ms
+    Without verbose, passing tests don't show stdout
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 30ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 30ms
+    Without verbose, passing tests don't show stdout
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 30ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 30ms
+    Without verbose, passing tests don't show stdout
+OK  [==========] - var_sub.clit (1/1) took 9ms
+RUN [=====>    ] - parallel.clit (1/2) 31ms
+    No-parallel flag disables parallelism
+OK  [==========] - var.clit (1/1) took 16ms
+RUN [=====>    ] - verbose.clit (1/2) 31ms
+    Without verbose, passing tests don't show stdout
+OK  [==========] - var_sub.clit (1/1) took 9ms
+```

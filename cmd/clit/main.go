@@ -46,6 +46,10 @@ func main() {
 	noParallel := flag.Bool("no-parallel", false, "disable parallel execution")
 	varFlags := &varMap{}
 	flag.Var(varFlags, "var", "set variable: --var NAME=VALUE")
+	groupFlags := &stringSlice{}
+	flag.Var(groupFlags, "group", "run only entries with this group tag (repeatable, OR logic)")
+	excludeGroupFlags := &stringSlice{}
+	flag.Var(excludeGroupFlags, "exclude-group", "skip entries with this group tag (repeatable)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -65,7 +69,7 @@ func main() {
 		workers = 1
 	}
 
-	printHeader(resolved, *parallel, *noParallel, *noRecursive, *verbose, varFlags.values)
+	printHeader(resolved, *parallel, *noParallel, *noRecursive, *verbose, varFlags.values, groupFlags.values, excludeGroupFlags.values)
 
 	if workers > len(files) {
 		workers = len(files)
@@ -80,6 +84,7 @@ func main() {
 	type fileResult struct {
 		pass     int
 		fail     int
+		skip     int
 		file     string
 		failures []compactFailure
 	}
@@ -113,7 +118,7 @@ func main() {
 						f := files[idx]
 						var buf bytes.Buffer
 
-						entries, err := loadAndParse(f, varFlags.values)
+						parsed, err := loadAndParse(f, varFlags.values)
 						if err != nil {
 							buf.WriteString(fmt.Sprintf("  %s%v%s\n", colorRed, err, colorReset))
 							mu.Lock()
@@ -125,10 +130,21 @@ func main() {
 							continue
 						}
 
+						if parsed.Skip {
+							mu.Lock()
+							overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
+							mu.Unlock()
+							skipped := len(parsed.Entries)
+							results[idx] = fileResult{skip: skipped, file: f}
+							continue
+						}
+
+						entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
+
 						vd := NewVerboseDisplay(&buf, true)
 						vd.Start([]string{f})
 						vd.BeginFile(0)
-						pass, fail := runEntriesVerbose(vd, entries, varFlags.values)
+						pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
 						vd.EndFile(0)
 
 						mu.Lock()
@@ -137,7 +153,7 @@ func main() {
 						appendedLines += countLines(buf.String())
 						mu.Unlock()
 
-						results[idx] = fileResult{pass: pass, fail: fail, file: f}
+						results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
 					}
 				}()
 			}
@@ -148,6 +164,7 @@ func main() {
 				output string
 				pass   int
 				fail   int
+				skip   int
 				file   string
 			}
 			vResults := make([]verboseResult, len(files))
@@ -162,17 +179,24 @@ func main() {
 						vd := NewVerboseDisplay(&buf, true)
 						vd.Start([]string{f})
 
-						entries, err := loadAndParse(f, varFlags.values)
+						parsed, err := loadAndParse(f, varFlags.values)
 						if err != nil {
 							vd.FileError(0, err.Error())
 							vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
 							continue
 						}
 
+						if parsed.Skip {
+							vResults[idx] = verboseResult{output: buf.String(), skip: len(parsed.Entries), file: f}
+							continue
+						}
+
+						entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
+
 						vd.BeginFile(0)
-						pass, fail := runEntriesVerbose(vd, entries, varFlags.values)
+						pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
 						vd.EndFile(0)
-						vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, file: f}
+						vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, skip: skip, file: f}
 					}
 				}()
 			}
@@ -180,7 +204,7 @@ func main() {
 
 			for i, r := range vResults {
 				fmt.Print(r.output)
-				results[i] = fileResult{pass: r.pass, fail: r.fail, file: r.file}
+				results[i] = fileResult{pass: r.pass, fail: r.fail, skip: r.skip, file: r.file}
 			}
 		}
 	} else {
@@ -196,17 +220,25 @@ func main() {
 				for idx := range jobs {
 					f := files[idx]
 
-					entries, err := loadAndParse(f, varFlags.values)
+					parsed, err := loadAndParse(f, varFlags.values)
 					if err != nil {
 						pd.FileError(idx, err.Error())
 						results[idx] = fileResult{fail: 1, file: f}
 						continue
 					}
 
+					if parsed.Skip {
+						pd.FinishFile(idx, true)
+						results[idx] = fileResult{skip: len(parsed.Entries), file: f}
+						continue
+					}
+
+					entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
+
 					pd.UpdateProgress(idx, 0, len(entries))
-					pass, fail, details := runEntriesCompact(pd, idx, entries, varFlags.values)
+					pass, fail, skip, details := runEntriesCompact(pd, idx, entries, varFlags.values)
 					pd.FinishFile(idx, fail == 0)
-					results[idx] = fileResult{pass: pass, fail: fail, file: f, failures: details}
+					results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
 				}
 			}()
 		}
@@ -243,11 +275,12 @@ func main() {
 	elapsed := time.Since(start)
 
 	// Summary
-	totalPass, totalFail := 0, 0
+	totalPass, totalFail, totalSkip := 0, 0, 0
 	var failedFiles []string
 	for _, r := range results {
 		totalPass += r.pass
 		totalFail += r.fail
+		totalSkip += r.skip
 		if r.fail > 0 {
 			failedFiles = append(failedFiles, r.file)
 		}
@@ -255,6 +288,9 @@ func main() {
 
 	fmt.Printf("%s━━━ Summary ━━━%s\n", colorBold, colorReset)
 	fmt.Printf("  %spass: %d%s\n", colorGreen, totalPass, colorReset)
+	if totalSkip > 0 {
+		fmt.Printf("  %sskip: %d%s\n", colorYellow, totalSkip, colorReset)
+	}
 	if totalFail > 0 {
 		fmt.Printf("  %sfail: %d%s\n", colorRed, totalFail, colorReset)
 		for _, f := range failedFiles {
@@ -268,10 +304,20 @@ func main() {
 }
 
 // runEntriesVerbose executes entries and reports to VerboseDisplay.
-func runEntriesVerbose(vd *VerboseDisplay, entries []types.Entry, vars map[string]string) (pass, fail int) {
+func runEntriesVerbose(vd *VerboseDisplay, entries []types.Entry, vars map[string]string) (pass, fail, skip int) {
 	captures := map[string]string{}
 
 	for _, entry := range entries {
+		if entry.Skip {
+			skip++
+			vd.EntryResult(0, EntryInfo{
+				Command: entry.Command,
+				Skipped: true,
+				SkipReason: entry.SkipReason,
+			})
+			continue
+		}
+
 		cmd := substituteCaptureVars(entry.Command, captures)
 		result := runner.Run(cmd)
 		entryPass := true
@@ -336,11 +382,17 @@ type compactFailure struct {
 }
 
 // runEntriesCompact executes entries and reports progress to ProgressDisplay.
-// Returns pass/fail counts and any failure details for post-run reporting.
-func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, vars map[string]string) (pass, fail int, details []compactFailure) {
+// Returns pass/fail/skip counts and any failure details for post-run reporting.
+func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, vars map[string]string) (pass, fail, skip int, details []compactFailure) {
 	captures := map[string]string{}
 
 	for i, entry := range entries {
+		if entry.Skip {
+			skip++
+			pd.UpdateProgress(fileIdx, i+1, len(entries))
+			continue
+		}
+
 		cmd := substituteCaptureVars(entry.Command, captures)
 
 		// Set subtitle: comment (stripped of leading "# ") or command
@@ -425,7 +477,7 @@ func countLines(s string) int {
 	return strings.Count(s, "\n")
 }
 
-func printHeader(resolved []resolvedArg, parallel int, noParallel, noRecursive, verbose bool, vars map[string]string) {
+func printHeader(resolved []resolvedArg, parallel int, noParallel, noRecursive, verbose bool, vars map[string]string, groups []string, excludeGroups []string) {
 	fmt.Printf("clit v%s\n", version)
 	for _, r := range resolved {
 		suffix := fmt.Sprintf("%d file(s) loaded", r.count)
@@ -452,6 +504,12 @@ func printHeader(resolved []resolvedArg, parallel int, noParallel, noRecursive, 
 		}
 		sort.Strings(names)
 		fmt.Printf("  vars:     %s\n", strings.Join(names, ", "))
+	}
+	if len(groups) > 0 {
+		fmt.Printf("  group:    %s\n", strings.Join(groups, ", "))
+	}
+	if len(excludeGroups) > 0 {
+		fmt.Printf("  exclude:  %s\n", strings.Join(excludeGroups, ", "))
 	}
 	fmt.Println()
 }
@@ -496,18 +554,69 @@ func substituteCaptureVars(input string, captures map[string]string) string {
 	return result
 }
 
-// loadAndParse reads a .clit file, substitutes variables, and parses it into entries.
-func loadAndParse(path string, vars map[string]string) ([]types.Entry, error) {
+// loadAndParse reads a .clit file, substitutes variables, and parses it into a File.
+func loadAndParse(path string, vars map[string]string) (*types.File, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 	input := substituteVars(string(content), vars)
-	entries, err := parser.Parse(input)
+	f, err := parser.ParseFile(input)
 	if err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
-	return entries, nil
+	f.Path = path
+	return f, nil
+}
+
+// filterEntries returns entries that match group/exclude-group filters.
+// File-level groups are inherited by all entries.
+func filterEntries(f *types.File, groups []string, excludeGroups []string) []types.Entry {
+	if len(groups) == 0 && len(excludeGroups) == 0 {
+		return f.Entries
+	}
+
+	var result []types.Entry
+	for _, e := range f.Entries {
+		effectiveTags := mergeGroups(f.Groups, e.Groups)
+
+		if len(excludeGroups) > 0 && hasAnyTag(effectiveTags, excludeGroups) {
+			continue
+		}
+
+		if len(groups) > 0 && !hasAnyTag(effectiveTags, groups) {
+			continue
+		}
+
+		result = append(result, e)
+	}
+	return result
+}
+
+// mergeGroups returns the union of file-level and entry-level groups.
+func mergeGroups(fileGroups, entryGroups []string) []string {
+	if len(fileGroups) == 0 {
+		return entryGroups
+	}
+	if len(entryGroups) == 0 {
+		return fileGroups
+	}
+	merged := make([]string, 0, len(fileGroups)+len(entryGroups))
+	merged = append(merged, fileGroups...)
+	merged = append(merged, entryGroups...)
+	return merged
+}
+
+// hasAnyTag checks if any of the tags is present in effectiveTags (OR logic).
+func hasAnyTag(effectiveTags []string, tags []string) bool {
+	for _, t := range tags {
+		for _, et := range effectiveTags {
+			if et == t {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error) {
@@ -619,5 +728,16 @@ func (v *varMap) Set(s string) error {
 		return fmt.Errorf("invalid var format, use NAME=VALUE")
 	}
 	v.values[parts[0]] = parts[1]
+	return nil
+}
+
+// stringSlice implements flag.Value for repeated string flags (--group, --exclude-group)
+type stringSlice struct {
+	values []string
+}
+
+func (s *stringSlice) String() string { return strings.Join(s.values, ", ") }
+func (s *stringSlice) Set(v string) error {
+	s.values = append(s.values, v)
 	return nil
 }

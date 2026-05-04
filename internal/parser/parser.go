@@ -8,14 +8,67 @@ import (
 	"github.com/sleipi/clit/internal/types"
 )
 
-// Parse parses a .clit file content into a list of entries.
-func Parse(input string) ([]types.Entry, error) {
+// ParseFile parses a .clit file content into a File with frontmatter and entries.
+func ParseFile(input string) (*types.File, error) {
 	lines := strings.Split(input, "\n")
 	// Remove trailing empty line from split
 	if len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
 
+	file := &types.File{}
+	startLine := 0
+
+	// Parse frontmatter if present
+	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "---" {
+		startLine = 1
+		closed := false
+		for startLine < len(lines) {
+			line := strings.TrimSpace(lines[startLine])
+			if line == "---" {
+				startLine++
+				closed = true
+				break
+			}
+			// Only parse lines starting with @ as directives; ignore prose text
+			if strings.HasPrefix(line, "@") {
+				d, err := parseDirective(line)
+				if err != nil {
+					return nil, fmt.Errorf("frontmatter line %d: %w", startLine+1, err)
+				}
+				if d != nil {
+					file.Directives = append(file.Directives, *d)
+				}
+			}
+			startLine++
+		}
+		if !closed {
+			return nil, fmt.Errorf("unclosed frontmatter (missing closing ---)")
+		}
+	}
+
+	// Interpret file-level directives
+	interpretFileDirectives(file)
+
+	// Parse entries
+	entries, err := parseEntries(lines[startLine:])
+	if err != nil {
+		return nil, err
+	}
+	file.Entries = entries
+	return file, nil
+}
+
+// Parse parses a .clit file content into a list of entries (legacy API).
+func Parse(input string) ([]types.Entry, error) {
+	f, err := ParseFile(input)
+	if err != nil {
+		return nil, err
+	}
+	return f.Entries, nil
+}
+
+func parseEntries(lines []string) ([]types.Entry, error) {
 	var entries []types.Entry
 	var current *entryBuilder
 
@@ -47,6 +100,25 @@ func Parse(input string) ([]types.Entry, error) {
 				i++
 			}
 			current.comment = strings.Join(comments, "\n")
+			continue
+		}
+
+		// Directive line (@group, @skip, etc.) — must be before command
+		if strings.HasPrefix(strings.TrimSpace(line), "@") {
+			if current == nil {
+				current = &entryBuilder{}
+			}
+			if current.command != "" {
+				return nil, fmt.Errorf("directive must appear before command: %s", line)
+			}
+			d, err := parseDirective(strings.TrimSpace(line))
+			if err != nil {
+				return nil, fmt.Errorf("line: %w", err)
+			}
+			if d != nil {
+				current.directives = append(current.directives, *d)
+			}
+			i++
 			continue
 		}
 
@@ -130,31 +202,82 @@ func Parse(input string) ([]types.Entry, error) {
 }
 
 type entryBuilder struct {
-	comment  string
-	command  string
-	exitCode int
-	hasExit  bool
-	body     []string
-	asserts  []types.Assert
-	captures []types.Capture
+	comment    string
+	command    string
+	exitCode   int
+	hasExit    bool
+	body       []string
+	asserts    []types.Assert
+	captures   []types.Capture
+	directives []types.Directive
 }
 
 func (b *entryBuilder) build() types.Entry {
-	return types.Entry{
-		Comment:  b.comment,
-		Command:  b.command,
-		ExitCode: b.exitCode,
-		Body:     b.body,
-		Asserts:  b.asserts,
-		Captures: b.captures,
+	entry := types.Entry{
+		Comment:    b.comment,
+		Command:    b.command,
+		ExitCode:   b.exitCode,
+		Body:       b.body,
+		Asserts:    b.asserts,
+		Captures:   b.captures,
+		Directives: b.directives,
+	}
+	interpretEntryDirectives(&entry)
+	return entry
+}
+
+// parseDirective parses a line like "@group BUG-1234 smoke" into a Directive.
+func parseDirective(line string) (*types.Directive, error) {
+	if !strings.HasPrefix(line, "@") {
+		return nil, fmt.Errorf("not a directive: %s", line)
+	}
+
+	// Split into @name and value
+	parts := strings.SplitN(line, " ", 2)
+	name := strings.TrimPrefix(parts[0], "@")
+	if name == "" {
+		return nil, fmt.Errorf("empty directive name: %s", line)
+	}
+
+	value := ""
+	if len(parts) == 2 {
+		value = strings.TrimSpace(parts[1])
+	}
+
+	return &types.Directive{Name: name, Value: value}, nil
+}
+
+// interpretFileDirectives interprets raw directives into typed File fields.
+func interpretFileDirectives(f *types.File) {
+	for _, d := range f.Directives {
+		switch d.Name {
+		case "group":
+			if d.Value != "" {
+				f.Groups = append(f.Groups, strings.Fields(d.Value)...)
+			}
+		case "skip":
+			f.Skip = true
+			f.SkipReason = d.Value
+		}
+	}
+}
+
+// interpretEntryDirectives interprets raw directives into typed Entry fields.
+func interpretEntryDirectives(e *types.Entry) {
+	for _, d := range e.Directives {
+		switch d.Name {
+		case "group":
+			if d.Value != "" {
+				e.Groups = append(e.Groups, strings.Fields(d.Value)...)
+			}
+		case "skip":
+			e.Skip = true
+			e.SkipReason = d.Value
+		}
 	}
 }
 
 // parseAssert parses a line like: stdout contains "hello"
-// or: line 1 contains "cold beer"
-// or: stderr isEmpty
-// or: stdout not contains "error"
-// or: stdout matches /\d+/
 func parseAssert(line string) (types.Assert, error) {
 	line = strings.TrimSpace(line)
 

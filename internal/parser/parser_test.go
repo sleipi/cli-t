@@ -178,6 +178,132 @@ EXIT 0
 	assertEqual(t, entries[0].Command, `echo "hello\nworld"`)
 }
 
+func TestParseEntryGroupDirective(t *testing.T) {
+	input := `# Test with groups
+@group BUG-1234 smoke
+echo "hello"
+EXIT 0
+hello
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	e := entries[0]
+	assertEqual(t, e.Command, `echo "hello"`)
+	assertEqual(t, e.Comment, "# Test with groups")
+	if len(e.Groups) != 2 {
+		t.Fatalf("expected 2 groups, got %d: %v", len(e.Groups), e.Groups)
+	}
+	assertEqual(t, e.Groups[0], "BUG-1234")
+	assertEqual(t, e.Groups[1], "smoke")
+}
+
+func TestParseEntrySkipDirective(t *testing.T) {
+	input := `# Broken test
+@skip known flaky on CI
+echo "flaky"
+EXIT 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := entries[0]
+	if !e.Skip {
+		t.Fatal("expected entry to be skipped")
+	}
+	assertEqual(t, e.SkipReason, "known flaky on CI")
+}
+
+func TestParseEntrySkipBare(t *testing.T) {
+	input := `@skip
+echo "skip me"
+EXIT 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !entries[0].Skip {
+		t.Fatal("expected entry to be skipped")
+	}
+	assertEqual(t, entries[0].SkipReason, "")
+}
+
+func TestParseFrontmatter(t *testing.T) {
+	input := `---
+@group BUG-1234 performance
+@skip waiting for backend fix
+---
+
+echo "hello"
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(f.Groups) != 2 {
+		t.Fatalf("expected 2 file groups, got %d: %v", len(f.Groups), f.Groups)
+	}
+	assertEqual(t, f.Groups[0], "BUG-1234")
+	assertEqual(t, f.Groups[1], "performance")
+	if !f.Skip {
+		t.Fatal("expected file to be skipped")
+	}
+	assertEqual(t, f.SkipReason, "waiting for backend fix")
+	if len(f.Entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(f.Entries))
+	}
+}
+
+func TestParseFrontmatterUnclosed(t *testing.T) {
+	input := `---
+@group test
+echo "hello"
+`
+	_, err := ParseFile(input)
+	if err == nil {
+		t.Fatal("expected error for unclosed frontmatter")
+	}
+}
+
+func TestParseDirectiveAfterCommandErrors(t *testing.T) {
+	input := `echo "hello"
+@group smoke
+EXIT 0
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for directive after command")
+	}
+}
+
+func TestParseMultipleDirectives(t *testing.T) {
+	input := `# Test
+@group smoke
+@skip WIP
+echo "test"
+EXIT 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := entries[0]
+	if len(e.Groups) != 1 || e.Groups[0] != "smoke" {
+		t.Fatalf("expected groups [smoke], got %v", e.Groups)
+	}
+	if !e.Skip {
+		t.Fatal("expected skip")
+	}
+	assertEqual(t, e.SkipReason, "WIP")
+}
+
 // helpers
 
 func assertEqual(t *testing.T, got, want string) {
@@ -191,6 +317,31 @@ func assertIntEqual(t *testing.T, got, want int) {
 	t.Helper()
 	if got != want {
 		t.Fatalf("got %d, want %d", got, want)
+	}
+}
+
+func TestParseFrontmatterWithProseText(t *testing.T) {
+	input := `---
+This is a description of the test file
+@group examples basics
+
+Add your tests below
+---
+
+echo "hello"
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(f.Directives) != 1 {
+		t.Fatalf("expected 1 directive, got %d", len(f.Directives))
+	}
+	if f.Directives[0].Name != "group" || f.Directives[0].Value != "examples basics" {
+		t.Fatalf("unexpected directive: %+v", f.Directives[0])
+	}
+	if len(f.Entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(f.Entries))
 	}
 }
 

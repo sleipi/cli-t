@@ -29,6 +29,16 @@ func (d *VerboseDisplay) BeginFile(fileIdx int) {
 }
 
 func (d *VerboseDisplay) EntryResult(fileIdx int, info EntryInfo) {
+	if info.Skipped {
+		reason := ""
+		if info.SkipReason != "" {
+			reason = fmt.Sprintf(" (%s)", info.SkipReason)
+		}
+		fmt.Fprintf(d.w, "  %s⊘%s %s %sSKIP%s%s\n",
+			colorYellow, colorReset, truncateCmd(info.Command, 60),
+			colorYellow, reason, colorReset)
+		return
+	}
 	if info.Passed {
 		fmt.Fprintf(d.w, "  %s✓%s %s %s(exit=%d, %d asserts)%s\n",
 			colorGreen, colorReset, truncateCmd(info.Command, 60),

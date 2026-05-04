@@ -13,6 +13,8 @@ import (
 type EntryInfo struct {
 	Command     string
 	Passed      bool
+	Skipped     bool
+	SkipReason  string
 	ExitCode    int
 	AssertCount int
 	Failures    []string

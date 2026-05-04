@@ -255,28 +255,83 @@ stdout == "$HOME"
 
 ---
 
-## File-Level Directives (planned)
+## Directives
 
-At the top of a `.clit` file, before any entries:
+Directives are lines starting with `@` that provide metadata and control execution. They are parsed generically as `@name [value]`.
+
+### Frontmatter (file-level directives)
+
+File-level directives are placed in a frontmatter block at the top of the file, delimited by `---`:
 
 ```
-@name "Authentication Tests"
-@timeout 10000
-@shell bash
-@setup echo "setup"
-@teardown echo "cleanup"
-@env API_URL=http://localhost:3000
+---
+@group BUG-1234 performance
+@skip waiting for backend fix
+---
+
+# entries follow...
 ```
 
-| Directive    | Description                                         |
-|-------------|-----------------------------------------------------|
-| `@name`     | Human-readable test suite name                      |
-| `@timeout`  | Default timeout for all entries                     |
-| `@shell`    | Default shell for all entries                       |
-| `@setup`    | Command to run before the first entry               |
-| `@teardown` | Command to run after the last entry (always)        |
-| `@env`      | Set environment variable for all entries            |
-| `@require`  | Prerequisite command that must succeed (else skip)  |
+- Frontmatter MUST be the first thing in the file (before comments or entries)
+- The `---` delimiters are required (opening and closing)
+- File-level directives apply to ALL entries in the file
+- Non-directive lines (prose text) are ignored — use them for documentation
+
+### Entry-level directives
+
+Entry-level directives appear after comments, before the command:
+
+```
+# Test description
+@group smoke integration
+@skip known flaky on CI
+echo "test"
+EXIT 0
+```
+
+- Directives MUST appear after comments and before the command
+- Unknown directives are accepted (forward-compatible)
+
+### Available Directives
+
+| Directive | Scope | Format | Description |
+|-----------|-------|--------|-------------|
+| `@group`  | file, entry | `@group tag1 tag2 ...` | Space-separated tags for filtering |
+| `@skip`   | file, entry | `@skip [reason]` | Skip this entry/file (reason optional) |
+
+#### `@group`
+
+Tags entries for filtering. Multiple tags on one line, space-separated. Entry effective tags = file-level groups ∪ entry-level groups.
+
+```
+---
+@group BUG-1234
+---
+
+# This entry has effective tags: [BUG-1234, smoke]
+@group smoke
+echo "test"
+```
+
+#### `@skip`
+
+Marks an entry or entire file as skipped. The entry is not executed and shows as SKIP in output. An optional reason string is preserved for display.
+
+```
+@skip TODO: fix when upstream API is stable
+curl http://localhost/health
+EXIT 0
+```
+
+### Planned Directives (roadmap)
+
+| Directive | Description |
+|-----------|-------------|
+| `@timeout 5s` | Max execution time, kill after |
+| `@retry 3` | Retry on failure N times |
+| `@env KEY=VALUE` | Set env vars for entry |
+| `@workdir ./path` | Run command in directory |
+| `@shell bash` | Override shell |
 
 ---
 
@@ -318,6 +373,8 @@ clit [options] <path...>
 |------------------|--------------------------------------------|
 | `-v`             | Verbose: show stdout/stderr for passing tests |
 | `--var NAME=VAL` | Set template variable (repeatable)         |
+| `--group TAG`    | Run only entries matching this tag (repeatable, OR logic) |
+| `--exclude-group TAG` | Skip entries matching this tag (repeatable) |
 | `--no-recursive` | Disable recursive directory scanning       |
 | `--parallel N`   | Max parallel file executions (default: 8)  |
 | `--no-parallel`  | Disable parallel execution (sequential)    |
@@ -416,9 +473,11 @@ Files are executed concurrently using a worker pool (default: 8 workers). Entrie
 ## Grammar (informal)
 
 ```
-file       = directive* (entry separator)* entry?
+file       = frontmatter? (entry separator)* entry?
+frontmatter = "---" NEWLINE (directive | TEXT)* "---" NEWLINE
+directive  = "@" NAME [SPACE TEXT] NEWLINE
 separator  = BLANK_LINE+
-entry      = comment? command EXIT? body? section*
+entry      = comment? directive* command EXIT? body? section*
 comment    = (HASH TEXT NEWLINE)+
 command    = TEXT NEWLINE
 EXIT       = "EXIT" SPACE INTEGER NEWLINE
