@@ -138,6 +138,46 @@ func TestParseFencedBody(t *testing.T) {
 	assertEqual(t, entries[0].Body[2], "b")
 }
 
+func TestParseMultilineCommand(t *testing.T) {
+	input := `# Multi-line curl
+curl -s https://example.com \
+  -H "Accept: application/json"
+EXIT 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	assertEqual(t, entries[0].Command, `curl -s https://example.com   -H "Accept: application/json"`)
+}
+
+func TestParseMultilineCommandMultipleContinuations(t *testing.T) {
+	input := `echo \
+hello \
+world
+EXIT 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertEqual(t, entries[0].Command, "echo hello world")
+}
+
+func TestParseEmbeddedBackslashNotContinuation(t *testing.T) {
+	input := `echo "hello\nworld"
+EXIT 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertEqual(t, entries[0].Command, `echo "hello\nworld"`)
+}
+
 // helpers
 
 func assertEqual(t *testing.T, got, want string) {

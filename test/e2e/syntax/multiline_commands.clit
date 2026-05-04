@@ -1,0 +1,19 @@
+# Single continuation line
+echo \
+"hello world"
+EXIT 0
+hello world
+
+# Multiple continuation lines
+printf "%s %s %s" \
+  hello \
+  beautiful \
+  world
+EXIT 0
+hello beautiful world
+
+# Backslash in middle of line is not a continuation
+printf 'a\\b'
+EXIT 0
+[Asserts]
+stdout contains a

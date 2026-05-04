@@ -14,9 +14,10 @@
 - [ ] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
+- [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
 - [ ] `--timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds)
 - [ ] `--filter GLOB` — Only run entries whose comment matches the given glob pattern
 - [ ] `--shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`)
 - [ ] Dependencies between entries — Allow entries to declare dependencies on other entries or captures
-- [ ] Multi-line commands — Support commands that span multiple lines
+- [x] Multi-line commands — Support commands that span multiple lines (trailing `\` continuation)

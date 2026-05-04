@@ -57,8 +57,15 @@ func Parse(input string) ([]types.Entry, error) {
 
 		// If no command yet, this line is the command
 		if current.command == "" {
-			current.command = line
+			cmd := line
 			i++
+			// Multi-line command: trailing backslash means continuation
+			for strings.HasSuffix(cmd, "\\") && i < len(lines) {
+				cmd = cmd[:len(cmd)-1] // strip trailing backslash
+				cmd += lines[i]
+				i++
+			}
+			current.command = cmd
 			continue
 		}
 

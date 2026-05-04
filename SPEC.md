@@ -58,8 +58,6 @@ curl -s https://api.example.com/health \
   -H "Accept: application/json"
 ```
 
-> **Future**: Multi-line command support is not yet implemented. Currently commands must be a single line.
-
 ### 3. EXIT (optional)
 
 Declares the expected exit code. Defaults to `0` if omitted.
