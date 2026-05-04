@@ -1,0 +1,7 @@
+# Capture stdout and reuse in next command
+echo "secret-value-42"
+[Captures]
+captured: stdout
+
+echo "{{captured}}"
+secret-value-42

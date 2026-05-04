@@ -1,0 +1,10 @@
+# Test that a failing command reports non-zero exit
+cat /nonexistent_file_that_does_not_exist 2>/dev/null; exit 1
+EXIT 1
+
+# Test stderr output
+echo "error message" >&2
+EXIT 0
+[Asserts]
+stderr contains "error message"
+stdout isEmpty

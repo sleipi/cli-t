@@ -1,0 +1,11 @@
+# Verbose shows stdout on passing tests
+./clit -v examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout contains "--- stdout ---"
+
+# Without verbose, passing tests don't show stdout
+./clit examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout not contains "--- stdout ---"

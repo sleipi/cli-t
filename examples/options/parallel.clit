@@ -1,0 +1,11 @@
+# Parallel flag sets worker count
+./clit --parallel 2 examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout contains "parallel: 2"
+
+# No-parallel flag disables parallelism
+./clit --no-parallel examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout contains "no-parallel"

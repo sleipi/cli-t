@@ -1,0 +1,6 @@
+# --var substitution works
+./clit --var GREETING=hello examples/options/_fixtures/var_sub.clit
+EXIT 0
+[Asserts]
+stdout contains "pass:"
+stdout contains "hello"

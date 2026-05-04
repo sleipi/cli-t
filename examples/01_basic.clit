@@ -1,0 +1,19 @@
+# Test basic echo with exact body match
+echo "hello world"
+EXIT 0
+hello world
+
+# Test multi-line output
+printf "line1\nline2\nline3"
+EXIT 0
+line1
+line2
+line3
+
+# Test exit code assertion
+echo "works"
+EXIT 0
+[Asserts]
+stdout contains "works"
+stdout not contains "broken"
+lineCount == 1

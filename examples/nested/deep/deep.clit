@@ -1,0 +1,4 @@
+# Deep nested test
+echo "deep"
+EXIT 0
+deep

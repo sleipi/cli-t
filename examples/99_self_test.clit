@@ -1,0 +1,49 @@
+# Self-test: clit runs its own basic test
+./clit examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout contains "✓"
+stdout not contains "✗"
+stdout contains "pass:"
+
+# Self-test: non-.clit files are skipped with a warning
+./clit examples/nested/hello.clit cmd/clit/main.go
+EXIT 0
+[Asserts]
+stderr contains "Warning: skipping non-.clit file: cmd/clit/main.go"
+stdout contains "pass:"
+
+# Self-test: recursive directory scanning finds nested .clit files
+./clit examples/nested
+EXIT 0
+[Asserts]
+stdout contains "hello.clit"
+stdout contains "pass:"
+
+# Self-test: --no-recursive does not find deeply nested files
+./clit --no-recursive examples/nested
+EXIT 0
+[Asserts]
+stdout contains "hello.clit"
+stdout not contains "deep.clit"
+
+# Self-test: header tests pass
+./clit examples/header/
+EXIT 0
+[Asserts]
+stdout contains "pass:"
+stdout not contains "fail:"
+
+# Self-test: options tests pass
+./clit examples/options/
+EXIT 0
+[Asserts]
+stdout contains "pass:"
+stdout not contains "fail:"
+
+# Self-test: captures tests pass
+./clit examples/captures/
+EXIT 0
+[Asserts]
+stdout contains "pass:"
+stdout not contains "fail:"

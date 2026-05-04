@@ -1,0 +1,4 @@
+# Simple test inside nested directory
+echo "nested hello"
+EXIT 0
+nested hello
