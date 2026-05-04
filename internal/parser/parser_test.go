@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/ronny/clit/pkg/types"
+	"github.com/sleipi/clit/internal/types"
 )
 
 func TestParseSimpleEcho(t *testing.T) {

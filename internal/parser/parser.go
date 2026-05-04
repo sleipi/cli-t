@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ronny/clit/pkg/types"
+	"github.com/sleipi/clit/internal/types"
 )
 
 // Parse parses a .clit file content into a list of entries.

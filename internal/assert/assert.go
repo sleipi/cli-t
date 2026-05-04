@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ronny/clit/internal/runner"
-	"github.com/ronny/clit/pkg/types"
+	"github.com/sleipi/clit/internal/runner"
+	"github.com/sleipi/clit/internal/types"
 )
 
 // AssertResult holds the outcome of a single assertion.

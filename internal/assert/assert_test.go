@@ -3,8 +3,8 @@ package assert
 import (
 	"testing"
 
-	"github.com/ronny/clit/internal/runner"
-	"github.com/ronny/clit/pkg/types"
+	"github.com/sleipi/clit/internal/runner"
+	"github.com/sleipi/clit/internal/types"
 )
 
 func TestContains(t *testing.T) {
