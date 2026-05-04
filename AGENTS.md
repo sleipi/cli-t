@@ -1,10 +1,12 @@
 # AGENTS.md
 
+The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+
 ## Project
 
 `clit` (CLI Test) — a Go CLI tool that runs declarative `.clit` test files against shell commands. Single binary, zero dependencies.
 
-- Module: `github.com/ronny/clit`
+- Module: `github.com/sleipi/clit`
 - Binary output: `./clit` (repo root)
 - Spec: `SPEC.md` — the authoritative syntax reference; keep it in sync with code changes.
 
@@ -14,10 +16,22 @@
 
 ## Workflow
 
-* Always work on a feature branch — never commit directly to main.
-* Follow the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification for all commit messages.
-* Write code using a TDD approach — write/update tests before implementation.
-* Always write E2E tests (in `test/e2e/`) for any new or changed behaviour.
+* You MUST work on a feature branch — never commit directly to main.
+* You MUST follow the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification for all commit messages.
+* You MUST write code using a TDD approach — write/update tests before implementation.
+* You MUST write E2E tests (in `test/e2e/`) for any new or changed behaviour.
+
+## Branch Naming
+
+Branch names MUST follow the format `<type>/<short-description>`.
+
+**Types:** `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`
+
+**Rules:**
+* You MUST use lowercase and hyphens as word separators (e.g. `feat/add-capture-support`).
+* You SHOULD keep names short but descriptive.
+* You MAY include an issue number (e.g. `feat/42-capture-support`).
+* You MUST NOT use special characters beyond hyphens and slashes.
 
 ## Commands
 
