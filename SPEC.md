@@ -334,23 +334,71 @@ clit [options] <path...>
 
 ### Output Format
 
-When invoked, clit prints a header block, test results, and a summary footer:
+clit has two output modes:
+
+#### Default Mode (compact progress)
+
+Shows one line per file with a progress bar. In a TTY, lines update in-place as entries complete. A subtitle shows the currently running entry's comment (or command if no comment).
 
 ```
 clit v0.1.0
   path:     test/e2e/ (12 file(s) loaded)
+  parallel: 8
+
+RUN [=====>    ] - asserts.clit (1/3) 45ms
+    Verify date format matches regex
+OK  [==========] - 01_basic.clit (3/3) took 14ms
+OK  [==========] - 02_errors.clit (2/2) took 12ms
+
+━━━ Summary ━━━
+  pass: 8
+  took: 164ms
+```
+
+**Progress line format:** `STATUS [BAR] - FILENAME (COMPLETED/TOTAL) TIMING`
+
+- Status: `RUN` (yellow), `OK ` (green), `ERR` (red)
+- Bar: 10-char width, `=` for filled, `>` at tip, spaces for remainder. Full bar on completion: `[==========]`
+- Counter: `(completed/total)` entries
+- Timing: elapsed while running (e.g. `45ms`), `took <duration>` when finished
+
+**Subtitle (TTY only):** Below running files, shows the current entry's comment (stripped of `# ` prefix) or the command itself if no comment exists. Disappears when the file finishes.
+
+**Non-TTY fallback:** Prints each file line once when it finishes (no cursor movement, no subtitle).
+
+#### Verbose Mode (`-v`)
+
+Shows per-entry results with checkmarks. In a TTY, displays a fixed header block showing `RUNNING`/`OK`/`FAIL` per file with live ANSI updates, then appends detailed entry output below as each file completes.
+
+```
+clit v0.1.0
   path:     examples/ (3 file(s) loaded)
   parallel: 8
   verbose:  on
-  vars:     FOO, BAR
+
+▶ 01_basic.clit OK
+▶ 02_errors.clit OK
 
 ▶ 01_basic.clit
   ✓ echo "hello world" (exit=0, 1 asserts)
+    --- stdout ---
+    hello world
+
+▶ 02_errors.clit
+  ✓ echo "error message" >&2 (exit=0, 2 asserts)
+    --- stderr ---
+    error message
 
 ━━━ Summary ━━━
-  pass: 3
-  took: 164ms
+  pass: 5
+  took: 16ms
 ```
+
+**Non-TTY verbose:** Buffers output per file and prints sequentially after all files complete (no ANSI).
+
+**Common elements (both modes):**
+
+**Common elements (both modes):**
 
 **Header rules:**
 - `path:` — one line per argument, showing file count. Suffix `- no-recursive` when `--no-recursive` is active.

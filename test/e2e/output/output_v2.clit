@@ -1,0 +1,52 @@
+# Default output shows compact OK line with counter and timing
+./clit examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout contains "OK"
+stdout contains "[==========]"
+stdout contains "01_basic.clit"
+stdout contains "took"
+stdout not contains "✓"
+stdout not contains "✗"
+
+# Verbose output shows per-entry checkmarks
+./clit -v examples/01_basic.clit
+EXIT 0
+[Asserts]
+stdout contains "✓"
+stdout contains "▶ 01_basic.clit"
+stdout not contains "[==========]"
+
+# Failing file shows ERR in compact mode
+./clit test/_fixtures/failing.clit
+EXIT 1
+[Asserts]
+stdout contains "ERR"
+stdout contains "[==========]"
+stdout contains "failing.clit"
+stdout contains "took"
+
+# Multiple files show one line each in compact mode
+./clit examples/01_basic.clit examples/02_errors.clit
+EXIT 0
+[Asserts]
+stdout contains "OK"
+stdout contains "01_basic.clit"
+stdout contains "02_errors.clit"
+stdout contains "took"
+
+# test loading bar #1 (1sec)
+sleep 1
+EXIT 0
+
+# test loading bar #2 (1sec)
+sleep 1
+EXIT 0
+
+# test loading bar #3 (1sec)
+sleep 1
+EXIT 0
+
+# test loading bar #4 (1sec)
+sleep 1
+EXIT 0

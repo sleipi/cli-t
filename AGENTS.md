@@ -29,17 +29,21 @@ Always run `make all` after changes — unit tests alone won't catch parser/CLI 
 ## Package Layout
 
 ```
-cmd/clit/main.go        CLI entrypoint, flag parsing, colored output, file discovery, parallel execution
-cmd/clit/main_test.go   Unit tests for resolveFiles, glob support
-internal/parser/        .clit format parser (entry builder, assert/capture parsing)
-internal/runner/        Command execution via sh -c, captures stdout/stderr/exit/duration
-internal/assert/        Predicate evaluation engine (queries + predicates + negation)
-pkg/types/              Shared types: Entry, Assert, Capture, File
-examples/*.clit         User-facing usage examples (also validated via `make examples`)
-test/e2e/syntax/        E2E tests for .clit syntax (asserts, captures)
-test/e2e/output/        E2E tests for header/footer/summary output
-test/e2e/options/       E2E tests for CLI flags (--var, --parallel, -v)
-test/e2e/resolve/       E2E tests for file discovery (recursive, glob, skip warnings)
+cmd/clit/main.go            CLI entrypoint, flag parsing, file discovery, parallel execution
+cmd/clit/main_test.go       Unit tests for resolveFiles, glob support
+cmd/clit/display.go         Display interface, ProgressDisplay (compact progress bars, TTY-aware)
+cmd/clit/display_verbose.go VerboseDisplay (per-entry output with checkmarks)
+cmd/clit/display_test.go    Unit tests for both display implementations
+internal/parser/            .clit format parser (entry builder, assert/capture parsing)
+internal/runner/            Command execution via sh -c, captures stdout/stderr/exit/duration
+internal/assert/            Predicate evaluation engine (queries + predicates + negation)
+pkg/types/                  Shared types: Entry, Assert, Capture, File
+examples/*.clit             User-facing usage examples (also validated via `make examples`)
+test/e2e/syntax/            E2E tests for .clit syntax (asserts, captures)
+test/e2e/output/            E2E tests for header/footer/summary output and output v2
+test/e2e/options/           E2E tests for CLI flags (--var, --parallel, -v)
+test/e2e/resolve/           E2E tests for file discovery (recursive, glob, skip warnings)
+test/_fixtures/             Shared test fixtures (e.g. intentionally failing .clit files)
 ```
 
 ## Conventions

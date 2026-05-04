@@ -7,6 +7,7 @@
 - [x] Parallelism — Files run concurrently (default: 8 workers), entries within a file run sequentially. `--parallel N` to configure, `--no-parallel` to disable.
 - [x] Header/Footer — Shows version, paths, options, and execution duration (`took:`) in summary
 - [x] Glob support — Quoted glob patterns (e.g. `"examples/*.clit"`) are expanded by clit, preserving the pattern in header output
+- [x] Output v2 — Compact progress bars as default output; verbose (`-v`) becomes the detailed per-entry display. TTY-aware with dynamic ANSI updates, static fallback for non-TTY. Progress counter `(n/total)`, per-file timing, and entry subtitle (comment or command) shown while running.
 
 ## Planned
 
