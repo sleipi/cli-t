@@ -338,8 +338,8 @@ When invoked, clit prints a header block, test results, and a summary footer:
 
 ```
 clit v0.1.0
-  path:     examples/ (6 file(s) loaded)
-  path:     tests/ (3 file(s) loaded)
+  path:     test/e2e/ (12 file(s) loaded)
+  path:     examples/ (3 file(s) loaded)
   parallel: 8
   verbose:  on
   vars:     FOO, BAR

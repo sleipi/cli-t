@@ -1,0 +1,8 @@
+# Glob pattern resolves matching files
+./clit "examples/0*.clit"
+EXIT 0
+[Asserts]
+stdout contains "01_basic.clit"
+stdout contains "02_errors.clit"
+stdout contains "03_asserts.clit"
+stdout contains "pass:"

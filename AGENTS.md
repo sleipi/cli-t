@@ -19,9 +19,9 @@
 ```bash
 make build        # go build -o clit ./cmd/clit/
 make test         # go test ./...
-make e2e          # build + run ./clit examples/
-make all          # test + e2e (use this to verify changes)
-make self-test    # build + ./clit examples/99_self_test.clit
+make e2e          # build + run ./clit test/e2e/
+make examples     # build + run ./clit examples/
+make all          # test + e2e + examples (use this to verify changes)
 ```
 
 Always run `make all` after changes — unit tests alone won't catch parser/CLI regressions.
@@ -35,17 +35,18 @@ internal/parser/        .clit format parser (entry builder, assert/capture parsi
 internal/runner/        Command execution via sh -c, captures stdout/stderr/exit/duration
 internal/assert/        Predicate evaluation engine (queries + predicates + negation)
 pkg/types/              Shared types: Entry, Assert, Capture, File
-examples/*.clit         E2E test fixtures (also used as self-tests)
-examples/header/        Tests for header/footer output
-examples/options/       Tests for CLI flags (--var, --parallel, -v)
-examples/captures/      Tests for [Captures] section
-examples/nested/        Tests for recursive file discovery
+examples/*.clit         User-facing usage examples (also validated via `make examples`)
+test/e2e/syntax/        E2E tests for .clit syntax (asserts, captures)
+test/e2e/output/        E2E tests for header/footer/summary output
+test/e2e/options/       E2E tests for CLI flags (--var, --parallel, -v)
+test/e2e/resolve/       E2E tests for file discovery (recursive, glob, skip warnings)
 ```
 
 ## Conventions
 
 - TDD: write/update `*_test.go` before or alongside implementation.
-- `examples/99_self_test.clit` runs `./clit` against other example files — keep it green.
+- `test/e2e/` contains all E2E tests of the clit tool itself — keep them green via `make e2e`.
+- `examples/` contains user-facing usage demonstrations — validated via `make examples`.
 - Parser is hand-rolled (no parser generator). Entries separated by blank lines; sections by `[Name]` headers.
 - Values in asserts: `"quoted"` strings, `/regex/` literals, or bare tokens. See `unquoteValue` in parser.
 - Runner always uses `sh -c`; commands are single-line only (multi-line is planned but not implemented).

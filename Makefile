@@ -5,11 +5,11 @@ test:
 	go test ./...
 
 e2e: build
+	./clit test/e2e/
+
+examples: build
 	./clit examples/
 
-self-test: build
-	./clit examples/99_self_test.clit
+all: test e2e examples
 
-all: test e2e
-
-.PHONY: build test e2e self-test all
+.PHONY: build test e2e examples all

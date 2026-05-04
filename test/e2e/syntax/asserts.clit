@@ -1,0 +1,22 @@
+# Test regex matching
+date +%Y-%m-%d
+EXIT 0
+[Asserts]
+stdout matches \d{4}-\d{2}-\d{2}
+
+# Test line-based assertions
+printf "cold beer\nwarm beer\nno beer\na lot of beer"
+EXIT 0
+[Asserts]
+line 1 contains "cold beer"
+line 2 contains "warm beer"
+line 3 contains "no beer"
+line 4 contains "a lot of beer"
+lineCount == 4
+
+# Test startsWith and endsWith
+echo "Hello World"
+EXIT 0
+[Asserts]
+stdout startsWith "Hello"
+stdout endsWith "World"
