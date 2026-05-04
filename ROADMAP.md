@@ -8,6 +8,8 @@
 - [x] Header/Footer — Shows version, paths, options, and execution duration (`took:`) in summary
 - [x] Glob support — Quoted glob patterns (e.g. `"examples/*.clit"`) are expanded by clit, preserving the pattern in header output
 - [x] Output v2 — Compact progress bars as default output; verbose (`-v`) becomes the detailed per-entry display. TTY-aware with dynamic ANSI updates, static fallback for non-TTY. Progress counter `(n/total)`, per-file timing, and entry subtitle (comment or command) shown while running.
+- [x] Multi-line commands — Support commands that span multiple lines (trailing `\` continuation)
+- [x] GitHub Actions to run CI (unit + e2e)
 
 ## Planned
 
@@ -20,4 +22,4 @@
 - [ ] `--filter GLOB` — Only run entries whose comment matches the given glob pattern
 - [ ] `--shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`)
 - [ ] Dependencies between entries — Allow entries to declare dependencies on other entries or captures
-- [x] Multi-line commands — Support commands that span multiple lines (trailing `\` continuation)
+- [ ] Add file parser Plugin for Intellj
