@@ -1,13 +1,23 @@
 package types
 
+// Directive represents a parsed @directive line (generic).
+type Directive struct {
+	Name  string // e.g. "group", "skip"
+	Value string // raw string after @name (may be empty)
+}
+
 // Entry represents a single test block in a .clit file.
 type Entry struct {
-	Comment  string   // optional comment/description
-	Command  string   // the shell command to execute
-	ExitCode int      // expected exit code
-	Body     []string // expected stdout lines (implicit assert, exact match)
-	Asserts  []Assert // explicit [Asserts] section
-	Captures []Capture
+	Comment    string      // optional comment/description
+	Command    string      // the shell command to execute
+	ExitCode   int         // expected exit code
+	Body       []string    // expected stdout lines (implicit assert, exact match)
+	Asserts    []Assert    // explicit [Asserts] section
+	Captures   []Capture
+	Directives []Directive // raw parsed directives
+	Groups     []string    // interpreted from @group
+	Skip       bool        // interpreted from @skip
+	SkipReason string      // optional reason from @skip
 }
 
 // Assert represents a single explicit assertion.
@@ -26,6 +36,10 @@ type Capture struct {
 
 // File represents a parsed .clit file.
 type File struct {
-	Path    string
-	Entries []Entry
+	Path       string
+	Entries    []Entry
+	Directives []Directive // file-level from frontmatter
+	Groups     []string    // file-level groups
+	Skip       bool        // file-level skip
+	SkipReason string      // file-level skip reason
 }

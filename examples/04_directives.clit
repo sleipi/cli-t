@@ -1,0 +1,25 @@
+---
+This explain a bit more
+@group examples basics
+
+add your test at the end bla bla bla
+---
+
+# Test with group tag
+@group smoke
+echo "hello world"
+EXIT 0
+hello world
+
+# Test marked as skip (will not execute)
+@skip TODO: fix when API is ready
+curl -s http://localhost:8080/health
+EXIT 0
+[Asserts]
+stdout contains "ok"
+
+# Test with multiple group tags
+@group integration api
+echo "api test"
+EXIT 0
+api test

@@ -1,9 +1,11 @@
 # Test basic echo with exact body match
+@group BUG-1234 Feature Senf
 echo "hello world"
 EXIT 0
 hello world
 
 # Test multi-line output
+@depends works-test
 printf "line1\nline2\nline3"
 EXIT 0
 line1
@@ -11,6 +13,7 @@ line2
 line3
 
 # Test exit code assertion
+@name works-test
 echo "works"
 EXIT 0
 [Asserts]

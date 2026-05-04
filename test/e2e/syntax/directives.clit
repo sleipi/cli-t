@@ -1,0 +1,43 @@
+# @skip marks entry as skipped (not failed)
+./clit -v test/e2e/syntax/_fixtures/directives.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 2"
+stdout contains "skip: 1"
+stdout contains "SKIP"
+
+# --group filters to matching entries only
+./clit -v --group smoke test/e2e/syntax/_fixtures/directives.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "smoke test"
+stdout not contains "normal"
+
+# --exclude-group removes matching entries
+./clit -v --exclude-group smoke test/e2e/syntax/_fixtures/directives.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "skip: 1"
+stdout not contains "smoke test"
+
+# File-level @skip skips entire file
+./clit -v test/e2e/syntax/_fixtures/frontmatter_skip.clit
+EXIT 0
+[Asserts]
+stdout contains "skip: 1"
+stdout not contains "fail:"
+
+# --group matches file-level groups inherited by entries
+./clit -v --group BUG-1234 test/e2e/syntax/_fixtures/frontmatter_groups.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 2"
+
+# --group matches entry-level group (entry also inherits file groups)
+./clit -v --group smoke test/e2e/syntax/_fixtures/frontmatter_groups.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "world"

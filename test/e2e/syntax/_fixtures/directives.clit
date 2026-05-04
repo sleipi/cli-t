@@ -1,0 +1,16 @@
+# Entry with group
+@group smoke
+echo "smoke test"
+EXIT 0
+smoke test
+
+# Entry with skip
+@skip known broken
+echo "this should not run"
+EXIT 0
+this will never match
+
+# Another entry without directives
+echo "normal"
+EXIT 0
+normal

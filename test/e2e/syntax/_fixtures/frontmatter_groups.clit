@@ -1,0 +1,14 @@
+---
+@group BUG-1234 performance
+---
+
+# Test inherits file groups
+echo "hello"
+EXIT 0
+hello
+
+# Entry with own group too
+@group smoke
+echo "world"
+EXIT 0
+world

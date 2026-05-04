@@ -1,0 +1,12 @@
+---
+Some text you can add to describe
+@group integration
+
+@skip waiting for backend
+
+and some more text
+    and even empty lines are ignores
+---
+
+echo "should not run"
+EXIT 0
