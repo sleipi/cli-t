@@ -301,7 +301,7 @@ EXIT 0
 
 #### `@group`
 
-Tags entries for filtering. Multiple tags on one line, space-separated. Entry effective tags = file-level groups ∪ entry-level groups.
+Tags entries for filtering. Multiple tags on one line, space-separated. Entry effective tags = file-level groups ∪ entry-level groups. Matching is **case-sensitive** (e.g. `--group Smoke` matches `@group Smoke` but not `@group smoke`).
 
 ```
 ---
@@ -373,8 +373,8 @@ clit [options] <path...>
 |------------------|--------------------------------------------|
 | `-v`             | Verbose: show stdout/stderr for passing tests |
 | `--var NAME=VAL` | Set template variable (repeatable)         |
-| `--group TAG`    | Run only entries matching this tag (repeatable, OR logic) |
-| `--exclude-group TAG` | Skip entries matching this tag (repeatable) |
+| `--group TAG`    | Run only entries matching this tag (repeatable, OR logic, case-sensitive). Files with no matching entries are hidden from output. |
+| `--exclude-group TAG` | Skip entries matching this tag (repeatable, case-sensitive) |
 | `--no-recursive` | Disable recursive directory scanning       |
 | `--parallel N`   | Max parallel file executions (default: 8)  |
 | `--no-parallel`  | Disable parallel execution (sequential)    |
