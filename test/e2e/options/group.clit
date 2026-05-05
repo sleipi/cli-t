@@ -1,0 +1,11 @@
+# -group flag hides files with no matching entries entirely
+./clit -group senf test/e2e/options/_fixtures/group_tagged.clit test/e2e/options/_fixtures/group_untagged.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+
+# -group with no matches shows pass: 0
+./clit -group nonexistent test/e2e/options/_fixtures/group_tagged.clit test/e2e/options/_fixtures/group_untagged.clit
+EXIT 0
+[Asserts]
+stdout contains "pass: 0"

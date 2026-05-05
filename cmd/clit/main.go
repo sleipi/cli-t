@@ -87,6 +87,7 @@ func main() {
 		skip     int
 		file     string
 		failures []compactFailure
+		hidden   bool
 	}
 
 	results := make([]fileResult, len(files))
@@ -139,21 +140,29 @@ func main() {
 							continue
 						}
 
-						entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
+					entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
 
-						vd := NewVerboseDisplay(&buf, true)
-						vd.Start([]string{f})
-						vd.BeginFile(0)
-						pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
-						vd.EndFile(0)
-
+					if len(entries) == 0 {
 						mu.Lock()
-						overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
-						fmt.Print(buf.String())
-						appendedLines += countLines(buf.String())
+						clearHeaderLine(os.Stdout, idx, headerLines, appendedLines)
 						mu.Unlock()
+						results[idx] = fileResult{file: f, hidden: true}
+						continue
+					}
 
-						results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
+					vd := NewVerboseDisplay(&buf, true)
+					vd.Start([]string{f})
+					vd.BeginFile(0)
+					pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
+					vd.EndFile(0)
+
+					mu.Lock()
+					overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
+					fmt.Print(buf.String())
+					appendedLines += countLines(buf.String())
+					mu.Unlock()
+
+					results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
 					}
 				}()
 			}
@@ -166,6 +175,7 @@ func main() {
 				fail   int
 				skip   int
 				file   string
+				hidden bool
 			}
 			vResults := make([]verboseResult, len(files))
 
@@ -191,18 +201,27 @@ func main() {
 							continue
 						}
 
-						entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
+					entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
 
-						vd.BeginFile(0)
-						pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
-						vd.EndFile(0)
-						vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, skip: skip, file: f}
+					if len(entries) == 0 {
+						vResults[idx] = verboseResult{file: f, hidden: true}
+						continue
+					}
+
+					vd.BeginFile(0)
+					pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
+					vd.EndFile(0)
+					vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, skip: skip, file: f}
 					}
 				}()
 			}
 			wg.Wait()
 
 			for i, r := range vResults {
+				if r.hidden {
+					results[i] = fileResult{file: r.file, hidden: true}
+					continue
+				}
 				fmt.Print(r.output)
 				results[i] = fileResult{pass: r.pass, fail: r.fail, skip: r.skip, file: r.file}
 			}
@@ -233,9 +252,15 @@ func main() {
 						continue
 					}
 
-					entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
+				entries := filterEntries(parsed, groupFlags.values, excludeGroupFlags.values)
 
-					pd.UpdateProgress(idx, 0, len(entries))
+				if len(entries) == 0 {
+					pd.HideFile(idx)
+					results[idx] = fileResult{file: f, hidden: true}
+					continue
+				}
+
+				pd.UpdateProgress(idx, 0, len(entries))
 					pass, fail, skip, details := runEntriesCompact(pd, idx, entries, varFlags.values)
 					pd.FinishFile(idx, fail == 0)
 					results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
@@ -467,6 +492,15 @@ func overwriteHeaderLine(w io.Writer, fileIdx int, filename string, passed bool,
 		fmt.Fprintf(w, "  %s▶ %s%s %sFAIL%s\n", colorBold, filename, colorReset, colorRed, colorReset)
 	}
 	// Move back down (cursorUp - 1 because the \n above already moved us one line down)
+	if cursorUp-1 > 0 {
+		fmt.Fprintf(w, "\033[%dB", cursorUp-1)
+	}
+}
+
+func clearHeaderLine(w io.Writer, fileIdx int, headerLines, appendedLines int) {
+	cursorUp := (headerLines - fileIdx) + appendedLines
+	fmt.Fprintf(w, "\033[%dA", cursorUp)
+	fmt.Fprintf(w, "\r\033[K\n")
 	if cursorUp-1 > 0 {
 		fmt.Fprintf(w, "\033[%dB", cursorUp-1)
 	}

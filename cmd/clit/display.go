@@ -32,6 +32,7 @@ type fileState struct {
 	startTime      time.Time
 	endTime        time.Time
 	currentComment string
+	hidden         bool
 }
 
 // ProgressDisplay shows compact one-line-per-file progress bars.
@@ -110,6 +111,17 @@ func (d *ProgressDisplay) FinishFile(fileIdx int, passed bool) {
 	}
 }
 
+func (d *ProgressDisplay) HideFile(fileIdx int) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.files[fileIdx].hidden = true
+
+	if d.dynamic {
+		d.render()
+	}
+}
+
 func (d *ProgressDisplay) FileError(fileIdx int, msg string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -143,6 +155,9 @@ func (d *ProgressDisplay) render() {
 
 	lines := 0
 	for i := range d.files {
+		if d.files[i].hidden {
+			continue
+		}
 		fmt.Fprintf(d.w, "\r\033[K") // clear line
 		d.printFileLine(i)
 		lines++

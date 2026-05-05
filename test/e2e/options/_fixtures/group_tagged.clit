@@ -1,0 +1,6 @@
+---
+@group senf
+---
+
+echo tagged
+EXIT 0
