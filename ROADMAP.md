@@ -18,12 +18,13 @@
 
 ## Planned
 
+- [ ] Refactor `cmd/clitest/` package structure — 10+ files in a single `main` package. Extract into internal packages (e.g. `internal/display`, `internal/run`, `internal/filter`) for better separation and testability.
 - [ ] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
-- [ ] `@timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds). Currently only implemented for `EXIT NEVER` entries.
+- [ ] `@timeout MS` — Extend to regular entries (kill process after MS milliseconds). Currently only works for `EXIT NEVER` entries.
 - [ ] `@retry N` — Retry on failure N times
 - [ ] `@env KEY=VALUE` — Set env vars for entry
 - [ ] `@workdir ./path` — Run command in specific directory
