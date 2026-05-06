@@ -79,11 +79,11 @@ func executeBackgroundEntry(entry types.Entry, cmd string, captures map[string]s
 		}
 	}
 
-	timeout := entry.Timeout
+	timeout := entry.Directives.Timeout
 	if timeout <= 0 {
 		timeout = 30000 // default 30s
 	}
-	poll := entry.Poll
+	poll := entry.Directives.Poll
 	if poll <= 0 {
 		poll = 100 // default 100ms
 	}
@@ -160,7 +160,7 @@ func executeBackgroundEntry(entry types.Entry, cmd string, captures map[string]s
 // Returns (regular, defers) where defers are in LIFO order.
 func splitDeferEntries(entries []types.Entry) (regular, defers []types.Entry) {
 	for _, e := range entries {
-		if e.Defer {
+		if e.Directives.Defer {
 			defers = append(defers, e)
 		} else {
 			regular = append(regular, e)
@@ -192,12 +192,12 @@ func runEntriesVerbose(vd *VerboseDisplay, entries []types.Entry, vars map[strin
 	captures := map[string]string{}
 
 	for _, entry := range regular {
-		if entry.Skip {
+		if entry.Directives.Skip {
 			skip++
 			vd.EntryResult(0, EntryInfo{
 				Command:    entry.Command,
 				Skipped:    true,
-				SkipReason: entry.SkipReason,
+				SkipReason: entry.Directives.SkipReason,
 			})
 			continue
 		}
@@ -243,7 +243,7 @@ func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, 
 	captures := map[string]string{}
 
 	for i, entry := range regular {
-		if entry.Skip {
+		if entry.Directives.Skip {
 			skip++
 			pd.UpdateProgress(fileIdx, i+1, len(regular))
 			continue
