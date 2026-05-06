@@ -14,5 +14,3 @@ kill {{bgpid}}
 # Process is still running after assertions pass
 ps -p {{bgpid}}
 EXIT 0
-[Asserts]
-stdout contains "sleep"

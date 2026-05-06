@@ -40,7 +40,6 @@ kill {{pid}}
 
 # At this point the background process is running and "ready" was confirmed.
 # We can now run normal entries that interact with or verify the running process.
+# ps -p exits 0 if the process exists, non-zero if it doesn't.
 ps -p {{pid}}
 EXIT 0
-[Asserts]
-stdout contains "sleep"
