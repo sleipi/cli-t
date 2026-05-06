@@ -351,3 +351,63 @@ func assertAssert(t *testing.T, got, want types.Assert) {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
 }
+
+func TestParseExitNever(t *testing.T) {
+	input := `@timeout 5000
+@poll 200
+sh -c 'echo "ready"; sleep 999'
+EXIT NEVER
+[Captures]
+bgpid: pid
+[Asserts]
+stdout contains "ready"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	e := entries[0]
+	if !e.ExitNever {
+		t.Fatal("expected ExitNever to be true")
+	}
+	if e.Timeout != 5000 {
+		t.Fatalf("expected Timeout 5000, got %d", e.Timeout)
+	}
+	if e.Poll != 200 {
+		t.Fatalf("expected Poll 200, got %d", e.Poll)
+	}
+	if len(e.Captures) != 1 || e.Captures[0].Query != "pid" {
+		t.Fatalf("expected pid capture, got %+v", e.Captures)
+	}
+	if len(e.Asserts) != 1 || e.Asserts[0].Query != "stdout" {
+		t.Fatalf("expected stdout assert, got %+v", e.Asserts)
+	}
+}
+
+func TestParseDefer(t *testing.T) {
+	input := `@defer
+kill 12345
+EXIT 0
+
+@defer
+rm /tmp/testfile
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(entries))
+	}
+	if !entries[0].Defer {
+		t.Fatal("expected first entry to be defer")
+	}
+	assertEqual(t, entries[0].Command, "kill 12345")
+	if !entries[1].Defer {
+		t.Fatal("expected second entry to be defer")
+	}
+	assertEqual(t, entries[1].Command, "rm /tmp/testfile")
+}

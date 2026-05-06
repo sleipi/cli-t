@@ -97,3 +97,102 @@ func TestLoadAndParse_VarSubstitution(t *testing.T) {
 		t.Errorf("expected 'echo hi', got %q", f.Entries[0].Command)
 	}
 }
+
+func TestSplitDeferEntries(t *testing.T) {
+	entries := []types.Entry{
+		{Command: "echo a"},
+		{Command: "cleanup1", Defer: true},
+		{Command: "echo b"},
+		{Command: "cleanup2", Defer: true},
+	}
+	regular, defers := splitDeferEntries(entries)
+
+	if len(regular) != 2 {
+		t.Fatalf("expected 2 regular, got %d", len(regular))
+	}
+	if len(defers) != 2 {
+		t.Fatalf("expected 2 defers, got %d", len(defers))
+	}
+	// LIFO: cleanup2 first
+	if defers[0].Command != "cleanup2" {
+		t.Errorf("expected LIFO order, got %q first", defers[0].Command)
+	}
+	if defers[1].Command != "cleanup1" {
+		t.Errorf("expected cleanup1 second, got %q", defers[1].Command)
+	}
+}
+
+func TestSplitDeferEntries_NoDefers(t *testing.T) {
+	entries := []types.Entry{
+		{Command: "echo a"},
+		{Command: "echo b"},
+	}
+	regular, defers := splitDeferEntries(entries)
+	if len(regular) != 2 {
+		t.Fatalf("expected 2 regular, got %d", len(regular))
+	}
+	if len(defers) != 0 {
+		t.Fatalf("expected 0 defers, got %d", len(defers))
+	}
+}
+
+func TestExecuteEntry_BackgroundProcess(t *testing.T) {
+	entry := types.Entry{
+		Command:   `sh -c 'echo "ready"; sleep 10'`,
+		ExitNever: true,
+		Timeout:   2000,
+		Poll:      50,
+		Asserts: []types.Assert{
+			{Query: "stdout", Predicate: "contains", Value: "ready"},
+		},
+		Captures: []types.Capture{{Name: "bgpid", Query: "pid"}},
+	}
+	captures := map[string]string{}
+	er := executeEntry(entry, captures)
+	if !er.pass {
+		t.Fatalf("expected pass, got failures: %v", er.failures)
+	}
+	if captures["bgpid"] == "" || captures["bgpid"] == "0" {
+		t.Errorf("expected valid pid capture, got %q", captures["bgpid"])
+	}
+}
+
+func TestExecuteEntry_BackgroundTimeout(t *testing.T) {
+	entry := types.Entry{
+		Command:   "sleep 999",
+		ExitNever: true,
+		Timeout:   200,
+		Poll:      50,
+		Asserts: []types.Assert{
+			{Query: "stdout", Predicate: "contains", Value: "never_appears"},
+		},
+	}
+	captures := map[string]string{}
+	er := executeEntry(entry, captures)
+	if er.pass {
+		t.Fatal("expected failure due to timeout")
+	}
+}
+
+func TestExecuteDeferEntries(t *testing.T) {
+	defers := []types.Entry{
+		{Command: "echo cleanup1", Defer: true},
+		{Command: "echo cleanup2", Defer: true},
+	}
+	captures := map[string]string{}
+	logs := executeDeferEntries(defers, captures)
+	if len(logs) != 0 {
+		t.Errorf("expected no error logs, got %v", logs)
+	}
+}
+
+func TestExecuteDeferEntries_ErrorLogged(t *testing.T) {
+	defers := []types.Entry{
+		{Command: "exit 1", Defer: true},
+	}
+	captures := map[string]string{}
+	logs := executeDeferEntries(defers, captures)
+	if len(logs) != 1 {
+		t.Fatalf("expected 1 error log, got %d", len(logs))
+	}
+}

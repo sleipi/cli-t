@@ -61,6 +61,13 @@ func (d *VerboseDisplay) EndFile(fileIdx int) {
 
 func (d *VerboseDisplay) Finish() {}
 
+// DeferResult prints a defer entry result in verbose mode.
+func (d *VerboseDisplay) DeferResult(command string, exitCode int) {
+	fmt.Fprintf(d.w, "  %s~%s %s %s[defer]%s\n",
+		colorGray, colorReset, truncateCmd(command, 60),
+		colorGray, colorReset)
+}
+
 // FileError prints an error message for the file.
 func (d *VerboseDisplay) FileError(fileIdx int, msg string) {
 	fmt.Fprintf(d.w, "%s%s%s\n", colorRed, msg, colorReset)

@@ -143,11 +143,16 @@ func parseEntries(lines []string) ([]types.Entry, error) {
 
 		// EXIT line
 		if strings.HasPrefix(line, "EXIT ") {
-			code, err := strconv.Atoi(strings.TrimPrefix(line, "EXIT "))
-			if err != nil {
-				return nil, fmt.Errorf("invalid EXIT code: %s", line)
+			exitVal := strings.TrimPrefix(line, "EXIT ")
+			if exitVal == "NEVER" {
+				current.exitNever = true
+			} else {
+				code, err := strconv.Atoi(exitVal)
+				if err != nil {
+					return nil, fmt.Errorf("invalid EXIT code: %s", line)
+				}
+				current.exitCode = code
 			}
-			current.exitCode = code
 			current.hasExit = true
 			i++
 			continue
@@ -205,6 +210,7 @@ type entryBuilder struct {
 	comment    string
 	command    string
 	exitCode   int
+	exitNever  bool
 	hasExit    bool
 	body       []string
 	asserts    []types.Assert
@@ -217,6 +223,7 @@ func (b *entryBuilder) build() types.Entry {
 		Comment:    b.comment,
 		Command:    b.command,
 		ExitCode:   b.exitCode,
+		ExitNever:  b.exitNever,
 		Body:       b.body,
 		Asserts:    b.asserts,
 		Captures:   b.captures,
@@ -273,6 +280,16 @@ func interpretEntryDirectives(e *types.Entry) {
 		case "skip":
 			e.Skip = true
 			e.SkipReason = d.Value
+		case "defer":
+			e.Defer = true
+		case "timeout":
+			if v, err := strconv.Atoi(d.Value); err == nil {
+				e.Timeout = v
+			}
+		case "poll":
+			if v, err := strconv.Atoi(d.Value); err == nil {
+				e.Poll = v
+			}
 		}
 	}
 }

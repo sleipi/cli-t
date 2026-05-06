@@ -11,6 +11,7 @@ type Entry struct {
 	Comment    string      // optional comment/description
 	Command    string      // the shell command to execute
 	ExitCode   int         // expected exit code
+	ExitNever  bool        // true if EXIT NEVER (background process)
 	Body       []string    // expected stdout lines (implicit assert, exact match)
 	Asserts    []Assert    // explicit [Asserts] section
 	Captures   []Capture
@@ -18,6 +19,9 @@ type Entry struct {
 	Groups     []string    // interpreted from @group
 	Skip       bool        // interpreted from @skip
 	SkipReason string      // optional reason from @skip
+	Defer      bool        // true if @defer (cleanup entry, not a test)
+	Timeout    int         // @timeout in ms (0 = not set)
+	Poll       int         // @poll in ms (0 = default 100ms)
 }
 
 // Assert represents a single explicit assertion.

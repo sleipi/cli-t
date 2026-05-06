@@ -1,0 +1,18 @@
+# Background process stays alive during subsequent entries
+@timeout 2000
+@poll 100
+sh -c 'sleep 1; echo "ready"; sleep 999'
+EXIT NEVER
+[Captures]
+bgpid: pid
+[Asserts]
+stdout contains "ready"
+
+@defer
+kill {{bgpid}}
+
+# Process is still running after assertions pass
+ps -p {{bgpid}}
+EXIT 0
+[Asserts]
+stdout contains "sleep"

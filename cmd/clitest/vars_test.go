@@ -66,3 +66,11 @@ func TestResolveCapture_Unknown(t *testing.T) {
 		t.Errorf("expected empty string, got %q", got)
 	}
 }
+
+func TestResolveCapture_Pid(t *testing.T) {
+	r := runner.Result{Pid: 12345}
+	got := resolveCapture("pid", r)
+	if got != "12345" {
+		t.Errorf("expected '12345', got %q", got)
+	}
+}

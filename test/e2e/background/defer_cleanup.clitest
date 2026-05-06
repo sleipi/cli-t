@@ -1,0 +1,29 @@
+# Defer entries clean up background processes and temp files
+mktemp
+EXIT 0
+[Captures]
+tmpfile: stdout
+
+sh -c 'echo "server started" > {{tmpfile}}'
+EXIT 0
+
+# Background process with file-based output
+@timeout 3000
+@poll 200
+tail -f {{tmpfile}}
+EXIT NEVER
+[Captures]
+tailpid: pid
+[Asserts]
+stdout contains "server started"
+
+# Defers run in LIFO order: file removed last, process killed first
+@defer
+rm {{tmpfile}}
+
+@defer
+kill {{tailpid}}
+
+# Process is alive and readable after assertions pass
+ps -p {{tailpid}}
+EXIT 0

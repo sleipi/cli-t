@@ -76,3 +76,7 @@ test/_fixtures/             Shared test fixtures (e.g. intentionally failing .cl
 - Variable substitution (`{{name}}`) happens in `cmd/clitest/main.go` before parsing — it's a simple string replace, not part of the parser.
 - File discovery is recursive by default (`--no-recursive` to disable). Non-`.clitest` files are skipped with a warning to stderr.
 - Glob patterns in arguments (quoted, e.g. `"examples/*.clitest"`) are expanded by clitest itself, not the shell. The original pattern is preserved in the header output.
+- `EXIT NEVER` marks background processes — runner starts them without waiting for exit, polls asserts until pass or `@timeout`.
+- `@defer` entries are cleanup (not tests): collected during parsing, executed LIFO at file end, errors logged but not failed.
+- `@poll MS` sets the polling interval for `EXIT NEVER` asserts (default 100ms).
+- `pid` is a capture query only available on `EXIT NEVER` entries.

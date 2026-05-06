@@ -14,6 +14,7 @@
 - [x] Directives — Generic `@directive` system with frontmatter (`---` block) for file-level and entry-level metadata
 - [x] `@group` — Tag entries/files with space-separated tags for filtering (`--group TAG`, `--exclude-group TAG`, OR logic)
 - [x] `@skip` — Skip entries/files with optional reason, displayed as SKIP in output with skip count in summary
+- [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 
 ## Planned
 
@@ -22,7 +23,7 @@
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
-- [ ] `@timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds)
+- [ ] `@timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds). Currently only implemented for `EXIT NEVER` entries.
 - [ ] `@retry N` — Retry on failure N times
 - [ ] `@env KEY=VALUE` — Set env vars for entry
 - [ ] `@workdir ./path` — Run command in specific directory
@@ -178,3 +179,15 @@ RUN [=====>    ] - verbose.clitest (1/2) 31ms
     Without verbose, passing tests don't show stdout
 OK  [==========] - var_sub.clitest (1/1) took 9ms
 ```
+
+# Background process starten
+@timeout 5000
+$ php -S localhost:8080 &
+wait-for stdout /Development server/
+
+# Assertions gegen das laufende System
+$ curl -s http://localhost:8080/index.php
+stdout = "Hello World"
+
+# hier brauchen wir noch was am ende
+@kill pid von oben :)
