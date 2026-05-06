@@ -41,14 +41,9 @@ func TestVarMap_Set_ValueWithEquals(t *testing.T) {
 	}
 }
 
-func TestStringSlice_Set(t *testing.T) {
-	s := &stringSlice{}
-	s.Set("alpha")
-	s.Set("beta")
-	if len(s.values) != 2 {
-		t.Fatalf("expected 2 values, got %d", len(s.values))
-	}
-	if s.values[0] != "alpha" || s.values[1] != "beta" {
-		t.Errorf("unexpected values: %v", s.values)
+func TestVarMap_Type(t *testing.T) {
+	v := &varMap{}
+	if v.Type() != "NAME=VALUE" {
+		t.Errorf("expected 'NAME=VALUE', got %q", v.Type())
 	}
 }

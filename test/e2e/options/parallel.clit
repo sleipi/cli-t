@@ -9,3 +9,9 @@ stdout contains "parallel: 2"
 EXIT 0
 [Asserts]
 stdout contains "no-parallel"
+
+# --parallel and --no-parallel are mutually exclusive
+./clit --parallel 4 --no-parallel examples/01_basic.clit
+EXIT 2
+[Asserts]
+stderr contains "if any flags in the group [parallel no-parallel] are set none of the others can be"

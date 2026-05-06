@@ -2,7 +2,7 @@
 ./clit examples/01_basic.clit
 EXIT 0
 [Asserts]
-stdout contains "clit v0.1.0"
+stdout matches /clit v\S+/
 stdout contains "path:"
 stdout contains "1 file loaded"
 stdout contains "parallel:"

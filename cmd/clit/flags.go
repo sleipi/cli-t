@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// varMap implements flag.Value for repeated --var flags
+// varMap implements pflag.Value for repeated --var flags
 type varMap struct {
 	values map[string]string
 }
@@ -22,14 +22,4 @@ func (v *varMap) Set(s string) error {
 	v.values[parts[0]] = parts[1]
 	return nil
 }
-
-// stringSlice implements flag.Value for repeated string flags (--group, --exclude-group)
-type stringSlice struct {
-	values []string
-}
-
-func (s *stringSlice) String() string { return strings.Join(s.values, ", ") }
-func (s *stringSlice) Set(v string) error {
-	s.values = append(s.values, v)
-	return nil
-}
+func (v *varMap) Type() string { return "NAME=VALUE" }

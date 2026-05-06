@@ -396,7 +396,7 @@ clit has two output modes:
 Shows one line per file with a progress bar. In a TTY, lines update in-place as entries complete. A subtitle shows the currently running entry's comment (or command if no comment).
 
 ```
-clit v0.1.0
+clit v<VERSION>
   path:     test/e2e/ (12 file(s) loaded)
   parallel: 8
 
@@ -426,7 +426,7 @@ OK  [==========] - 02_errors.clit (2/2) took 12ms
 Shows per-entry results with checkmarks. In a TTY, displays a fixed header block showing `RUNNING`/`OK`/`FAIL` per file with live ANSI updates, then appends detailed entry output below as each file completes.
 
 ```
-clit v0.1.0
+clit v<VERSION>
   path:     examples/ (3 file(s) loaded)
   parallel: 8
   verbose:  on

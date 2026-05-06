@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] Better CLI Help and Usage output (using `cobra`)
 - [x] Run multiple files at once — pass multiple paths or directories as arguments
 - [x] Recursive file discovery — directories are scanned recursively by default
 - [x] Parallelism — Files run concurrently (default: 8 workers), entries within a file run sequentially. `--parallel N` to configure, `--no-parallel` to disable.
@@ -25,10 +26,15 @@
 - [ ] `@retry N` — Retry on failure N times
 - [ ] `@env KEY=VALUE` — Set env vars for entry
 - [ ] `@workdir ./path` — Run command in specific directory
-- [ ] `@shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`)
+- [ ] `@hook` - 
+- [ ] `@shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`, `podman compose exec <container> <command>`, `podman run -it <container> <command>`)
 - [ ] Add file parser Plugin for Intellj
 - [ ] Release for Homebrew
-- [ ] Better CLI Help and Usage output
+- [ ] Shell completion (bash/zsh/fish) via cobra completion subcommand (`cobra` support's it out-of-the-box)
+- [ ] Publish to Alpine Repository
+- [ ] Publish to Debian Repository
+- [ ] Publish to Home Brew
+- [ ] Register Domain + Docs
 
 ## Bugs
 
