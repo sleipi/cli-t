@@ -18,6 +18,7 @@
 
 ## Planned
 
+- [ ] Restructure E2E tests to behavior-driven style — files named `it_<describes_behavior>.clitest` (e.g. `it_does_not_execute_skipped_entries.clitest`). One behavior per file, multiple entries allowed when orchestration is needed.
 - [ ] Refactor `cmd/clitest/` package structure — 10+ files in a single `main` package. Extract into internal packages (e.g. `internal/display`, `internal/run`, `internal/filter`) for better separation and testability.
 - [ ] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
