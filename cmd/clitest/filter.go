@@ -1,6 +1,6 @@
 package main
 
-import "github.com/sleipi/clit/internal/types"
+import "github.com/sleipi/cli-t/internal/types"
 
 // filterEntries returns entries that match group/exclude-group filters.
 // File-level groups are inherited by all entries.

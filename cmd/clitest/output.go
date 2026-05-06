@@ -20,7 +20,7 @@ const (
 )
 
 func printHeader(resolved []resolvedArg, parallel int, noParallel, noRecursive, verbose bool, vars map[string]string, groups []string, excludeGroups []string) {
-	fmt.Printf("clit v%s\n", version)
+	fmt.Printf("clitest v%s\n", version)
 	for _, r := range resolved {
 		suffix := fmt.Sprintf("%d file(s) loaded", r.count)
 		if r.count == 1 {

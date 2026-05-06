@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sleipi/clit/internal/types"
+	"github.com/sleipi/cli-t/internal/types"
 )
 
 func TestExecuteEntry_PassingCommand(t *testing.T) {
@@ -62,7 +62,7 @@ func TestExecuteEntry_CaptureSubstitution(t *testing.T) {
 
 func TestLoadAndParse_ValidFile(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "test.clit")
+	path := filepath.Join(dir, "test.clitest")
 	os.WriteFile(path, []byte("echo hello\n"), 0644)
 
 	f, err := loadAndParse(path, nil)
@@ -78,7 +78,7 @@ func TestLoadAndParse_ValidFile(t *testing.T) {
 }
 
 func TestLoadAndParse_FileNotFound(t *testing.T) {
-	_, err := loadAndParse("/nonexistent/path.clit", nil)
+	_, err := loadAndParse("/nonexistent/path.clitest", nil)
 	if err == nil {
 		t.Fatal("expected error for missing file")
 	}
@@ -86,7 +86,7 @@ func TestLoadAndParse_FileNotFound(t *testing.T) {
 
 func TestLoadAndParse_VarSubstitution(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "test.clit")
+	path := filepath.Join(dir, "test.clitest")
 	os.WriteFile(path, []byte("echo {{MSG}}\n"), 0644)
 
 	f, err := loadAndParse(path, map[string]string{"MSG": "hi"})

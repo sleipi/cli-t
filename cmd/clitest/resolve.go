@@ -37,7 +37,7 @@ func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error
 							if err != nil {
 								return err
 							}
-							if !d.IsDir() && strings.HasSuffix(path, ".clit") {
+							if !d.IsDir() && strings.HasSuffix(path, ".clitest") {
 								files = append(files, path)
 							}
 							return nil
@@ -46,15 +46,15 @@ func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error
 							return nil, nil, err
 						}
 					} else {
-						dirMatches, err := filepath.Glob(filepath.Join(m, "*.clit"))
+						dirMatches, err := filepath.Glob(filepath.Join(m, "*.clitest"))
 						if err != nil {
 							return nil, nil, err
 						}
 						files = append(files, dirMatches...)
 					}
 				} else {
-					if !strings.HasSuffix(m, ".clit") {
-						fmt.Fprintf(os.Stderr, "Warning: skipping non-.clit file: %s\n", m)
+					if !strings.HasSuffix(m, ".clitest") {
+						fmt.Fprintf(os.Stderr, "Warning: skipping non-.clitest file: %s\n", m)
 						continue
 					}
 					files = append(files, m)
@@ -74,7 +74,7 @@ func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error
 					if err != nil {
 						return err
 					}
-					if !d.IsDir() && strings.HasSuffix(path, ".clit") {
+					if !d.IsDir() && strings.HasSuffix(path, ".clitest") {
 						files = append(files, path)
 					}
 					return nil
@@ -83,15 +83,15 @@ func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error
 					return nil, nil, err
 				}
 			} else {
-				matches, err := filepath.Glob(filepath.Join(arg, "*.clit"))
+				matches, err := filepath.Glob(filepath.Join(arg, "*.clitest"))
 				if err != nil {
 					return nil, nil, err
 				}
 				files = append(files, matches...)
 			}
 		} else {
-			if !strings.HasSuffix(arg, ".clit") {
-				fmt.Fprintf(os.Stderr, "Warning: skipping non-.clit file: %s\n", arg)
+			if !strings.HasSuffix(arg, ".clitest") {
+				fmt.Fprintf(os.Stderr, "Warning: skipping non-.clitest file: %s\n", arg)
 				continue
 			}
 			files = append(files, arg)

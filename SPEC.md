@@ -1,10 +1,10 @@
-# `.clit` File Format Specification
+# `.clitest` File Format Specification
 
 Version: 0.2-draft
 
 ## Overview
 
-A `.clit` (CLI Test) file is a declarative test specification for shell commands. Each file contains one or more **entries**, separated by blank lines. Each entry specifies a command to run, the expected exit code, and optional assertions against the command's output.
+A `.clitest` (CLI Test) file is a declarative test specification for shell commands. Each file contains one or more **entries**, separated by blank lines. Each entry specifies a command to run, the expected exit code, and optional assertions against the command's output.
 
 ## File Structure
 
@@ -251,7 +251,7 @@ EXIT 0
 stdout == "$HOME"
 ```
 
-> Note: `$VAR` in the command itself is expanded by the shell. In body/asserts, it's expanded by clit before comparison.
+> Note: `$VAR` in the command itself is expanded by the shell. In body/asserts, it's expanded by clitest before comparison.
 
 ---
 
@@ -337,7 +337,7 @@ EXIT 0
 
 ## Full Example
 
-```clit
+```clitest
 # Login and capture token
 curl -s -X POST http://localhost:3000/login \
   -d '{"user":"admin","pass":"secret"}'
@@ -360,12 +360,12 @@ line 1 startsWith "{"
 ## CLI Interface
 
 ```
-clit [options] <path...>
+clitest [options] <path...>
 ```
 
 ### Arguments
 
-`<path...>` — one or more `.clit` files, directories, or glob patterns (quoted). Directories are scanned recursively for `*.clit` files by default. Glob patterns (containing `*`, `?`, or `[`) are expanded by clit itself. Non-`.clit` files passed as arguments are skipped with a warning.
+`<path...>` — one or more `.clitest` files, directories, or glob patterns (quoted). Directories are scanned recursively for `*.clitest` files by default. Glob patterns (containing `*`, `?`, or `[`) are expanded by clitest itself. Non-`.clitest` files passed as arguments are skipped with a warning.
 
 ### Options
 
@@ -389,21 +389,21 @@ clit [options] <path...>
 
 ### Output Format
 
-clit has two output modes:
+clitest has two output modes:
 
 #### Default Mode (compact progress)
 
 Shows one line per file with a progress bar. In a TTY, lines update in-place as entries complete. A subtitle shows the currently running entry's comment (or command if no comment).
 
 ```
-clit v<VERSION>
+clitest v<VERSION>
   path:     test/e2e/ (12 file(s) loaded)
   parallel: 8
 
-RUN [=====>    ] - asserts.clit (1/3) 45ms
+RUN [=====>    ] - asserts.clitest (1/3) 45ms
     Verify date format matches regex
-OK  [==========] - 01_basic.clit (3/3) took 14ms
-OK  [==========] - 02_errors.clit (2/2) took 12ms
+OK  [==========] - 01_basic.clitest (3/3) took 14ms
+OK  [==========] - 02_errors.clitest (2/2) took 12ms
 
 ━━━ Summary ━━━
   pass: 8
@@ -426,20 +426,20 @@ OK  [==========] - 02_errors.clit (2/2) took 12ms
 Shows per-entry results with checkmarks. In a TTY, displays a fixed header block showing `RUNNING`/`OK`/`FAIL` per file with live ANSI updates, then appends detailed entry output below as each file completes.
 
 ```
-clit v<VERSION>
+clitest v<VERSION>
   path:     examples/ (3 file(s) loaded)
   parallel: 8
   verbose:  on
 
-▶ 01_basic.clit OK
-▶ 02_errors.clit OK
+▶ 01_basic.clitest OK
+▶ 02_errors.clitest OK
 
-▶ 01_basic.clit
+▶ 01_basic.clitest
   ✓ echo "hello world" (exit=0, 1 asserts)
     --- stdout ---
     hello world
 
-▶ 02_errors.clit
+▶ 02_errors.clitest
   ✓ echo "error message" >&2 (exit=0, 2 asserts)
     --- stderr ---
     error message
@@ -504,7 +504,7 @@ capture    = NAME ":" SPACE query
 
 ## Design Principles
 
-1. **Readable first** — A `.clit` file should be understandable without documentation
+1. **Readable first** — A `.clitest` file should be understandable without documentation
 2. **Minimal ceremony** — Common cases (exit 0, exact body match) need minimal syntax
 3. **Progressive disclosure** — Simple tests are simple; complex tests add sections
 4. **Hermetic by default** — Each entry is independent unless explicitly linked via captures

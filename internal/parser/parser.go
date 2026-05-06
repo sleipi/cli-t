@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sleipi/clit/internal/types"
+	"github.com/sleipi/cli-t/internal/types"
 )
 
-// ParseFile parses a .clit file content into a File with frontmatter and entries.
+// ParseFile parses a .clitest file content into a File with frontmatter and entries.
 func ParseFile(input string) (*types.File, error) {
 	lines := strings.Split(input, "\n")
 	// Remove trailing empty line from split
@@ -59,7 +59,7 @@ func ParseFile(input string) (*types.File, error) {
 	return file, nil
 }
 
-// Parse parses a .clit file content into a list of entries (legacy API).
+// Parse parses a .clitest file content into a list of entries (legacy API).
 func Parse(input string) ([]types.Entry, error) {
 	f, err := ParseFile(input)
 	if err != nil {

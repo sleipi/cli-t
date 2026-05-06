@@ -1,48 +1,48 @@
 # Header shows version
-./clit examples/01_basic.clit
+./clitest examples/01_basic.clitest
 EXIT 0
 [Asserts]
-stdout matches /clit v\S+/
+stdout matches /clitest v\S+/
 stdout contains "path:"
 stdout contains "1 file loaded"
 stdout contains "parallel:"
 stdout contains "took:"
 
 # Header shows no-parallel when set
-./clit --no-parallel examples/01_basic.clit
+./clitest --no-parallel examples/01_basic.clitest
 EXIT 0
 [Asserts]
 stdout contains "no-parallel"
 stdout not contains "parallel:"
 
 # Header shows no-recursive in path line
-./clit --no-recursive test/e2e/resolve/fixtures
+./clitest --no-recursive test/e2e/resolve/fixtures
 EXIT 0
 [Asserts]
 stdout contains "no-recursive"
 
 # Verbose shown only when active
-./clit -v examples/01_basic.clit
+./clitest -v examples/01_basic.clitest
 EXIT 0
 [Asserts]
 stdout contains "verbose:"
 
 # Verbose not shown by default
-./clit examples/01_basic.clit
+./clitest examples/01_basic.clitest
 EXIT 0
 [Asserts]
 stdout not contains "verbose:"
 
 # Multiple paths show separately
-./clit examples/01_basic.clit examples/02_errors.clit
+./clitest examples/01_basic.clitest examples/02_errors.clitest
 EXIT 0
 [Asserts]
-stdout contains "examples/01_basic.clit (1 file loaded)"
-stdout contains "examples/02_errors.clit (1 file loaded)"
+stdout contains "examples/01_basic.clitest (1 file loaded)"
+stdout contains "examples/02_errors.clitest (1 file loaded)"
 
 # Glob pattern preserved in path output
-./clit "examples/0*.clit"
+./clitest "examples/0*.clitest"
 EXIT 0
 [Asserts]
-stdout contains "examples/0*.clit"
+stdout contains "examples/0*.clitest"
 stdout contains "file(s) loaded"

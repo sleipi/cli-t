@@ -7,7 +7,7 @@
 - [x] Recursive file discovery — directories are scanned recursively by default
 - [x] Parallelism — Files run concurrently (default: 8 workers), entries within a file run sequentially. `--parallel N` to configure, `--no-parallel` to disable.
 - [x] Header/Footer — Shows version, paths, options, and execution duration (`took:`) in summary
-- [x] Glob support — Quoted glob patterns (e.g. `"examples/*.clit"`) are expanded by clit, preserving the pattern in header output
+- [x] Glob support — Quoted glob patterns (e.g. `"examples/*.clitest"`) are expanded by clit, preserving the pattern in header output
 - [x] Output v2 — Compact progress bars as default output; verbose (`-v`) becomes the detailed per-entry display. TTY-aware with dynamic ANSI updates, static fallback for non-TTY. Progress counter `(n/total)`, per-file timing, and entry subtitle (comment or command) shown while running.
 - [x] Multi-line commands — Support commands that span multiple lines (trailing `\` continuation)
 - [x] GitHub Actions to run CI (unit + e2e)
@@ -40,141 +40,141 @@
 
 make all not update lines
 ```
-RUN [>         ] - verbose.clit (0/2) 23ms
+RUN [>         ] - verbose.clitest (0/2) 23ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 23ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 23ms
+RUN [>         ] - output.clitest (0/7) 23ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 23ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [>         ] - verbose.clit (0/2) 23ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [>         ] - verbose.clitest (0/2) 23ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 23ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 23ms
+RUN [>         ] - output.clitest (0/7) 23ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 23ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [>         ] - verbose.clit (0/2) 23ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [>         ] - verbose.clitest (0/2) 23ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 23ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 25ms
+RUN [>         ] - output.clitest (0/7) 23ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 25ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [>         ] - verbose.clit (0/2) 25ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [>         ] - verbose.clitest (0/2) 25ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 25ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 26ms
+RUN [>         ] - output.clitest (0/7) 25ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 26ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [>         ] - verbose.clit (0/2) 26ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [>         ] - verbose.clitest (0/2) 26ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 26ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 26ms
+RUN [>         ] - output.clitest (0/7) 26ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 26ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [>         ] - verbose.clit (0/2) 26ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [>         ] - verbose.clitest (0/2) 26ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 26ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 26ms
+RUN [>         ] - output.clitest (0/7) 26ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 26ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [>         ] - verbose.clit (0/2) 26ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [>         ] - verbose.clitest (0/2) 26ms
     Verbose shows stdout on passing tests
-RUN [>         ] - output.clit (0/7) 26ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 26ms
+RUN [>         ] - output.clitest (0/7) 26ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 26ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 26ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 26ms
     Verbose shows stdout on passing tests
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 26ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 26ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 26ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 26ms
     Without verbose, passing tests don't show stdout
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 27ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 27ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 27ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 27ms
     Without verbose, passing tests don't show stdout
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [>         ] - parallel.clit (0/2) 27ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [>         ] - parallel.clitest (0/2) 27ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 27ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 27ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 27ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 27ms
+RUN [>         ] - output.clitest (0/7) 27ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 27ms
     Parallel flag sets worker count
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 27ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 27ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 27ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 28ms
+RUN [>         ] - output.clitest (0/7) 27ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 28ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 28ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 28ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 28ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 29ms
+RUN [>         ] - output.clitest (0/7) 28ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 29ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 29ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 29ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 29ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 29ms
+RUN [>         ] - output.clitest (0/7) 29ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 29ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 29ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 29ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 29ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 30ms
+RUN [>         ] - output.clitest (0/7) 29ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 30ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 30ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 30ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 30ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 30ms
+RUN [>         ] - output.clitest (0/7) 30ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 30ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 30ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 30ms
     Without verbose, passing tests don't show stdout
-RUN [>         ] - output.clit (0/7) 30ms
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 30ms
+RUN [>         ] - output.clitest (0/7) 30ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 30ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 30ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 30ms
     Without verbose, passing tests don't show stdout
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 30ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 30ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 30ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 30ms
     Without verbose, passing tests don't show stdout
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 30ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 30ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 30ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 30ms
     Without verbose, passing tests don't show stdout
-OK  [==========] - var_sub.clit (1/1) took 9ms
-RUN [=====>    ] - parallel.clit (1/2) 31ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
+RUN [=====>    ] - parallel.clitest (1/2) 31ms
     No-parallel flag disables parallelism
-OK  [==========] - var.clit (1/1) took 16ms
-RUN [=====>    ] - verbose.clit (1/2) 31ms
+OK  [==========] - var.clitest (1/1) took 16ms
+RUN [=====>    ] - verbose.clitest (1/2) 31ms
     Without verbose, passing tests don't show stdout
-OK  [==========] - var_sub.clit (1/1) took 9ms
+OK  [==========] - var_sub.clitest (1/1) took 9ms
 ```
