@@ -122,7 +122,7 @@ func runMain(cmd *cobra.Command, args []string) error {
 							continue
 						}
 
-						if parsed.Skip {
+						if parsed.Directives.Skip {
 							mu.Lock()
 							overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
 							mu.Unlock()
@@ -185,7 +185,7 @@ func runMain(cmd *cobra.Command, args []string) error {
 							continue
 						}
 
-						if parsed.Skip {
+						if parsed.Directives.Skip {
 							vResults[idx] = verboseResult{output: buf.String(), skip: len(parsed.Entries), file: f}
 							continue
 						}
@@ -234,7 +234,7 @@ func runMain(cmd *cobra.Command, args []string) error {
 						continue
 					}
 
-					if parsed.Skip {
+					if parsed.Directives.Skip {
 						pd.FinishFile(idx, true)
 						results[idx] = fileResult{skip: len(parsed.Entries), file: f}
 						continue

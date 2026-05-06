@@ -8,6 +8,12 @@ import (
 	"github.com/sleipi/cli-t/internal/types"
 )
 
+// directive represents a parsed @directive line (parser-internal).
+type directive struct {
+	Name  string
+	Value string
+}
+
 // ParseFile parses a .clitest file content into a File with frontmatter and entries.
 func ParseFile(input string) (*types.File, error) {
 	lines := strings.Split(input, "\n")
@@ -20,6 +26,7 @@ func ParseFile(input string) (*types.File, error) {
 	startLine := 0
 
 	// Parse frontmatter if present
+	var fileDirectives []directive
 	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "---" {
 		startLine = 1
 		closed := false
@@ -37,7 +44,7 @@ func ParseFile(input string) (*types.File, error) {
 					return nil, fmt.Errorf("frontmatter line %d: %w", startLine+1, err)
 				}
 				if d != nil {
-					file.Directives = append(file.Directives, *d)
+					fileDirectives = append(fileDirectives, *d)
 				}
 			}
 			startLine++
@@ -48,7 +55,7 @@ func ParseFile(input string) (*types.File, error) {
 	}
 
 	// Interpret file-level directives
-	interpretFileDirectives(file)
+	interpretFileDirectives(file, fileDirectives)
 
 	// Parse entries
 	entries, err := parseEntries(lines[startLine:])
@@ -215,26 +222,25 @@ type entryBuilder struct {
 	body       []string
 	asserts    []types.Assert
 	captures   []types.Capture
-	directives []types.Directive
+	directives []directive
 }
 
 func (b *entryBuilder) build() types.Entry {
 	entry := types.Entry{
-		Comment:    b.comment,
-		Command:    b.command,
-		ExitCode:   b.exitCode,
-		ExitNever:  b.exitNever,
-		Body:       b.body,
-		Asserts:    b.asserts,
-		Captures:   b.captures,
-		Directives: b.directives,
+		Comment:   b.comment,
+		Command:   b.command,
+		ExitCode:  b.exitCode,
+		ExitNever: b.exitNever,
+		Body:      b.body,
+		Asserts:   b.asserts,
+		Captures:  b.captures,
 	}
-	interpretEntryDirectives(&entry)
+	interpretEntryDirectives(&entry, b.directives)
 	return entry
 }
 
-// parseDirective parses a line like "@group BUG-1234 smoke" into a Directive.
-func parseDirective(line string) (*types.Directive, error) {
+// parseDirective parses a line like "@group BUG-1234 smoke" into a directive.
+func parseDirective(line string) (*directive, error) {
 	if !strings.HasPrefix(line, "@") {
 		return nil, fmt.Errorf("not a directive: %s", line)
 	}
@@ -251,44 +257,44 @@ func parseDirective(line string) (*types.Directive, error) {
 		value = strings.TrimSpace(parts[1])
 	}
 
-	return &types.Directive{Name: name, Value: value}, nil
+	return &directive{Name: name, Value: value}, nil
 }
 
-// interpretFileDirectives interprets raw directives into typed File fields.
-func interpretFileDirectives(f *types.File) {
-	for _, d := range f.Directives {
+// interpretFileDirectives interprets raw directives into typed FileDirectives.
+func interpretFileDirectives(f *types.File, directives []directive) {
+	for _, d := range directives {
 		switch d.Name {
 		case "group":
 			if d.Value != "" {
-				f.Groups = append(f.Groups, strings.Fields(d.Value)...)
+				f.Directives.Groups = append(f.Directives.Groups, strings.Fields(d.Value)...)
 			}
 		case "skip":
-			f.Skip = true
-			f.SkipReason = d.Value
+			f.Directives.Skip = true
+			f.Directives.SkipReason = d.Value
 		}
 	}
 }
 
-// interpretEntryDirectives interprets raw directives into typed Entry fields.
-func interpretEntryDirectives(e *types.Entry) {
-	for _, d := range e.Directives {
+// interpretEntryDirectives interprets raw directives into typed EntryDirectives.
+func interpretEntryDirectives(e *types.Entry, directives []directive) {
+	for _, d := range directives {
 		switch d.Name {
 		case "group":
 			if d.Value != "" {
-				e.Groups = append(e.Groups, strings.Fields(d.Value)...)
+				e.Directives.Groups = append(e.Directives.Groups, strings.Fields(d.Value)...)
 			}
 		case "skip":
-			e.Skip = true
-			e.SkipReason = d.Value
+			e.Directives.Skip = true
+			e.Directives.SkipReason = d.Value
 		case "defer":
-			e.Defer = true
+			e.Directives.Defer = true
 		case "timeout":
 			if v, err := strconv.Atoi(d.Value); err == nil {
-				e.Timeout = v
+				e.Directives.Timeout = v
 			}
 		case "poll":
 			if v, err := strconv.Atoi(d.Value); err == nil {
-				e.Poll = v
+				e.Directives.Poll = v
 			}
 		}
 	}

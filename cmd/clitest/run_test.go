@@ -101,9 +101,9 @@ func TestLoadAndParse_VarSubstitution(t *testing.T) {
 func TestSplitDeferEntries(t *testing.T) {
 	entries := []types.Entry{
 		{Command: "echo a"},
-		{Command: "cleanup1", Defer: true},
+		{Command: "cleanup1", Directives: types.EntryDirectives{Defer: true}},
 		{Command: "echo b"},
-		{Command: "cleanup2", Defer: true},
+		{Command: "cleanup2", Directives: types.EntryDirectives{Defer: true}},
 	}
 	regular, defers := splitDeferEntries(entries)
 
@@ -140,8 +140,10 @@ func TestExecuteEntry_BackgroundProcess(t *testing.T) {
 	entry := types.Entry{
 		Command:   `sh -c 'echo "ready"; sleep 10'`,
 		ExitNever: true,
-		Timeout:   2000,
-		Poll:      50,
+		Directives: types.EntryDirectives{
+			Timeout: 2000,
+			Poll:    50,
+		},
 		Asserts: []types.Assert{
 			{Query: "stdout", Predicate: "contains", Value: "ready"},
 		},
@@ -161,8 +163,10 @@ func TestExecuteEntry_BackgroundTimeout(t *testing.T) {
 	entry := types.Entry{
 		Command:   "sleep 999",
 		ExitNever: true,
-		Timeout:   200,
-		Poll:      50,
+		Directives: types.EntryDirectives{
+			Timeout: 200,
+			Poll:    50,
+		},
 		Asserts: []types.Assert{
 			{Query: "stdout", Predicate: "contains", Value: "never_appears"},
 		},
@@ -176,8 +180,8 @@ func TestExecuteEntry_BackgroundTimeout(t *testing.T) {
 
 func TestExecuteDeferEntries(t *testing.T) {
 	defers := []types.Entry{
-		{Command: "echo cleanup1", Defer: true},
-		{Command: "echo cleanup2", Defer: true},
+		{Command: "echo cleanup1", Directives: types.EntryDirectives{Defer: true}},
+		{Command: "echo cleanup2", Directives: types.EntryDirectives{Defer: true}},
 	}
 	captures := map[string]string{}
 	logs := executeDeferEntries(defers, captures)
@@ -188,7 +192,7 @@ func TestExecuteDeferEntries(t *testing.T) {
 
 func TestExecuteDeferEntries_ErrorLogged(t *testing.T) {
 	defers := []types.Entry{
-		{Command: "exit 1", Defer: true},
+		{Command: "exit 1", Directives: types.EntryDirectives{Defer: true}},
 	}
 	captures := map[string]string{}
 	logs := executeDeferEntries(defers, captures)

@@ -11,7 +11,7 @@ func filterEntries(f *types.File, groups []string, excludeGroups []string) []typ
 
 	var result []types.Entry
 	for _, e := range f.Entries {
-		effectiveTags := mergeGroups(f.Groups, e.Groups)
+		effectiveTags := mergeGroups(f.Directives.Groups, e.Directives.Groups)
 
 		if len(excludeGroups) > 0 && hasAnyTag(effectiveTags, excludeGroups) {
 			continue

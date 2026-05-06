@@ -1,27 +1,32 @@
 package types
 
-// Directive represents a parsed @directive line (generic).
-type Directive struct {
-	Name  string // e.g. "group", "skip"
-	Value string // raw string after @name (may be empty)
+// EntryDirectives holds interpreted directives for an entry.
+type EntryDirectives struct {
+	Groups     []string
+	Skip       bool
+	SkipReason string
+	Defer      bool
+	Timeout    int // @timeout in ms (0 = not set)
+	Poll       int // @poll in ms (0 = default 100ms)
+}
+
+// FileDirectives holds interpreted directives for a file.
+type FileDirectives struct {
+	Groups     []string
+	Skip       bool
+	SkipReason string
 }
 
 // Entry represents a single test block in a .clitest file.
 type Entry struct {
-	Comment    string      // optional comment/description
-	Command    string      // the shell command to execute
-	ExitCode   int         // expected exit code
-	ExitNever  bool        // true if EXIT NEVER (background process)
-	Body       []string    // expected stdout lines (implicit assert, exact match)
-	Asserts    []Assert    // explicit [Asserts] section
+	Comment    string
+	Command    string
+	ExitCode   int
+	ExitNever  bool
+	Body       []string
+	Asserts    []Assert
 	Captures   []Capture
-	Directives []Directive // raw parsed directives
-	Groups     []string    // interpreted from @group
-	Skip       bool        // interpreted from @skip
-	SkipReason string      // optional reason from @skip
-	Defer      bool        // true if @defer (cleanup entry, not a test)
-	Timeout    int         // @timeout in ms (0 = not set)
-	Poll       int         // @poll in ms (0 = default 100ms)
+	Directives EntryDirectives
 }
 
 // Assert represents a single explicit assertion.
@@ -42,8 +47,5 @@ type Capture struct {
 type File struct {
 	Path       string
 	Entries    []Entry
-	Directives []Directive // file-level from frontmatter
-	Groups     []string    // file-level groups
-	Skip       bool        // file-level skip
-	SkipReason string      // file-level skip reason
+	Directives FileDirectives
 }

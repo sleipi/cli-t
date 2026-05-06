@@ -19,8 +19,8 @@ func TestFilterEntries_NoFilters(t *testing.T) {
 func TestFilterEntries_GroupInclude(t *testing.T) {
 	f := &types.File{
 		Entries: []types.Entry{
-			{Command: "a", Groups: []string{"fast"}},
-			{Command: "b", Groups: []string{"slow"}},
+			{Command: "a", Directives: types.EntryDirectives{Groups: []string{"fast"}}},
+			{Command: "b", Directives: types.EntryDirectives{Groups: []string{"slow"}}},
 		},
 	}
 	got := filterEntries(f, []string{"fast"}, nil)
@@ -32,8 +32,8 @@ func TestFilterEntries_GroupInclude(t *testing.T) {
 func TestFilterEntries_GroupExclude(t *testing.T) {
 	f := &types.File{
 		Entries: []types.Entry{
-			{Command: "a", Groups: []string{"fast"}},
-			{Command: "b", Groups: []string{"slow"}},
+			{Command: "a", Directives: types.EntryDirectives{Groups: []string{"fast"}}},
+			{Command: "b", Directives: types.EntryDirectives{Groups: []string{"slow"}}},
 		},
 	}
 	got := filterEntries(f, nil, []string{"slow"})
@@ -45,9 +45,9 @@ func TestFilterEntries_GroupExclude(t *testing.T) {
 func TestFilterEntries_BothFilters(t *testing.T) {
 	f := &types.File{
 		Entries: []types.Entry{
-			{Command: "a", Groups: []string{"fast", "network"}},
-			{Command: "b", Groups: []string{"fast"}},
-			{Command: "c", Groups: []string{"slow"}},
+			{Command: "a", Directives: types.EntryDirectives{Groups: []string{"fast", "network"}}},
+			{Command: "b", Directives: types.EntryDirectives{Groups: []string{"fast"}}},
+			{Command: "c", Directives: types.EntryDirectives{Groups: []string{"slow"}}},
 		},
 	}
 	got := filterEntries(f, []string{"fast"}, []string{"network"})
@@ -58,8 +58,8 @@ func TestFilterEntries_BothFilters(t *testing.T) {
 
 func TestFilterEntries_InheritsFileGroups(t *testing.T) {
 	f := &types.File{
-		Groups:  []string{"integration"},
-		Entries: []types.Entry{{Command: "a"}},
+		Directives: types.FileDirectives{Groups: []string{"integration"}},
+		Entries:    []types.Entry{{Command: "a"}},
 	}
 	got := filterEntries(f, []string{"integration"}, nil)
 	if len(got) != 1 {

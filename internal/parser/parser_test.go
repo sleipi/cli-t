@@ -195,11 +195,11 @@ hello
 	e := entries[0]
 	assertEqual(t, e.Command, `echo "hello"`)
 	assertEqual(t, e.Comment, "# Test with groups")
-	if len(e.Groups) != 2 {
-		t.Fatalf("expected 2 groups, got %d: %v", len(e.Groups), e.Groups)
+	if len(e.Directives.Groups) != 2 {
+		t.Fatalf("expected 2 groups, got %d: %v", len(e.Directives.Groups), e.Directives.Groups)
 	}
-	assertEqual(t, e.Groups[0], "BUG-1234")
-	assertEqual(t, e.Groups[1], "smoke")
+	assertEqual(t, e.Directives.Groups[0], "BUG-1234")
+	assertEqual(t, e.Directives.Groups[1], "smoke")
 }
 
 func TestParseEntrySkipDirective(t *testing.T) {
@@ -213,10 +213,10 @@ EXIT 0
 		t.Fatalf("unexpected error: %v", err)
 	}
 	e := entries[0]
-	if !e.Skip {
+	if !e.Directives.Skip {
 		t.Fatal("expected entry to be skipped")
 	}
-	assertEqual(t, e.SkipReason, "known flaky on CI")
+	assertEqual(t, e.Directives.SkipReason, "known flaky on CI")
 }
 
 func TestParseEntrySkipBare(t *testing.T) {
@@ -228,10 +228,10 @@ EXIT 0
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !entries[0].Skip {
+	if !entries[0].Directives.Skip {
 		t.Fatal("expected entry to be skipped")
 	}
-	assertEqual(t, entries[0].SkipReason, "")
+	assertEqual(t, entries[0].Directives.SkipReason, "")
 }
 
 func TestParseFrontmatter(t *testing.T) {
@@ -247,15 +247,15 @@ EXIT 0
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(f.Groups) != 2 {
-		t.Fatalf("expected 2 file groups, got %d: %v", len(f.Groups), f.Groups)
+	if len(f.Directives.Groups) != 2 {
+		t.Fatalf("expected 2 file groups, got %d: %v", len(f.Directives.Groups), f.Directives.Groups)
 	}
-	assertEqual(t, f.Groups[0], "BUG-1234")
-	assertEqual(t, f.Groups[1], "performance")
-	if !f.Skip {
+	assertEqual(t, f.Directives.Groups[0], "BUG-1234")
+	assertEqual(t, f.Directives.Groups[1], "performance")
+	if !f.Directives.Skip {
 		t.Fatal("expected file to be skipped")
 	}
-	assertEqual(t, f.SkipReason, "waiting for backend fix")
+	assertEqual(t, f.Directives.SkipReason, "waiting for backend fix")
 	if len(f.Entries) != 1 {
 		t.Fatalf("expected 1 entry, got %d", len(f.Entries))
 	}
@@ -295,13 +295,13 @@ EXIT 0
 		t.Fatalf("unexpected error: %v", err)
 	}
 	e := entries[0]
-	if len(e.Groups) != 1 || e.Groups[0] != "smoke" {
-		t.Fatalf("expected groups [smoke], got %v", e.Groups)
+	if len(e.Directives.Groups) != 1 || e.Directives.Groups[0] != "smoke" {
+		t.Fatalf("expected groups [smoke], got %v", e.Directives.Groups)
 	}
-	if !e.Skip {
+	if !e.Directives.Skip {
 		t.Fatal("expected skip")
 	}
-	assertEqual(t, e.SkipReason, "WIP")
+	assertEqual(t, e.Directives.SkipReason, "WIP")
 }
 
 // helpers
@@ -334,12 +334,11 @@ echo "hello"
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(f.Directives) != 1 {
-		t.Fatalf("expected 1 directive, got %d", len(f.Directives))
+	if len(f.Directives.Groups) != 2 {
+		t.Fatalf("expected 2 groups, got %d", len(f.Directives.Groups))
 	}
-	if f.Directives[0].Name != "group" || f.Directives[0].Value != "examples basics" {
-		t.Fatalf("unexpected directive: %+v", f.Directives[0])
-	}
+	assertEqual(t, f.Directives.Groups[0], "examples")
+	assertEqual(t, f.Directives.Groups[1], "basics")
 	if len(f.Entries) != 1 {
 		t.Fatalf("expected 1 entry, got %d", len(f.Entries))
 	}
@@ -373,11 +372,11 @@ stdout contains "ready"
 	if !e.ExitNever {
 		t.Fatal("expected ExitNever to be true")
 	}
-	if e.Timeout != 5000 {
-		t.Fatalf("expected Timeout 5000, got %d", e.Timeout)
+	if e.Directives.Timeout != 5000 {
+		t.Fatalf("expected Timeout 5000, got %d", e.Directives.Timeout)
 	}
-	if e.Poll != 200 {
-		t.Fatalf("expected Poll 200, got %d", e.Poll)
+	if e.Directives.Poll != 200 {
+		t.Fatalf("expected Poll 200, got %d", e.Directives.Poll)
 	}
 	if len(e.Captures) != 1 || e.Captures[0].Query != "pid" {
 		t.Fatalf("expected pid capture, got %+v", e.Captures)
@@ -402,11 +401,11 @@ rm /tmp/testfile
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(entries))
 	}
-	if !entries[0].Defer {
+	if !entries[0].Directives.Defer {
 		t.Fatal("expected first entry to be defer")
 	}
 	assertEqual(t, entries[0].Command, "kill 12345")
-	if !entries[1].Defer {
+	if !entries[1].Directives.Defer {
 		t.Fatal("expected second entry to be defer")
 	}
 	assertEqual(t, entries[1].Command, "rm /tmp/testfile")
