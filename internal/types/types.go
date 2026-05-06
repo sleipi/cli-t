@@ -6,7 +6,7 @@ type Directive struct {
 	Value string // raw string after @name (may be empty)
 }
 
-// Entry represents a single test block in a .clit file.
+// Entry represents a single test block in a .clitest file.
 type Entry struct {
 	Comment    string      // optional comment/description
 	Command    string      // the shell command to execute
@@ -34,7 +34,7 @@ type Capture struct {
 	Query string // e.g. "stdout", "line 1"
 }
 
-// File represents a parsed .clit file.
+// File represents a parsed .clitest file.
 type File struct {
 	Path       string
 	Entries    []Entry

@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/sleipi/clit/internal/types"
+	"github.com/sleipi/cli-t/internal/types"
 )
 
 func TestFilterEntries_NoFilters(t *testing.T) {

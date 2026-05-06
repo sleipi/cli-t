@@ -36,7 +36,7 @@ func TestProgressBar(t *testing.T) {
 func TestProgressDisplay_RenderRunning(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, true) // dynamic mode shows RUN state
-	d.Start([]string{"01_basic.clit", "02_errors.clit"})
+	d.Start([]string{"01_basic.clitest", "02_errors.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
 	d.Finish()
@@ -45,7 +45,7 @@ func TestProgressDisplay_RenderRunning(t *testing.T) {
 	if !strings.Contains(output, "RUN") {
 		t.Errorf("expected RUN in output, got:\n%s", output)
 	}
-	if !strings.Contains(output, "01_basic.clit") {
+	if !strings.Contains(output, "01_basic.clitest") {
 		t.Errorf("expected filename in output, got:\n%s", output)
 	}
 }
@@ -53,7 +53,7 @@ func TestProgressDisplay_RenderRunning(t *testing.T) {
 func TestProgressDisplay_RenderComplete(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, false) // static mode
-	d.Start([]string{"01_basic.clit"})
+	d.Start([]string{"01_basic.clitest"})
 	d.UpdateProgress(0, 0, 3)
 	d.UpdateProgress(0, 3, 3)
 
@@ -78,7 +78,7 @@ func TestProgressDisplay_RenderComplete(t *testing.T) {
 func TestProgressDisplay_RenderFailed(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, false) // static mode
-	d.Start([]string{"02_errors.clit"})
+	d.Start([]string{"02_errors.clitest"})
 	d.UpdateProgress(0, 0, 2)
 	d.UpdateProgress(0, 2, 2)
 
@@ -103,7 +103,7 @@ func TestProgressDisplay_RenderFailed(t *testing.T) {
 func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, false) // static mode (non-TTY)
-	d.Start([]string{"a.clit", "b.clit"})
+	d.Start([]string{"a.clitest", "b.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
 	d.UpdateProgress(0, 2, 3)
@@ -129,7 +129,7 @@ func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 func TestProgressDisplay_DynamicMode_UpdatesInPlace(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, true) // dynamic mode (TTY)
-	d.Start([]string{"a.clit", "b.clit"})
+	d.Start([]string{"a.clitest", "b.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
 	d.FinishFile(0, true)
@@ -150,7 +150,7 @@ func TestProgressDisplay_DynamicMode_UpdatesInPlace(t *testing.T) {
 func TestVerboseDisplay_EntryPass(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewVerboseDisplay(&buf, false)
-	d.Start([]string{"01_basic.clit"})
+	d.Start([]string{"01_basic.clitest"})
 	d.BeginFile(0)
 	d.EntryResult(0, EntryInfo{
 		Command:     "echo hello",
@@ -172,7 +172,7 @@ func TestVerboseDisplay_EntryPass(t *testing.T) {
 func TestVerboseDisplay_EntryFail(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewVerboseDisplay(&buf, false)
-	d.Start([]string{"01_basic.clit"})
+	d.Start([]string{"01_basic.clitest"})
 	d.BeginFile(0)
 	d.EntryResult(0, EntryInfo{
 		Command:  "cat /nope",
@@ -195,12 +195,12 @@ func TestVerboseDisplay_EntryFail(t *testing.T) {
 func TestVerboseDisplay_ShowsFileHeader(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewVerboseDisplay(&buf, false)
-	d.Start([]string{"my_test.clit"})
+	d.Start([]string{"my_test.clitest"})
 	d.BeginFile(0)
 	d.Finish()
 
 	output := buf.String()
-	if !strings.Contains(output, "▶ my_test.clit") {
+	if !strings.Contains(output, "▶ my_test.clitest") {
 		t.Errorf("expected file header in verbose output, got:\n%s", output)
 	}
 }
@@ -208,7 +208,7 @@ func TestVerboseDisplay_ShowsFileHeader(t *testing.T) {
 func TestProgressDisplay_ShowsEntryComment(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, true) // dynamic mode
-	d.Start([]string{"a.clit"})
+	d.Start([]string{"a.clitest"})
 
 	d.UpdateProgress(0, 0, 3)
 	d.UpdateEntry(0, "Header shows version")
@@ -223,14 +223,14 @@ func TestProgressDisplay_ShowsEntryComment(t *testing.T) {
 func TestProgressDisplay_FallbackToCommand(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, true) // dynamic mode
-	d.Start([]string{"a.clit"})
+	d.Start([]string{"a.clitest"})
 
 	d.UpdateProgress(0, 0, 3)
-	d.UpdateEntry(0, "./clit examples/01_basic.clit")
+	d.UpdateEntry(0, "./clitest examples/01_basic.clitest")
 	d.Finish()
 
 	output := buf.String()
-	if !strings.Contains(output, "./clit examples/01_basic.clit") {
+	if !strings.Contains(output, "./clitest examples/01_basic.clitest") {
 		t.Errorf("expected command fallback in dynamic output, got:\n%q", output)
 	}
 }
@@ -238,7 +238,7 @@ func TestProgressDisplay_FallbackToCommand(t *testing.T) {
 func TestProgressDisplay_SubtitleDisappearsOnFinish(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewProgressDisplay(&buf, true) // dynamic mode
-	d.Start([]string{"a.clit"})
+	d.Start([]string{"a.clitest"})
 
 	d.UpdateProgress(0, 0, 3)
 	d.UpdateEntry(0, "Some comment")

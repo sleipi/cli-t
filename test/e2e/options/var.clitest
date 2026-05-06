@@ -1,5 +1,5 @@
 # --var substitution works
-./clit -v --var GREETING=hello test/e2e/options/_fixtures/var_sub.clit
+./clitest -v --var GREETING=hello test/e2e/options/_fixtures/var_sub.clitest
 EXIT 0
 [Asserts]
 stdout contains "pass:"

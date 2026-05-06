@@ -1,17 +1,17 @@
 # Parallel flag sets worker count
-./clit --parallel 2 examples/01_basic.clit
+./clitest --parallel 2 examples/01_basic.clitest
 EXIT 0
 [Asserts]
 stdout contains "parallel: 2"
 
 # No-parallel flag disables parallelism
-./clit --no-parallel examples/01_basic.clit
+./clitest --no-parallel examples/01_basic.clitest
 EXIT 0
 [Asserts]
 stdout contains "no-parallel"
 
 # --parallel and --no-parallel are mutually exclusive
-./clit --parallel 4 --no-parallel examples/01_basic.clit
+./clitest --parallel 4 --no-parallel examples/01_basic.clitest
 EXIT 2
 [Asserts]
 stderr contains "if any flags in the group [parallel no-parallel] are set none of the others can be"

@@ -2,7 +2,7 @@
 
 **Stop writing fragile bash scripts to test your CLI tools.** Write what you expect, and let CLI-Testing do the rest.
 
-CLI-Testing is a single-binary, zero-dependency test runner for shell commands. You describe your expected outputs in simple, readable `.clit` files — no test framework, no scripting, no boilerplate. If your tool runs in a terminal, CLI-Testing can test it.
+CLI-Testing is a single-binary, zero-dependency test runner for shell commands. You describe your expected outputs in simple, readable `.clitest` files — no test framework, no scripting, no boilerplate. If your tool runs in a terminal, CLI-Testing can test it.
 
 Heavily inspired by [Hurl](https://hurl.dev) — which does the same for HTTP requests — CLI-Testing brings that same declarative, readable approach to testing CLI commands.
 
@@ -54,8 +54,8 @@ You read it, you understand it, your teammates understand it. Done.
 - **Captures** — extract values from output and reuse them across entries
 - **Variables** — pass `--var key=value` from the CLI, use `{{key}}` in your tests
 - **Parallel execution** — run test files concurrently with `--parallel`
-- **Recursive discovery** — point it at a directory and it finds all `.clit` files
-- **Glob support** — `clit "tests/**/*.clit"`
+- **Recursive discovery** — point it at a directory and it finds all `.clitest` files
+- **Glob support** — `clitest "tests/**/*.clitest"`
 - **Zero dependencies** — single Go binary, runs anywhere
 
 ---
@@ -63,16 +63,16 @@ You read it, you understand it, your teammates understand it. Done.
 ## Installation
 
 ```bash
-go install github.com/sleipi/clit/cmd/clit@latest
+go install github.com/sleipi/cli-t/cmd/clitest@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/sleipi/clit.git
-cd clit
+git clone https://github.com/sleipi/cli-t.git
+cd clitest
 make build
-# ./clit is ready to use
+# ./clitest is ready to use
 ```
 
 ---
@@ -81,27 +81,27 @@ make build
 
 ```bash
 # Run all tests in a directory (recursive)
-clit test/
+clitest test/
 
 # Run a specific file
-clit test/e2e/syntax/asserts.clit
+clitest test/e2e/syntax/asserts.clitest
 
 # Use a glob pattern
-clit "test/**/*.clit"
+clitest "test/**/*.clitest"
 
 # Pass variables
-clit --var host=localhost --var port=8080 test/
+clitest --var host=localhost --var port=8080 test/
 
 # Verbose output
-clit -v test/
+clitest -v test/
 
 # Parallel execution
-clit --parallel test/
+clitest --parallel test/
 ```
 
 ---
 
-## .clit File Anatomy
+## .clitest File Anatomy
 
 ```
 # Optional comment describing the test

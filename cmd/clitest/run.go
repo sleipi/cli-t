@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sleipi/clit/internal/assert"
-	"github.com/sleipi/clit/internal/parser"
-	"github.com/sleipi/clit/internal/runner"
-	"github.com/sleipi/clit/internal/types"
+	"github.com/sleipi/cli-t/internal/assert"
+	"github.com/sleipi/cli-t/internal/parser"
+	"github.com/sleipi/cli-t/internal/runner"
+	"github.com/sleipi/cli-t/internal/types"
 )
 
 // compactFailure records a failure in compact mode for post-run reporting.
@@ -143,7 +143,7 @@ func runEntriesCompact(pd *ProgressDisplay, fileIdx int, entries []types.Entry, 
 	return
 }
 
-// loadAndParse reads a .clit file, substitutes variables, and parses it into a File.
+// loadAndParse reads a .clitest file, substitutes variables, and parses it into a File.
 func loadAndParse(path string, vars map[string]string) (*types.File, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {

@@ -25,12 +25,12 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "clit [options] <file.clit|directory>...",
-	Short: "Run and test CLI commands with declarative .clit files",
-	Long:  "clit — run and test CLI commands with declarative .clit files",
-	Example: `  clit test.clit
-  clit test/e2e/
-  clit --var HOST=localhost examples/`,
+	Use:   "clitest [options] <file.clitest|directory>...",
+	Short: "Run and test CLI commands with declarative .clitest files",
+	Long:  "clitest — run and test CLI commands with declarative .clitest files",
+	Example: `  clitest test.clitest
+  clitest test/e2e/
+  clitest --var HOST=localhost examples/`,
 	Args:          cobra.MinimumNArgs(1),
 	RunE:          runMain,
 	Version:       version,
@@ -47,7 +47,7 @@ func init() {
 	rootCmd.Flags().StringSliceVar(&groupFlags, "group", nil, "Run only entries with this group tag (repeatable, OR logic)")
 	rootCmd.Flags().StringSliceVar(&excludeGroupFlags, "exclude-group", nil, "Skip entries with this group tag (repeatable)")
 
-	rootCmd.SetVersionTemplate("clit version {{.Version}}\n")
+	rootCmd.SetVersionTemplate("clitest version {{.Version}}\n")
 	rootCmd.Flags().BoolP("version", "V", false, "Show version")
 	rootCmd.DisableFlagsInUseLine = true
 	rootCmd.MarkFlagsMutuallyExclusive("parallel", "no-parallel")

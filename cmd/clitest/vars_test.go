@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sleipi/clit/internal/runner"
+	"github.com/sleipi/cli-t/internal/runner"
 )
 
 func TestSubstituteVars(t *testing.T) {

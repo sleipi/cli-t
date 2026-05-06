@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sleipi/clit/internal/runner"
+	"github.com/sleipi/cli-t/internal/runner"
 )
 
 func substituteVars(input string, vars map[string]string) string {

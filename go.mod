@@ -1,4 +1,4 @@
-module github.com/sleipi/clit
+module github.com/sleipi/cli-t
 
 go 1.26.2
 

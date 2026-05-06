@@ -1,5 +1,5 @@
 # --help shows usage information
-./clit --help
+./clitest --help
 EXIT 0
 [Asserts]
 stdout contains "Usage:"
@@ -14,13 +14,13 @@ stdout contains "--exclude-group"
 stdout contains "--var"
 
 # --version shows version string
-./clit --version
+./clitest --version
 EXIT 0
 [Asserts]
-stdout matches /clit version \S+/
+stdout matches /clitest version \S+/
 
 # -V short flag also shows version
-./clit -V
+./clitest -V
 EXIT 0
 [Asserts]
-stdout matches /clit version \S+/
+stdout matches /clitest version \S+/
