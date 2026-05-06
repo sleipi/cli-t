@@ -66,7 +66,16 @@ Declares the expected exit code. Defaults to `0` if omitted.
 EXIT 0
 EXIT 1
 EXIT 127
+EXIT NEVER
 ```
+
+#### `EXIT NEVER`
+
+Marks the command as a background process that is not expected to terminate. The process is started and clitest does **not** wait for it to exit. Instead, the `[Asserts]` section is evaluated repeatedly (polled) until all assertions pass or the `@timeout` is reached (→ FAIL + process is killed).
+
+If the process exits unexpectedly while polling, the entry is marked as FAIL.
+
+`EXIT NEVER` entries support the `pid` capture query (see Captures) and require `@timeout` to be set.
 
 ### 4. Body (optional)
 
@@ -117,6 +126,7 @@ Each line in the `[Asserts]` section is an assertion with the format:
 | `stdout`    | Full stdout (trailing `\n` stripped)      | string    |
 | `stderr`    | Full stderr (trailing `\n` stripped)      | string    |
 | `exit`      | Exit code                                 | integer   |
+| `pid`       | Process ID (only available with `EXIT NEVER`) | integer |
 | `line N`    | Nth line of stdout (1-indexed)            | string    |
 | `lineCount` | Number of non-empty lines in stdout       | integer   |
 | `duration`  | Command execution time in milliseconds    | integer   |
@@ -298,6 +308,9 @@ EXIT 0
 |-----------|-------|--------|-------------|
 | `@group`  | file, entry | `@group tag1 tag2 ...` | Space-separated tags for filtering |
 | `@skip`   | file, entry | `@skip [reason]` | Skip this entry/file (reason optional) |
+| `@timeout` | entry | `@timeout MS` | Max time to wait (required for `EXIT NEVER`) |
+| `@poll`   | entry | `@poll MS` | Polling interval for `EXIT NEVER` asserts (default: 100ms) |
+| `@defer`  | entry | `@defer` | Marks entry as cleanup — runs at file end (LIFO), always, not a test |
 
 #### `@group`
 
@@ -323,11 +336,54 @@ curl http://localhost/health
 EXIT 0
 ```
 
+#### `@timeout`
+
+Sets the maximum wait time in milliseconds for an `EXIT NEVER` entry. If assertions don't pass within this time, the entry FAILs and the background process is killed.
+
+```
+@timeout 5000
+php -S localhost:8080
+EXIT NEVER
+[Asserts]
+stdout contains "Development server"
+```
+
+#### `@poll`
+
+Sets the polling interval in milliseconds for `EXIT NEVER` assertion checks. Defaults to `100` if omitted. Only meaningful on `EXIT NEVER` entries.
+
+```
+@timeout 5000
+@poll 200
+tail -f /tmp/app.log
+EXIT NEVER
+[Asserts]
+stdout contains "ready"
+```
+
+#### `@defer`
+
+Marks an entry as a cleanup action. Defer entries are **not** test cases — they are not counted in the summary and cannot FAIL. They are collected during parsing and executed in LIFO order (last declared = first executed) at the end of the file, regardless of whether previous entries passed or failed. Errors in defer entries are logged but do not affect the test result.
+
+```
+@defer
+kill {{bgpid}}
+
+@defer
+rm {{tmpfile}}
+```
+
+**Verbose output format:**
+
+```
+~ kill 12345                              [defer]
+~ rm /tmp/testfile                        [defer]
+```
+
 ### Planned Directives (roadmap)
 
 | Directive | Description |
 |-----------|-------------|
-| `@timeout 5s` | Max execution time, kill after |
 | `@retry 3` | Retry on failure N times |
 | `@env KEY=VALUE` | Set env vars for entry |
 | `@workdir ./path` | Run command in directory |
@@ -353,6 +409,37 @@ EXIT 0
 [Asserts]
 stdout contains "admin"
 line 1 startsWith "{"
+```
+
+## Background Process Example
+
+```clitest
+# setup temp file
+mktemp
+EXIT 0
+[Captures]
+tmpfile: stdout
+
+# write content before tail starts
+echo "hello" > {{tmpfile}}
+EXIT 0
+
+# tail in background
+@timeout 3000
+@poll 200
+tail -f {{tmpfile}}
+EXIT NEVER
+[Captures]
+tailpid: pid
+[Asserts]
+stdout contains "hello"
+
+# cleanup
+@defer
+kill {{tailpid}}
+
+@defer
+rm {{tmpfile}}
 ```
 
 ---
@@ -480,7 +567,7 @@ separator  = BLANK_LINE+
 entry      = comment? directive* command EXIT? body? section*
 comment    = (HASH TEXT NEWLINE)+
 command    = TEXT NEWLINE
-EXIT       = "EXIT" SPACE INTEGER NEWLINE
+EXIT       = "EXIT" SPACE (INTEGER | "NEVER") NEWLINE
 body       = unfenced_body | fenced_body
 unfenced_body = (TEXT NEWLINE)+           # terminated by blank line or section
 fenced_body   = "```" NEWLINE (ANY NEWLINE)* "```" NEWLINE

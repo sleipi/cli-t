@@ -14,15 +14,18 @@
 - [x] Directives — Generic `@directive` system with frontmatter (`---` block) for file-level and entry-level metadata
 - [x] `@group` — Tag entries/files with space-separated tags for filtering (`--group TAG`, `--exclude-group TAG`, OR logic)
 - [x] `@skip` — Skip entries/files with optional reason, displayed as SKIP in output with skip count in summary
+- [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 
 ## Planned
 
+- [ ] Restructure E2E tests to behavior-driven style — files named `it_<describes_behavior>.clitest` (e.g. `it_does_not_execute_skipped_entries.clitest`). One behavior per file, multiple entries allowed when orchestration is needed.
+- [ ] Refactor `cmd/clitest/` package structure — 10+ files in a single `main` package. Extract into internal packages (e.g. `internal/display`, `internal/run`, `internal/filter`) for better separation and testability.
 - [ ] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
-- [ ] `@timeout MS` — Set a maximum execution time per command (kills the process after MS milliseconds)
+- [ ] `@timeout MS` — Extend to regular entries (kill process after MS milliseconds). Currently only works for `EXIT NEVER` entries.
 - [ ] `@retry N` — Retry on failure N times
 - [ ] `@env KEY=VALUE` — Set env vars for entry
 - [ ] `@workdir ./path` — Run command in specific directory
@@ -178,3 +181,15 @@ RUN [=====>    ] - verbose.clitest (1/2) 31ms
     Without verbose, passing tests don't show stdout
 OK  [==========] - var_sub.clitest (1/1) took 9ms
 ```
+
+# Background process starten
+@timeout 5000
+$ php -S localhost:8080 &
+wait-for stdout /Development server/
+
+# Assertions gegen das laufende System
+$ curl -s http://localhost:8080/index.php
+stdout = "Hello World"
+
+# hier brauchen wir noch was am ende
+@kill pid von oben :)

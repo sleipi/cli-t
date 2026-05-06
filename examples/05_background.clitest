@@ -1,0 +1,45 @@
+# Background Processes (EXIT NEVER)
+#
+# clitest can test long-running processes like servers, watchers, or daemons.
+# Use EXIT NEVER to start a process in the background without waiting for it to exit.
+#
+# Key concepts:
+#   - EXIT NEVER: the process is started but clitest does not wait for it to exit
+#   - @timeout:   max time (ms) to wait for assertions to pass (required)
+#   - @poll:      how often (ms) to re-evaluate assertions (default: 100ms)
+#   - pid:        capture query that gives you the process ID
+#   - @defer:     cleanup entries that always run at file end (LIFO order)
+#
+# How it works:
+#   1. The command is started in the background
+#   2. Assertions are evaluated repeatedly every @poll milliseconds
+#   3. Once all assertions pass → entry passes, execution continues
+#   4. If @timeout is reached before assertions pass → entry FAILs
+#   5. If the process exits unexpectedly → entry FAILs
+#   6. @defer entries run at the very end of the file, regardless of pass/fail
+#
+# This example starts a process that waits 1 second before printing "ready".
+# The poll loop checks every 100ms whether stdout contains "ready".
+# After ~1 second it will match, and execution continues to the next entry.
+
+# Start a background process that takes a moment to become ready
+@timeout 3000
+@poll 100
+sh -c 'sleep 1; echo "ready"; sleep 999'
+EXIT NEVER
+[Captures]
+pid: pid
+[Asserts]
+stdout contains "ready"
+
+# Always clean up: kill the background process when the file ends.
+# @defer entries are not tests — they don't count in the summary.
+# Multiple @defer entries execute in LIFO order (last declared = first to run).
+@defer
+kill {{pid}}
+
+# At this point the background process is running and "ready" was confirmed.
+# We can now run normal entries that interact with or verify the running process.
+# ps -p exits 0 if the process exists, non-zero if it doesn't.
+ps -p {{pid}}
+EXIT 0

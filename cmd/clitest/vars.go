@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/sleipi/cli-t/internal/runner"
@@ -32,6 +33,8 @@ func resolveCapture(query string, r runner.Result) string {
 		return strings.TrimSuffix(r.Stdout, "\n")
 	case "stderr":
 		return strings.TrimSuffix(r.Stderr, "\n")
+	case "pid":
+		return strconv.Itoa(r.Pid)
 	default:
 		if strings.HasPrefix(query, "line ") {
 			return strings.TrimSuffix(r.Stdout, "\n")
