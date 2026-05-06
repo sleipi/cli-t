@@ -1,0 +1,26 @@
+# --help shows usage information
+./clit --help
+EXIT 0
+[Asserts]
+stdout contains "Usage:"
+stdout contains "Examples:"
+stdout contains "Flags:"
+stdout contains "--verbose"
+stdout contains "--parallel"
+stdout contains "--no-parallel"
+stdout contains "--no-recursive"
+stdout contains "--group"
+stdout contains "--exclude-group"
+stdout contains "--var"
+
+# --version shows version string
+./clit --version
+EXIT 0
+[Asserts]
+stdout matches /clit version \S+/
+
+# -V short flag also shows version
+./clit -V
+EXIT 0
+[Asserts]
+stdout matches /clit version \S+/
