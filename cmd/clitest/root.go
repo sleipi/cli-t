@@ -15,12 +15,12 @@ import (
 var version = "dev"
 
 var (
-	verbose          bool
-	noRecursive      bool
-	parallel         int
-	noParallel       bool
-	varFlags         varMap
-	groupFlags       []string
+	verbose           bool
+	noRecursive       bool
+	parallel          int
+	noParallel        bool
+	varFlags          varMap
+	groupFlags        []string
 	excludeGroupFlags []string
 )
 
@@ -53,7 +53,16 @@ func init() {
 	rootCmd.MarkFlagsMutuallyExclusive("parallel", "no-parallel")
 }
 
-func runMain(cmd *cobra.Command, args []string) error {
+type fileResult struct {
+	pass     int
+	fail     int
+	skip     int
+	file     string
+	failures []compactFailure
+	hidden   bool
+}
+
+func runMain(_ *cobra.Command, args []string) error {
 	files, resolved, err := resolveFiles(args, !noRecursive)
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -71,198 +80,17 @@ func runMain(cmd *cobra.Command, args []string) error {
 	}
 
 	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
-	useVerbose := verbose
 	start := time.Now()
 
-	type fileResult struct {
-		pass     int
-		fail     int
-		skip     int
-		file     string
-		failures []compactFailure
-		hidden   bool
-	}
-
-	results := make([]fileResult, len(files))
-	jobs := make(chan int, len(files))
-	var wg sync.WaitGroup
-
-	for i := range files {
-		jobs <- i
-	}
-	close(jobs)
-
-	if useVerbose {
+	var results []fileResult
+	if verbose {
 		if isTTY {
-			var mu sync.Mutex
-			appendedLines := 0
-			headerLines := len(files)
-
-			for _, f := range files {
-				fmt.Printf("  %s▶ %s%s %sRUNNING%s\n", colorBold, filepath.Base(f), colorReset, colorYellow, colorReset)
-			}
-
-			for w := 0; w < workers; w++ {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					for idx := range jobs {
-						f := files[idx]
-						var buf bytes.Buffer
-
-						parsed, err := loadAndParse(f, varFlags.values)
-						if err != nil {
-							fmt.Fprintf(&buf, "  %s%v%s\n", colorRed, err, colorReset)
-							mu.Lock()
-							overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
-							fmt.Print(buf.String())
-							appendedLines += countLines(buf.String())
-							mu.Unlock()
-							results[idx] = fileResult{fail: 1, file: f}
-							continue
-						}
-
-						if parsed.Directives.Skip {
-							mu.Lock()
-							overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
-							mu.Unlock()
-							results[idx] = fileResult{skip: len(parsed.Entries), file: f}
-							continue
-						}
-
-						entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
-
-						if len(entries) == 0 {
-							mu.Lock()
-							clearHeaderLine(os.Stdout, idx, headerLines, appendedLines)
-							mu.Unlock()
-							results[idx] = fileResult{file: f, hidden: true}
-							continue
-						}
-
-						vd := NewVerboseDisplay(&buf, true)
-						vd.Start([]string{f})
-						vd.BeginFile(0)
-						pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
-						vd.EndFile(0)
-
-						mu.Lock()
-						overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
-						fmt.Print(buf.String())
-						appendedLines += countLines(buf.String())
-						mu.Unlock()
-
-						results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
-					}
-				}()
-			}
-			wg.Wait()
+			results = runVerboseTTY(files, workers)
 		} else {
-			type verboseResult struct {
-				output string
-				pass   int
-				fail   int
-				skip   int
-				file   string
-				hidden bool
-			}
-			vResults := make([]verboseResult, len(files))
-
-			for w := 0; w < workers; w++ {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					for idx := range jobs {
-						f := files[idx]
-						var buf bytes.Buffer
-						vd := NewVerboseDisplay(&buf, true)
-						vd.Start([]string{f})
-
-						parsed, err := loadAndParse(f, varFlags.values)
-						if err != nil {
-							vd.FileError(0, err.Error())
-							vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
-							continue
-						}
-
-						if parsed.Directives.Skip {
-							vResults[idx] = verboseResult{output: buf.String(), skip: len(parsed.Entries), file: f}
-							continue
-						}
-
-						entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
-
-						if len(entries) == 0 {
-							vResults[idx] = verboseResult{file: f, hidden: true}
-							continue
-						}
-
-						vd.BeginFile(0)
-						pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
-						vd.EndFile(0)
-						vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, skip: skip, file: f}
-					}
-				}()
-			}
-			wg.Wait()
-
-			for i, r := range vResults {
-				if r.hidden {
-					results[i] = fileResult{file: r.file, hidden: true}
-					continue
-				}
-				fmt.Print(r.output)
-				results[i] = fileResult{pass: r.pass, fail: r.fail, skip: r.skip, file: r.file}
-			}
+			results = runVerboseNonTTY(files, workers)
 		}
 	} else {
-		dynamic := isTTY
-		pd := NewProgressDisplay(os.Stdout, dynamic)
-		pd.Start(files)
-
-		for w := 0; w < workers; w++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for idx := range jobs {
-					f := files[idx]
-
-					parsed, err := loadAndParse(f, varFlags.values)
-					if err != nil {
-						pd.FileError(idx, err.Error())
-						results[idx] = fileResult{fail: 1, file: f}
-						continue
-					}
-
-					if parsed.Directives.Skip {
-						pd.FinishFile(idx, true)
-						results[idx] = fileResult{skip: len(parsed.Entries), file: f}
-						continue
-					}
-
-					entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
-
-					if len(entries) == 0 {
-						pd.HideFile(idx)
-						results[idx] = fileResult{file: f, hidden: true}
-						continue
-					}
-
-					pd.UpdateProgress(idx, 0, len(entries))
-					pass, fail, skip, details := runEntriesCompact(pd, idx, entries, varFlags.values)
-					pd.FinishFile(idx, fail == 0)
-					results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
-				}
-			}()
-		}
-		wg.Wait()
-		pd.Finish()
-
-		for _, r := range results {
-			if len(r.failures) > 0 {
-				printFailureDetails(r.failures, r.file)
-			}
-		}
+		results = runCompact(files, workers, isTTY)
 	}
 
 	elapsed := time.Since(start)
@@ -284,4 +112,207 @@ func runMain(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 	return nil
+}
+
+func runVerboseTTY(files []string, workers int) []fileResult {
+	results := make([]fileResult, len(files))
+	jobs := make(chan int, len(files))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	appendedLines := 0
+	headerLines := len(files)
+
+	for i := range files {
+		jobs <- i
+	}
+	close(jobs)
+
+	for _, f := range files {
+		fmt.Printf("  %s▶ %s%s %sRUNNING%s\n", colorBold, filepath.Base(f), colorReset, colorYellow, colorReset)
+	}
+
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				f := files[idx]
+				var buf bytes.Buffer
+
+				parsed, err := loadAndParse(f, varFlags.values)
+				if err != nil {
+					fmt.Fprintf(&buf, "  %s%v%s\n", colorRed, err, colorReset)
+					mu.Lock()
+					overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
+					fmt.Print(buf.String())
+					appendedLines += countLines(buf.String())
+					mu.Unlock()
+					results[idx] = fileResult{fail: 1, file: f}
+					continue
+				}
+
+				if parsed.Directives.Skip {
+					mu.Lock()
+					overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
+					mu.Unlock()
+					results[idx] = fileResult{skip: len(parsed.Entries), file: f}
+					continue
+				}
+
+				entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
+
+				if len(entries) == 0 {
+					mu.Lock()
+					clearHeaderLine(os.Stdout, idx, headerLines, appendedLines)
+					mu.Unlock()
+					results[idx] = fileResult{file: f, hidden: true}
+					continue
+				}
+
+				vd := NewVerboseDisplay(&buf, true)
+				vd.Start([]string{f})
+				vd.BeginFile(0)
+				pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
+				vd.EndFile(0)
+
+				mu.Lock()
+				overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
+				fmt.Print(buf.String())
+				appendedLines += countLines(buf.String())
+				mu.Unlock()
+
+				results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
+			}
+		}()
+	}
+	wg.Wait()
+	return results
+}
+
+func runVerboseNonTTY(files []string, workers int) []fileResult {
+	type verboseResult struct {
+		output string
+		pass   int
+		fail   int
+		skip   int
+		file   string
+		hidden bool
+	}
+
+	results := make([]fileResult, len(files))
+	vResults := make([]verboseResult, len(files))
+	jobs := make(chan int, len(files))
+	var wg sync.WaitGroup
+
+	for i := range files {
+		jobs <- i
+	}
+	close(jobs)
+
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				f := files[idx]
+				var buf bytes.Buffer
+				vd := NewVerboseDisplay(&buf, true)
+				vd.Start([]string{f})
+
+				parsed, err := loadAndParse(f, varFlags.values)
+				if err != nil {
+					vd.FileError(0, err.Error())
+					vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
+					continue
+				}
+
+				if parsed.Directives.Skip {
+					vResults[idx] = verboseResult{output: buf.String(), skip: len(parsed.Entries), file: f}
+					continue
+				}
+
+				entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
+
+				if len(entries) == 0 {
+					vResults[idx] = verboseResult{file: f, hidden: true}
+					continue
+				}
+
+				vd.BeginFile(0)
+				pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
+				vd.EndFile(0)
+				vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, skip: skip, file: f}
+			}
+		}()
+	}
+	wg.Wait()
+
+	for i, r := range vResults {
+		if r.hidden {
+			results[i] = fileResult{file: r.file, hidden: true}
+			continue
+		}
+		fmt.Print(r.output)
+		results[i] = fileResult{pass: r.pass, fail: r.fail, skip: r.skip, file: r.file}
+	}
+	return results
+}
+
+func runCompact(files []string, workers int, isTTY bool) []fileResult {
+	results := make([]fileResult, len(files))
+	jobs := make(chan int, len(files))
+	var wg sync.WaitGroup
+
+	for i := range files {
+		jobs <- i
+	}
+	close(jobs)
+
+	pd := NewProgressDisplay(os.Stdout, isTTY)
+	pd.Start(files)
+
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				f := files[idx]
+
+				parsed, err := loadAndParse(f, varFlags.values)
+				if err != nil {
+					pd.FileError(idx, err.Error())
+					results[idx] = fileResult{fail: 1, file: f}
+					continue
+				}
+
+				if parsed.Directives.Skip {
+					pd.FinishFile(idx, true)
+					results[idx] = fileResult{skip: len(parsed.Entries), file: f}
+					continue
+				}
+
+				entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
+
+				if len(entries) == 0 {
+					pd.HideFile(idx)
+					results[idx] = fileResult{file: f, hidden: true}
+					continue
+				}
+
+				pd.UpdateProgress(idx, 0, len(entries))
+				pass, fail, skip, details := runEntriesCompact(pd, idx, entries, varFlags.values)
+				pd.FinishFile(idx, fail == 0)
+				results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
+			}
+		}()
+	}
+	wg.Wait()
+	pd.Finish()
+
+	for _, r := range results {
+		if len(r.failures) > 0 {
+			printFailureDetails(r.failures, r.file)
+		}
+	}
+	return results
 }
