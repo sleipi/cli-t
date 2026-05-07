@@ -1,0 +1,5 @@
+# No-parallel flag disables parallelism
+./clitest --no-parallel examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "no-parallel"

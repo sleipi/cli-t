@@ -1,0 +1,5 @@
+# Parallel flag sets worker count
+./clitest --parallel 2 examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "parallel: 2"

@@ -1,0 +1,5 @@
+# --parallel and --no-parallel are mutually exclusive
+./clitest --parallel 4 --no-parallel examples/01_basic.clitest
+EXIT 2
+[Asserts]
+stderr contains "if any flags in the group [parallel no-parallel] are set none of the others can be"

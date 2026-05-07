@@ -1,0 +1,10 @@
+# Default output shows compact OK line with counter and timing
+./clitest examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "OK"
+stdout contains "[==========]"
+stdout contains "01_basic.clitest"
+stdout contains "took"
+stdout not contains "✓"
+stdout not contains "✗"

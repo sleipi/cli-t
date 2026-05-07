@@ -1,0 +1,6 @@
+# --group matches entry-level group (entry also inherits file groups)
+./clitest -v --group smoke test/e2e/syntax/_fixtures/frontmatter_groups.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "world"

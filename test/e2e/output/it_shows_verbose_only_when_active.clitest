@@ -1,0 +1,11 @@
+# Verbose shown only when active
+./clitest -v examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "verbose:"
+
+# Verbose not shown by default
+./clitest examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout not contains "verbose:"

@@ -1,0 +1,7 @@
+# Verbose output shows per-entry checkmarks
+./clitest -v examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "✓"
+stdout contains "▶ 01_basic.clitest"
+stdout not contains "[==========]"

@@ -1,0 +1,7 @@
+# --group filters to matching entries only
+./clitest -v --group smoke test/e2e/syntax/_fixtures/directives.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "smoke test"
+stdout not contains "normal"

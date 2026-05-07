@@ -12,15 +12,3 @@ stdout contains "--no-recursive"
 stdout contains "--group"
 stdout contains "--exclude-group"
 stdout contains "--var"
-
-# --version shows version string
-./clitest --version
-EXIT 0
-[Asserts]
-stdout matches /clitest version \S+/
-
-# -V short flag also shows version
-./clitest -V
-EXIT 0
-[Asserts]
-stdout matches /clitest version \S+/

@@ -1,0 +1,8 @@
+# Failing file shows ERR in compact mode
+./clitest test/_fixtures/failing.clitest
+EXIT 1
+[Asserts]
+stdout contains "ERR"
+stdout contains "[==========]"
+stdout contains "failing.clitest"
+stdout contains "took"

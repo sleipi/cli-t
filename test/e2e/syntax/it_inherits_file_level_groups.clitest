@@ -1,0 +1,5 @@
+# --group matches file-level groups inherited by entries
+./clitest -v --group BUG-1234 test/e2e/syntax/_fixtures/frontmatter_groups.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 2"
