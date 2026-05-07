@@ -1,5 +1,5 @@
 # --exclude-group removes matching entries
-./clitest -v --exclude-group smoke test/e2e/syntax/_fixtures/directives.clitest
+./clitest -v --exclude-group smoke test/_fixtures/syntax/directives.clitest
 EXIT 0
 [Asserts]
 stdout contains "pass: 1"

@@ -1,5 +1,5 @@
 # --no-recursive does not find deeply nested files
-./clitest --no-recursive test/e2e/resolve/fixtures
+./clitest --no-recursive test/_fixtures/resolve
 EXIT 0
 [Asserts]
 stdout contains "hello.clitest"

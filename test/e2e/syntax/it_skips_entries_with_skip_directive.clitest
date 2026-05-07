@@ -1,5 +1,5 @@
 # @skip marks entry as skipped (not failed)
-./clitest -v test/e2e/syntax/_fixtures/directives.clitest
+./clitest -v test/_fixtures/syntax/directives.clitest
 EXIT 0
 [Asserts]
 stdout contains "pass: 2"

@@ -1,5 +1,5 @@
 # Recursive directory scanning finds nested .clitest files
-./clitest test/e2e/resolve/fixtures
+./clitest test/_fixtures/resolve
 EXIT 0
 [Asserts]
 stdout contains "hello.clitest"

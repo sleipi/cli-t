@@ -1,5 +1,5 @@
 # Non-.clitest files are skipped with a warning
-./clitest test/e2e/resolve/fixtures/hello.clitest cmd/clitest/main.go
+./clitest test/_fixtures/resolve/hello.clitest cmd/clitest/main.go
 EXIT 0
 [Asserts]
 stderr contains "Warning: skipping non-.clitest file: cmd/clitest/main.go"

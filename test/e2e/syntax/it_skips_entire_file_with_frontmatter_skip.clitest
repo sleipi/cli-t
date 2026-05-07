@@ -1,5 +1,5 @@
 # File-level @skip skips entire file
-./clitest -v test/e2e/syntax/_fixtures/frontmatter_skip.clitest
+./clitest -v test/_fixtures/syntax/frontmatter_skip.clitest
 EXIT 0
 [Asserts]
 stdout contains "skip: 1"
