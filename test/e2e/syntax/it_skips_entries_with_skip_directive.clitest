@@ -1,0 +1,7 @@
+# @skip marks entry as skipped (not failed)
+./clitest -v test/_fixtures/syntax/directives.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 2"
+stdout contains "skip: 1"
+stdout contains "SKIP"

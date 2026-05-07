@@ -1,0 +1,6 @@
+# File-level @skip skips entire file
+./clitest -v test/_fixtures/syntax/frontmatter_skip.clitest
+EXIT 0
+[Asserts]
+stdout contains "skip: 1"
+stdout not contains "fail:"

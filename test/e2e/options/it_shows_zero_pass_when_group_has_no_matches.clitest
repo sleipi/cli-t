@@ -1,0 +1,5 @@
+# --group with no matches shows pass: 0
+./clitest --group nonexistent test/_fixtures/options/group_tagged.clitest test/_fixtures/options/group_untagged.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 0"

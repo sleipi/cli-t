@@ -1,0 +1,6 @@
+# Header shows no-parallel when set
+./clitest --no-parallel examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "no-parallel"
+stdout not contains "parallel:"

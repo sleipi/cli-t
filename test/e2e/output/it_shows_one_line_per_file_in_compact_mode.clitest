@@ -1,0 +1,8 @@
+# Multiple files show one line each in compact mode
+./clitest examples/01_basic.clitest examples/02_errors.clitest
+EXIT 0
+[Asserts]
+stdout contains "OK"
+stdout contains "01_basic.clitest"
+stdout contains "02_errors.clitest"
+stdout contains "took"

@@ -1,0 +1,6 @@
+# Glob pattern preserved in path output
+./clitest "examples/0*.clitest"
+EXIT 0
+[Asserts]
+stdout contains "examples/0*.clitest"
+stdout contains "file(s) loaded"

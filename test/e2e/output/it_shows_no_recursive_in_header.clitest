@@ -1,0 +1,5 @@
+# Header shows no-recursive in path line
+./clitest --no-recursive test/_fixtures/resolve
+EXIT 0
+[Asserts]
+stdout contains "no-recursive"

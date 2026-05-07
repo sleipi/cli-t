@@ -1,0 +1,5 @@
+# --group flag hides files with no matching entries entirely
+./clitest --group senf test/_fixtures/options/group_tagged.clitest test/_fixtures/options/group_untagged.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"

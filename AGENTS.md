@@ -38,9 +38,10 @@ Branch names MUST follow the format `<type>/<short-description>`.
 ```bash
 make build        # go build -o clitest ./cmd/clitest/
 make test         # go test ./...
+make lint         # golangci-lint (static analysis, allow failure)
 make e2e          # build + run ./clitest test/e2e/
 make examples     # build + run ./clitest examples/
-make all          # test + e2e + examples (use this to verify changes)
+make all          # test + lint + e2e + examples (use this to verify changes)
 ```
 
 Always run `make all` after changes — unit tests alone won't catch parser/CLI regressions.
@@ -58,10 +59,11 @@ internal/runner/            Command execution via sh -c, captures stdout/stderr/
 internal/assert/            Predicate evaluation engine (queries + predicates + negation)
 pkg/types/                  Shared types: Entry, Assert, Capture, File
 examples/*.clitest             User-facing usage examples (also validated via `make examples`)
-test/e2e/syntax/            E2E tests for .clitest syntax (asserts, captures)
-test/e2e/output/            E2E tests for header/footer/summary output and output v2
-test/e2e/options/           E2E tests for CLI flags (--var, --parallel, -v)
+test/e2e/syntax/            E2E tests for .clitest syntax (asserts, captures, directives)
+test/e2e/output/            E2E tests for header/footer/summary output and progress bar
+test/e2e/options/           E2E tests for CLI flags (--var, --parallel, -v, --group)
 test/e2e/resolve/           E2E tests for file discovery (recursive, glob, skip warnings)
+test/e2e/background/        E2E tests for EXIT NEVER, @defer, @poll
 test/_fixtures/             Shared test fixtures (e.g. intentionally failing .clitest files)
 ```
 

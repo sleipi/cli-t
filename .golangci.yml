@@ -1,0 +1,77 @@
+version: "2"
+linters:
+  enable:
+    # Bug detection — catches logic errors, missed error handling
+    - errorlint     # incorrect error wrapping/comparison (== vs errors.Is)
+    - exhaustive    # non-exhaustive switch statements on enums
+    - nilerr        # returning nil instead of err inside `if err != nil`
+
+    # Security
+    - gosec         # security issues (weak crypto, hardcoded creds, etc.)
+
+    # Clean code — readability, complexity, naming
+    - gocognit      # cognitive complexity (how hard a function is to understand)
+    - gocritic      # diagnostic, performance, and style checks (meta-linter)
+    - nestif        # deeply nested if blocks
+    - nolintlint    # ensures //nolint directives have explanation + specific linter
+    - predeclared   # shadowing Go built-in identifiers (len, cap, error, etc.)
+    - revive        # general code quality (golint successor)
+    - unconvert     # unnecessary type conversions
+
+    # Constants & typos
+    - dupword       # duplicated words in comments ("the the")
+    - goconst       # repeated string literals that should be constants
+    - misspell      # typos in comments and strings
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+    gocritic:
+      disabled-checks:
+        - hugeParam
+        - rangeValCopy
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+    goconst:
+      ignore-tests: true
+    gosec:
+      excludes:
+        # G304: "Potential file inclusion via variable" — false positive for CLI tools.
+        # clitest intentionally reads user-specified file paths from command-line args.
+        # No privilege boundary exists (user already has shell access).
+        - G304
+        # G204: "Subprocess launched with variable" — clitest is a test runner;
+        # executing user-specified commands via sh -c is its core purpose.
+        - G204
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: unexported-return
+          disabled: true
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - dupword
+          - errcheck
+          - goconst
+          - gosec
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$

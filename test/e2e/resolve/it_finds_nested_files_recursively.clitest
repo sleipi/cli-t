@@ -1,0 +1,7 @@
+# Recursive directory scanning finds nested .clitest files
+./clitest test/_fixtures/resolve
+EXIT 0
+[Asserts]
+stdout contains "hello.clitest"
+stdout contains "deep.clitest"
+stdout contains "pass:"

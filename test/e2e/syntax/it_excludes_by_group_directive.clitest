@@ -1,0 +1,7 @@
+# --exclude-group removes matching entries
+./clitest -v --exclude-group smoke test/_fixtures/syntax/directives.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "skip: 1"
+stdout not contains "smoke test"

@@ -1,0 +1,12 @@
+# Progress bar renders during slow entries
+sleep 1
+EXIT 0
+
+sleep 1
+EXIT 0
+
+sleep 1
+EXIT 0
+
+sleep 1
+EXIT 0

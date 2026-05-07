@@ -1,0 +1,6 @@
+# Test startsWith and endsWith
+echo "Hello World"
+EXIT 0
+[Asserts]
+stdout startsWith "Hello"
+stdout endsWith "World"

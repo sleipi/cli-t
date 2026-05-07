@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	statusRun = "RUN"
+	statusOK  = "OK"
+	statusERR = "ERR"
+)
+
 // EntryInfo holds the result of a single entry execution for display purposes.
 type EntryInfo struct {
 	Command     string
@@ -28,7 +34,7 @@ type fileState struct {
 	name           string
 	completed      int
 	total          int
-	status         string // "RUN", "OK", "ERR"
+	status         string // statusRun, statusOK, statusERR
 	startTime      time.Time
 	endTime        time.Time
 	currentComment string
@@ -58,7 +64,7 @@ func (d *ProgressDisplay) Start(files []string) {
 
 	d.files = make([]fileState, len(files))
 	for i, f := range files {
-		d.files[i] = fileState{name: filepath.Base(f), status: "RUN", startTime: time.Now()}
+		d.files[i] = fileState{name: filepath.Base(f), status: statusRun, startTime: time.Now()}
 	}
 
 	if d.dynamic {
@@ -66,7 +72,7 @@ func (d *ProgressDisplay) Start(files []string) {
 	}
 }
 
-func (d *ProgressDisplay) UpdateProgress(fileIdx int, completed, total int) {
+func (d *ProgressDisplay) UpdateProgress(fileIdx, completed, total int) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -98,9 +104,9 @@ func (d *ProgressDisplay) FinishFile(fileIdx int, passed bool) {
 	d.files[fileIdx].endTime = time.Now()
 	d.files[fileIdx].currentComment = ""
 	if passed {
-		d.files[fileIdx].status = "OK"
+		d.files[fileIdx].status = statusOK
 	} else {
-		d.files[fileIdx].status = "ERR"
+		d.files[fileIdx].status = statusERR
 	}
 
 	if d.dynamic {
@@ -126,7 +132,7 @@ func (d *ProgressDisplay) FileError(fileIdx int, msg string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.files[fileIdx].status = "ERR"
+	d.files[fileIdx].status = statusERR
 	d.files[fileIdx].endTime = time.Now()
 	if d.dynamic {
 		d.render()
@@ -163,7 +169,7 @@ func (d *ProgressDisplay) render() {
 		lines++
 
 		// Subtitle: only for running files with a comment
-		if d.files[i].status == "RUN" && d.files[i].currentComment != "" {
+		if d.files[i].status == statusRun && d.files[i].currentComment != "" {
 			fmt.Fprintf(d.w, "\r\033[K") // clear line
 			fmt.Fprintf(d.w, "    %s%s%s\n", colorGray, truncateCmd(d.files[i].currentComment, 60), colorReset)
 			lines++
@@ -186,14 +192,14 @@ func (d *ProgressDisplay) render() {
 
 func (d *ProgressDisplay) printFileLine(idx int) {
 	f := d.files[idx]
-	done := f.status == "OK" || f.status == "ERR"
+	done := f.status == statusOK || f.status == statusERR
 	bar := renderBar(f.completed, max(f.total, 1), done)
 
 	var statusColor string
 	switch f.status {
-	case "OK":
+	case statusOK:
 		statusColor = colorGreen
-	case "ERR":
+	case statusERR:
 		statusColor = colorRed
 	default:
 		statusColor = colorYellow
@@ -202,7 +208,7 @@ func (d *ProgressDisplay) printFileLine(idx int) {
 	// Pad status to 3 chars
 	status := f.status
 	if len(status) < 3 {
-		status = status + strings.Repeat(" ", 3-len(status))
+		status += strings.Repeat(" ", 3-len(status))
 	}
 
 	// Counter and timing

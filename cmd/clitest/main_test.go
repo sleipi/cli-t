@@ -26,15 +26,15 @@ func TestResolveFiles_SingleFile(t *testing.T) {
 }
 
 func TestResolveFiles_Directory(t *testing.T) {
-	files, resolved, err := resolveFiles([]string{"../../test/e2e/resolve/fixtures"}, true)
+	files, resolved, err := resolveFiles([]string{"../../test/_fixtures/resolve"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(files) != 2 {
 		t.Fatalf("expected 2 files, got %d", len(files))
 	}
-	if resolved[0].input != "../../test/e2e/resolve/fixtures" {
-		t.Errorf("expected input '../../test/e2e/resolve/fixtures', got %q", resolved[0].input)
+	if resolved[0].input != "../../test/_fixtures/resolve" {
+		t.Errorf("expected input '../../test/_fixtures/resolve', got %q", resolved[0].input)
 	}
 	if resolved[0].count != 2 {
 		t.Errorf("expected count 2, got %d", resolved[0].count)
@@ -42,7 +42,7 @@ func TestResolveFiles_Directory(t *testing.T) {
 }
 
 func TestResolveFiles_DirectoryNoRecursive(t *testing.T) {
-	files, resolved, err := resolveFiles([]string{"../../test/e2e/resolve/fixtures"}, false)
+	files, resolved, err := resolveFiles([]string{"../../test/_fixtures/resolve"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestResolveFiles_MultipleArgs(t *testing.T) {
 func TestResolveFiles_NonClitFileSkipped(t *testing.T) {
 	// Create a temp non-.clitest file
 	tmp := filepath.Join(t.TempDir(), "readme.md")
-	os.WriteFile(tmp, []byte("hello"), 0644)
+	os.WriteFile(tmp, []byte("hello"), 0o644)
 
 	files, resolved, err := resolveFiles([]string{tmp}, true)
 	if err != nil {
@@ -108,15 +108,15 @@ func TestResolveFiles_NonClitFileSkipped(t *testing.T) {
 }
 
 func TestResolveFiles_GlobWithDirectories(t *testing.T) {
-	// ../../test/e2e/resolve/fixtures is a directory matched by glob
-	files, resolved, err := resolveFiles([]string{"../../test/e2e/resolve/fixture*"}, true)
+	// ../../test/_fixtures/resolve is a directory matched by glob
+	files, resolved, err := resolveFiles([]string{"../../test/_fixtures/resolv*"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(files) != 2 {
 		t.Fatalf("expected 2 files from nested/, got %d: %v", len(files), files)
 	}
-	if resolved[0].input != "../../test/e2e/resolve/fixture*" {
-		t.Errorf("expected input '../../test/e2e/resolve/fixture*', got %q", resolved[0].input)
+	if resolved[0].input != "../../test/_fixtures/resolv*" {
+		t.Errorf("expected input '../../test/_fixtures/resolv*', got %q", resolved[0].input)
 	}
 }

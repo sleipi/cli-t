@@ -1,0 +1,9 @@
+# Header shows version, path, file count, parallelism, and timing
+./clitest examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout matches /clitest v\S+/
+stdout contains "path:"
+stdout contains "1 file loaded"
+stdout contains "parallel:"
+stdout contains "took:"

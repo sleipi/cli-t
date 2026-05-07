@@ -1,0 +1,5 @@
+# Verbose shows stdout on passing tests
+./clitest -v examples/01_basic.clitest
+EXIT 0
+[Asserts]
+stdout contains "--- stdout ---"
