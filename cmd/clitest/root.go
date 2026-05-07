@@ -112,7 +112,7 @@ func runMain(cmd *cobra.Command, args []string) error {
 
 						parsed, err := loadAndParse(f, varFlags.values)
 						if err != nil {
-							buf.WriteString(fmt.Sprintf("  %s%v%s\n", colorRed, err, colorReset))
+							fmt.Fprintf(&buf, "  %s%v%s\n", colorRed, err, colorReset)
 							mu.Lock()
 							overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
 							fmt.Print(buf.String())

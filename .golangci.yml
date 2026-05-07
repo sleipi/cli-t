@@ -36,6 +36,8 @@ linters:
         - diagnostic
         - performance
         - style
+    goconst:
+      ignore-tests: true
     gosec:
       excludes:
         # G304: "Potential file inclusion via variable" — false positive for CLI tools.
