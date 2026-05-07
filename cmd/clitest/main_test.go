@@ -93,7 +93,7 @@ func TestResolveFiles_MultipleArgs(t *testing.T) {
 func TestResolveFiles_NonClitFileSkipped(t *testing.T) {
 	// Create a temp non-.clitest file
 	tmp := filepath.Join(t.TempDir(), "readme.md")
-	os.WriteFile(tmp, []byte("hello"), 0644)
+	os.WriteFile(tmp, []byte("hello"), 0o644)
 
 	files, resolved, err := resolveFiles([]string{tmp}, true)
 	if err != nil {

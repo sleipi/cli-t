@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] Linting — Introduced `golangci-lint` with CI integration and resolved all issues
 - [x] Better CLI Help and Usage output (using `cobra`)
 - [x] Run multiple files at once — pass multiple paths or directories as arguments
 - [x] Recursive file discovery — directories are scanned recursively by default

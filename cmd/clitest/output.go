@@ -19,7 +19,7 @@ const (
 	colorBold   = "\033[1m"
 )
 
-func printHeader(resolved []resolvedArg, parallel int, noParallel, noRecursive, verbose bool, vars map[string]string, groups []string, excludeGroups []string) {
+func printHeader(resolved []resolvedArg, parallel int, noParallel, noRecursive, verbose bool, vars map[string]string, groups, excludeGroups []string) {
 	fmt.Printf("clitest v%s\n", version)
 	for _, r := range resolved {
 		suffix := fmt.Sprintf("%d file(s) loaded", r.count)
@@ -129,7 +129,7 @@ func countLines(s string) int {
 	return strings.Count(s, "\n")
 }
 
-func clearHeaderLine(w io.Writer, fileIdx int, headerLines, appendedLines int) {
+func clearHeaderLine(w io.Writer, fileIdx, headerLines, appendedLines int) {
 	cursorUp := (headerLines - fileIdx) + appendedLines
 	fmt.Fprintf(w, "\033[%dA", cursorUp)
 	fmt.Fprintf(w, "\r\033[K\n")

@@ -26,36 +26,13 @@ func ParseFile(input string) (*types.File, error) {
 	startLine := 0
 
 	// Parse frontmatter if present
-	var fileDirectives []directive
 	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "---" {
-		startLine = 1
-		closed := false
-		for startLine < len(lines) {
-			line := strings.TrimSpace(lines[startLine])
-			if line == "---" {
-				startLine++
-				closed = true
-				break
-			}
-			// Only parse lines starting with @ as directives; ignore prose text
-			if strings.HasPrefix(line, "@") {
-				d, err := parseDirective(line)
-				if err != nil {
-					return nil, fmt.Errorf("frontmatter line %d: %w", startLine+1, err)
-				}
-				if d != nil {
-					fileDirectives = append(fileDirectives, *d)
-				}
-			}
-			startLine++
-		}
-		if !closed {
-			return nil, fmt.Errorf("unclosed frontmatter (missing closing ---)")
+		var err error
+		startLine, err = parseFrontmatter(lines, file)
+		if err != nil {
+			return nil, err
 		}
 	}
-
-	// Interpret file-level directives
-	interpretFileDirectives(file, fileDirectives)
 
 	// Parse entries
 	entries, err := parseEntries(lines[startLine:])
@@ -64,6 +41,29 @@ func ParseFile(input string) (*types.File, error) {
 	}
 	file.Entries = entries
 	return file, nil
+}
+
+func parseFrontmatter(lines []string, file *types.File) (int, error) {
+	var fileDirectives []directive
+	i := 1
+	for i < len(lines) {
+		line := strings.TrimSpace(lines[i])
+		if line == "---" {
+			interpretFileDirectives(file, fileDirectives)
+			return i + 1, nil
+		}
+		if strings.HasPrefix(line, "@") {
+			d, err := parseDirective(line)
+			if err != nil {
+				return 0, fmt.Errorf("frontmatter line %d: %w", i+1, err)
+			}
+			if d != nil {
+				fileDirectives = append(fileDirectives, *d)
+			}
+		}
+		i++
+	}
+	return 0, fmt.Errorf("unclosed frontmatter (missing closing ---)")
 }
 
 // Parse parses a .clitest file content into a list of entries (legacy API).
@@ -100,13 +100,7 @@ func parseEntries(lines []string) ([]types.Entry, error) {
 		// Comment lines before a command attach to next entry
 		if strings.HasPrefix(strings.TrimSpace(line), "#") && current == nil {
 			current = &entryBuilder{}
-			// Collect consecutive comment lines
-			var comments []string
-			for i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), "#") {
-				comments = append(comments, strings.TrimSpace(lines[i]))
-				i++
-			}
-			current.comment = strings.Join(comments, "\n")
+			current.comment, i = collectComments(lines, i)
 			continue
 		}
 
@@ -115,15 +109,8 @@ func parseEntries(lines []string) ([]types.Entry, error) {
 			if current == nil {
 				current = &entryBuilder{}
 			}
-			if current.command != "" {
-				return nil, fmt.Errorf("directive must appear before command: %s", line)
-			}
-			d, err := parseDirective(strings.TrimSpace(line))
-			if err != nil {
-				return nil, fmt.Errorf("line: %w", err)
-			}
-			if d != nil {
-				current.directives = append(current.directives, *d)
+			if err := parseEntryDirective(current, line); err != nil {
+				return nil, err
 			}
 			i++
 			continue
@@ -136,81 +123,131 @@ func parseEntries(lines []string) ([]types.Entry, error) {
 
 		// If no command yet, this line is the command
 		if current.command == "" {
-			cmd := line
-			i++
-			// Multi-line command: trailing backslash means continuation
-			for strings.HasSuffix(cmd, "\\") && i < len(lines) {
-				cmd = cmd[:len(cmd)-1] // strip trailing backslash
-				cmd += lines[i]
-				i++
-			}
-			current.command = cmd
+			current.command, i = collectCommand(lines, i)
 			continue
 		}
 
-		// EXIT line
-		if strings.HasPrefix(line, "EXIT ") {
-			exitVal := strings.TrimPrefix(line, "EXIT ")
-			if exitVal == "NEVER" {
-				current.exitNever = true
-			} else {
-				code, err := strconv.Atoi(exitVal)
-				if err != nil {
-					return nil, fmt.Errorf("invalid EXIT code: %s", line)
-				}
-				current.exitCode = code
-			}
-			current.hasExit = true
-			i++
-			continue
+		// Parse post-command content (EXIT, sections, body)
+		var err error
+		i, err = parsePostCommand(lines, i, current)
+		if err != nil {
+			return nil, err
 		}
-
-		// [Asserts] section
-		if strings.TrimSpace(line) == "[Asserts]" {
-			i++
-			for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
-				a, err := parseAssert(lines[i])
-				if err != nil {
-					return nil, fmt.Errorf("line %d: %w", i+1, err)
-				}
-				current.asserts = append(current.asserts, a)
-				i++
-			}
-			continue
-		}
-
-		// [Captures] section
-		if strings.TrimSpace(line) == "[Captures]" {
-			i++
-			for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
-				c, err := parseCapture(lines[i])
-				if err != nil {
-					return nil, fmt.Errorf("line %d: %w", i+1, err)
-				}
-				current.captures = append(current.captures, c)
-				i++
-			}
-			continue
-		}
-
-		// Fenced body (```)
-		if strings.TrimSpace(line) == "```" {
-			i++
-			for i < len(lines) && strings.TrimSpace(lines[i]) != "```" {
-				current.body = append(current.body, lines[i])
-				i++
-			}
-			i++ // skip closing ```
-			continue
-		}
-
-		// Otherwise it's implicit body
-		current.body = append(current.body, line)
-		i++
 	}
 
 	flush()
 	return entries, nil
+}
+
+// parsePostCommand handles lines after the command: EXIT, [Asserts], [Captures], fenced/implicit body.
+func parsePostCommand(lines []string, i int, current *entryBuilder) (int, error) {
+	line := lines[i]
+
+	if strings.HasPrefix(line, "EXIT ") {
+		if err := parseExitLine(current, line); err != nil {
+			return 0, err
+		}
+		return i + 1, nil
+	}
+
+	if strings.TrimSpace(line) == "[Asserts]" {
+		return collectAsserts(lines, i+1, current)
+	}
+
+	if strings.TrimSpace(line) == "[Captures]" {
+		return collectCaptures(lines, i+1, current)
+	}
+
+	if strings.TrimSpace(line) == "```" {
+		current.body, i = collectFencedBody(lines, i+1)
+		return i, nil
+	}
+
+	// Implicit body
+	current.body = append(current.body, line)
+	return i + 1, nil
+}
+
+func collectComments(lines []string, i int) (comment string, next int) {
+	var comments []string
+	for i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), "#") {
+		comments = append(comments, strings.TrimSpace(lines[i]))
+		i++
+	}
+	return strings.Join(comments, "\n"), i
+}
+
+func parseEntryDirective(current *entryBuilder, line string) error {
+	if current.command != "" {
+		return fmt.Errorf("directive must appear before command: %s", line)
+	}
+	d, err := parseDirective(strings.TrimSpace(line))
+	if err != nil {
+		return fmt.Errorf("line: %w", err)
+	}
+	if d != nil {
+		current.directives = append(current.directives, *d)
+	}
+	return nil
+}
+
+func collectCommand(lines []string, i int) (cmd string, next int) {
+	cmd = lines[i]
+	i++
+	for strings.HasSuffix(cmd, "\\") && i < len(lines) {
+		cmd = cmd[:len(cmd)-1]
+		cmd += lines[i]
+		i++
+	}
+	return cmd, i
+}
+
+func parseExitLine(current *entryBuilder, line string) error {
+	exitVal := strings.TrimPrefix(line, "EXIT ")
+	if exitVal == "NEVER" {
+		current.exitNever = true
+	} else {
+		code, err := strconv.Atoi(exitVal)
+		if err != nil {
+			return fmt.Errorf("invalid EXIT code: %s", line)
+		}
+		current.exitCode = code
+	}
+	current.hasExit = true
+	return nil
+}
+
+func collectAsserts(lines []string, i int, current *entryBuilder) (int, error) {
+	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
+		a, err := parseAssert(lines[i])
+		if err != nil {
+			return 0, fmt.Errorf("line %d: %w", i+1, err)
+		}
+		current.asserts = append(current.asserts, a)
+		i++
+	}
+	return i, nil
+}
+
+func collectCaptures(lines []string, i int, current *entryBuilder) (int, error) {
+	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
+		c, err := parseCapture(lines[i])
+		if err != nil {
+			return 0, fmt.Errorf("line %d: %w", i+1, err)
+		}
+		current.captures = append(current.captures, c)
+		i++
+	}
+	return i, nil
+}
+
+func collectFencedBody(lines []string, i int) (body []string, next int) {
+	for i < len(lines) && strings.TrimSpace(lines[i]) != "```" {
+		body = append(body, lines[i])
+		i++
+	}
+	i++ // skip closing ```
+	return body, i
 }
 
 type entryBuilder struct {
