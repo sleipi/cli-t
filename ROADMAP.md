@@ -3,6 +3,7 @@
 ## Completed
 
 - [x] Linting — Introduced `golangci-lint` with CI integration and resolved all issues
+- [x] Restructure E2E tests to behavior-driven style — files named `it_<describes_behavior>.clitest` (e.g. `it_does_not_execute_skipped_entries.clitest`). One behavior per file, multiple entries allowed when orchestration is needed.
 - [x] Better CLI Help and Usage output (using `cobra`)
 - [x] Run multiple files at once — pass multiple paths or directories as arguments
 - [x] Recursive file discovery — directories are scanned recursively by default
@@ -19,7 +20,6 @@
 
 ## Planned
 
-- [x] Restructure E2E tests to behavior-driven style — files named `it_<describes_behavior>.clitest` (e.g. `it_does_not_execute_skipped_entries.clitest`). One behavior per file, multiple entries allowed when orchestration is needed.
 - [ ] Refactor `cmd/clitest/` package structure — 10+ files in a single `main` package. Extract into internal packages (e.g. `internal/display`, `internal/run`, `internal/filter`) for better separation and testability.
 - [ ] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
@@ -39,6 +39,7 @@
 - [ ] Publish to Debian Repository
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
+- [ ] go install github.com/sleipi/cli-t
 
 ## Bugs
 
