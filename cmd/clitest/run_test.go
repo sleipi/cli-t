@@ -63,7 +63,7 @@ func TestExecuteEntry_CaptureSubstitution(t *testing.T) {
 func TestLoadAndParse_ValidFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.clitest")
-	os.WriteFile(path, []byte("echo hello\n"), 0644)
+	os.WriteFile(path, []byte("echo hello\n"), 0o644)
 
 	f, err := loadAndParse(path, nil)
 	if err != nil {
@@ -87,7 +87,7 @@ func TestLoadAndParse_FileNotFound(t *testing.T) {
 func TestLoadAndParse_VarSubstitution(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.clitest")
-	os.WriteFile(path, []byte("echo {{MSG}}\n"), 0644)
+	os.WriteFile(path, []byte("echo {{MSG}}\n"), 0o644)
 
 	f, err := loadAndParse(path, map[string]string{"MSG": "hi"})
 	if err != nil {

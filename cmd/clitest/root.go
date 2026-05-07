@@ -56,7 +56,7 @@ func init() {
 func runMain(cmd *cobra.Command, args []string) error {
 	files, resolved, err := resolveFiles(args, !noRecursive)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return fmt.Errorf("%w", err)
 	}
 
 	workers := parallel

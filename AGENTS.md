@@ -38,9 +38,10 @@ Branch names MUST follow the format `<type>/<short-description>`.
 ```bash
 make build        # go build -o clitest ./cmd/clitest/
 make test         # go test ./...
+make lint         # golangci-lint (static analysis, allow failure)
 make e2e          # build + run ./clitest test/e2e/
 make examples     # build + run ./clitest examples/
-make all          # test + e2e + examples (use this to verify changes)
+make all          # test + lint + e2e + examples (use this to verify changes)
 ```
 
 Always run `make all` after changes — unit tests alone won't catch parser/CLI regressions.

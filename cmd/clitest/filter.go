@@ -4,7 +4,7 @@ import "github.com/sleipi/cli-t/internal/types"
 
 // filterEntries returns entries that match group/exclude-group filters.
 // File-level groups are inherited by all entries.
-func filterEntries(f *types.File, groups []string, excludeGroups []string) []types.Entry {
+func filterEntries(f *types.File, groups, excludeGroups []string) []types.Entry {
 	if len(groups) == 0 && len(excludeGroups) == 0 {
 		return f.Entries
 	}
@@ -41,7 +41,7 @@ func mergeGroups(fileGroups, entryGroups []string) []string {
 }
 
 // hasAnyTag checks if any of the tags is present in effectiveTags (OR logic).
-func hasAnyTag(effectiveTags []string, tags []string) bool {
+func hasAnyTag(effectiveTags, tags []string) bool {
 	for _, t := range tags {
 		for _, et := range effectiveTags {
 			if et == t {
