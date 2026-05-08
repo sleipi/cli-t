@@ -1,4 +1,4 @@
-package main
+package display
 
 import (
 	"bytes"
@@ -25,9 +25,9 @@ func TestProgressBar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := renderBar(tt.completed, tt.total, tt.done)
+			got := RenderBar(tt.completed, tt.total, tt.done)
 			if got != tt.expected {
-				t.Errorf("renderBar(%d, %d, %v) = %q, want %q", tt.completed, tt.total, tt.done, got, tt.expected)
+				t.Errorf("RenderBar(%d, %d, %v) = %q, want %q", tt.completed, tt.total, tt.done, got, tt.expected)
 			}
 		})
 	}
@@ -35,7 +35,7 @@ func TestProgressBar(t *testing.T) {
 
 func TestProgressDisplay_RenderRunning(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true) // dynamic mode shows RUN state
+	d := NewProgressDisplay(&buf, true)
 	d.Start([]string{"01_basic.clitest", "02_errors.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
@@ -52,7 +52,7 @@ func TestProgressDisplay_RenderRunning(t *testing.T) {
 
 func TestProgressDisplay_RenderComplete(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, false) // static mode
+	d := NewProgressDisplay(&buf, false)
 	d.Start([]string{"01_basic.clitest"})
 	d.UpdateProgress(0, 0, 3)
 	d.UpdateProgress(0, 3, 3)
@@ -77,7 +77,7 @@ func TestProgressDisplay_RenderComplete(t *testing.T) {
 
 func TestProgressDisplay_RenderFailed(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, false) // static mode
+	d := NewProgressDisplay(&buf, false)
 	d.Start([]string{"02_errors.clitest"})
 	d.UpdateProgress(0, 0, 2)
 	d.UpdateProgress(0, 2, 2)
@@ -102,7 +102,7 @@ func TestProgressDisplay_RenderFailed(t *testing.T) {
 
 func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, false) // static mode (non-TTY)
+	d := NewProgressDisplay(&buf, false)
 	d.Start([]string{"a.clitest", "b.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
@@ -114,7 +114,6 @@ func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 	output := buf.String()
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 
-	// Static mode: should print exactly 2 lines (one per file, only on finish)
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines, got %d:\n%s", len(lines), output)
 	}
@@ -128,7 +127,7 @@ func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 
 func TestProgressDisplay_DynamicMode_UpdatesInPlace(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true) // dynamic mode (TTY)
+	d := NewProgressDisplay(&buf, true)
 	d.Start([]string{"a.clitest", "b.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
@@ -137,11 +136,9 @@ func TestProgressDisplay_DynamicMode_UpdatesInPlace(t *testing.T) {
 	d.Finish()
 
 	output := buf.String()
-	// Dynamic mode uses ANSI cursor-up sequences for redraws
 	if !strings.Contains(output, "\033[") {
 		t.Errorf("expected ANSI escape sequences in dynamic mode, got:\n%q", output)
 	}
-	// Should contain counter
 	if !strings.Contains(output, "(1/3)") && !strings.Contains(output, "(3/3)") {
 		t.Errorf("expected counter in dynamic output, got:\n%q", output)
 	}
@@ -207,7 +204,7 @@ func TestVerboseDisplay_ShowsFileHeader(t *testing.T) {
 
 func TestProgressDisplay_ShowsEntryComment(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true) // dynamic mode
+	d := NewProgressDisplay(&buf, true)
 	d.Start([]string{"a.clitest"})
 
 	d.UpdateProgress(0, 0, 3)
@@ -222,7 +219,7 @@ func TestProgressDisplay_ShowsEntryComment(t *testing.T) {
 
 func TestProgressDisplay_FallbackToCommand(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true) // dynamic mode
+	d := NewProgressDisplay(&buf, true)
 	d.Start([]string{"a.clitest"})
 
 	d.UpdateProgress(0, 0, 3)
@@ -237,7 +234,7 @@ func TestProgressDisplay_FallbackToCommand(t *testing.T) {
 
 func TestProgressDisplay_SubtitleDisappearsOnFinish(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true) // dynamic mode
+	d := NewProgressDisplay(&buf, true)
 	d.Start([]string{"a.clitest"})
 
 	d.UpdateProgress(0, 0, 3)
@@ -245,10 +242,7 @@ func TestProgressDisplay_SubtitleDisappearsOnFinish(t *testing.T) {
 	d.FinishFile(0, true)
 	d.Finish()
 
-	// After finish, the final render shouldn't include the subtitle
-	// The last render is the final state - split by the final newline
 	output := buf.String()
-	// Find the last occurrence of "OK" — that's the final render
 	lastOK := strings.LastIndex(output, "OK")
 	if lastOK == -1 {
 		t.Fatalf("expected OK in output, got:\n%q", output)
@@ -270,9 +264,37 @@ func TestCountLines(t *testing.T) {
 		{"no newline", 0},
 	}
 	for _, tt := range tests {
-		got := countLines(tt.input)
+		got := CountLines(tt.input)
 		if got != tt.expected {
-			t.Errorf("countLines(%q) = %d, want %d", tt.input, got, tt.expected)
+			t.Errorf("CountLines(%q) = %d, want %d", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestFormatDuration_Milliseconds(t *testing.T) {
+	got := FormatDuration(250 * 1000000) // 250ms
+	if got != "250ms" {
+		t.Errorf("expected '250ms', got %q", got)
+	}
+}
+
+func TestFormatDuration_Seconds(t *testing.T) {
+	got := FormatDuration(2500 * 1000000) // 2500ms
+	if got != "2.50s" {
+		t.Errorf("expected '2.50s', got %q", got)
+	}
+}
+
+func TestTruncateCmd_WithinLimit(t *testing.T) {
+	got := TruncateCmd("short", 10)
+	if got != "short" {
+		t.Errorf("expected 'short', got %q", got)
+	}
+}
+
+func TestTruncateCmd_OverLimit(t *testing.T) {
+	got := TruncateCmd("a very long command string", 10)
+	if got != "a very lon..." {
+		t.Errorf("expected 'a very lon...', got %q", got)
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package resolve
 
 import (
 	"fmt"
@@ -9,15 +9,17 @@ import (
 	"strings"
 )
 
-// resolvedArg holds per-argument resolution info for the header output.
-type resolvedArg struct {
-	input string
-	count int
+// ResolvedArg holds per-argument resolution info for the header output.
+type ResolvedArg struct {
+	Input string
+	Count int
 }
 
-func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error) {
+// Files resolves CLI arguments into .clitest file paths.
+// It handles individual files, directories (recursively or not), and glob patterns.
+func Files(args []string, recursive bool) ([]string, []ResolvedArg, error) {
 	var files []string
-	var resolved []resolvedArg
+	var resolved []ResolvedArg
 	for _, arg := range args {
 		countBefore := len(files)
 
@@ -32,7 +34,7 @@ func resolveFiles(args []string, recursive bool) ([]string, []resolvedArg, error
 			return nil, nil, err
 		}
 		if !skipped {
-			resolved = append(resolved, resolvedArg{input: arg, count: len(files) - countBefore})
+			resolved = append(resolved, ResolvedArg{Input: arg, Count: len(files) - countBefore})
 		}
 	}
 	sort.Strings(files)
