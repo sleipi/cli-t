@@ -8,6 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sleipi/cli-t/internal/display"
+	"github.com/sleipi/cli-t/internal/filter"
+	"github.com/sleipi/cli-t/internal/resolve"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -58,12 +61,12 @@ type fileResult struct {
 	fail     int
 	skip     int
 	file     string
-	failures []compactFailure
+	failures []display.CompactFailure
 	hidden   bool
 }
 
 func runMain(_ *cobra.Command, args []string) error {
-	files, resolved, err := resolveFiles(args, !noRecursive)
+	files, resolved, err := resolve.Files(args, !noRecursive)
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
@@ -73,7 +76,11 @@ func runMain(_ *cobra.Command, args []string) error {
 		workers = 1
 	}
 
-	printHeader(resolved, parallel, noParallel, noRecursive, verbose, varFlags.values, groupFlags, excludeGroupFlags)
+	dArgs := make([]display.ResolvedArg, len(resolved))
+	for i, r := range resolved {
+		dArgs[i] = display.ResolvedArg{Input: r.Input, Count: r.Count}
+	}
+	display.PrintHeader(os.Stdout, version, dArgs, parallel, noParallel, noRecursive, verbose, varFlags.values, groupFlags, excludeGroupFlags)
 
 	if workers > len(files) {
 		workers = len(files)
@@ -106,7 +113,7 @@ func runMain(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	printSummary(totalPass, totalFail, totalSkip, failedFiles, elapsed)
+	display.PrintSummary(os.Stdout, totalPass, totalFail, totalSkip, failedFiles, elapsed)
 
 	if totalFail > 0 {
 		os.Exit(1)
@@ -128,7 +135,7 @@ func runVerboseTTY(files []string, workers int) []fileResult {
 	close(jobs)
 
 	for _, f := range files {
-		fmt.Printf("  %s▶ %s%s %sRUNNING%s\n", colorBold, filepath.Base(f), colorReset, colorYellow, colorReset)
+		fmt.Printf("  %s▶ %s%s %sRUNNING%s\n", display.ColorBold, filepath.Base(f), display.ColorReset, display.ColorYellow, display.ColorReset)
 	}
 
 	for w := 0; w < workers; w++ {
@@ -141,11 +148,11 @@ func runVerboseTTY(files []string, workers int) []fileResult {
 
 				parsed, err := loadAndParse(f, varFlags.values)
 				if err != nil {
-					fmt.Fprintf(&buf, "  %s%v%s\n", colorRed, err, colorReset)
+					fmt.Fprintf(&buf, "  %s%v%s\n", display.ColorRed, err, display.ColorReset)
 					mu.Lock()
-					overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
+					display.OverwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
 					fmt.Print(buf.String())
-					appendedLines += countLines(buf.String())
+					appendedLines += display.CountLines(buf.String())
 					mu.Unlock()
 					results[idx] = fileResult{fail: 1, file: f}
 					continue
@@ -153,32 +160,32 @@ func runVerboseTTY(files []string, workers int) []fileResult {
 
 				if parsed.Directives.Skip {
 					mu.Lock()
-					overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
+					display.OverwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
 					mu.Unlock()
 					results[idx] = fileResult{skip: len(parsed.Entries), file: f}
 					continue
 				}
 
-				entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
+				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
 
 				if len(entries) == 0 {
 					mu.Lock()
-					clearHeaderLine(os.Stdout, idx, headerLines, appendedLines)
+					display.ClearHeaderLine(os.Stdout, idx, headerLines, appendedLines)
 					mu.Unlock()
 					results[idx] = fileResult{file: f, hidden: true}
 					continue
 				}
 
-				vd := NewVerboseDisplay(&buf, true)
+				vd := display.NewVerboseDisplay(&buf, true)
 				vd.Start([]string{f})
 				vd.BeginFile(0)
 				pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
 				vd.EndFile(0)
 
 				mu.Lock()
-				overwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
+				display.OverwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
 				fmt.Print(buf.String())
-				appendedLines += countLines(buf.String())
+				appendedLines += display.CountLines(buf.String())
 				mu.Unlock()
 
 				results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
@@ -216,7 +223,7 @@ func runVerboseNonTTY(files []string, workers int) []fileResult {
 			for idx := range jobs {
 				f := files[idx]
 				var buf bytes.Buffer
-				vd := NewVerboseDisplay(&buf, true)
+				vd := display.NewVerboseDisplay(&buf, true)
 				vd.Start([]string{f})
 
 				parsed, err := loadAndParse(f, varFlags.values)
@@ -231,7 +238,7 @@ func runVerboseNonTTY(files []string, workers int) []fileResult {
 					continue
 				}
 
-				entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
+				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
 
 				if len(entries) == 0 {
 					vResults[idx] = verboseResult{file: f, hidden: true}
@@ -268,7 +275,7 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 	}
 	close(jobs)
 
-	pd := NewProgressDisplay(os.Stdout, isTTY)
+	pd := display.NewProgressDisplay(os.Stdout, isTTY)
 	pd.Start(files)
 
 	for w := 0; w < workers; w++ {
@@ -291,7 +298,7 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 					continue
 				}
 
-				entries := filterEntries(parsed, groupFlags, excludeGroupFlags)
+				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
 
 				if len(entries) == 0 {
 					pd.HideFile(idx)
@@ -311,7 +318,7 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 
 	for _, r := range results {
 		if len(r.failures) > 0 {
-			printFailureDetails(r.failures, r.file)
+			display.PrintFailureDetails(os.Stdout, r.failures, r.file)
 		}
 	}
 	return results

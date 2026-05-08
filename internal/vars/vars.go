@@ -1,4 +1,4 @@
-package main
+package vars
 
 import (
 	"os"
@@ -8,7 +8,8 @@ import (
 	"github.com/sleipi/cli-t/internal/runner"
 )
 
-func substituteVars(input string, vars map[string]string) string {
+// Substitute replaces {{key}} placeholders with values from vars and expands env vars.
+func Substitute(input string, vars map[string]string) string {
 	result := input
 	for k, v := range vars {
 		result = strings.ReplaceAll(result, "{{"+k+"}}", v)
@@ -17,9 +18,9 @@ func substituteVars(input string, vars map[string]string) string {
 	return result
 }
 
-// substituteCaptureVars substitutes only capture variables ({{name}}) without
-// expanding environment variables again (those are already expanded on the raw file content).
-func substituteCaptureVars(input string, captures map[string]string) string {
+// SubstituteCaptures replaces only capture variables ({{name}}) without
+// expanding environment variables again.
+func SubstituteCaptures(input string, captures map[string]string) string {
 	result := input
 	for k, v := range captures {
 		result = strings.ReplaceAll(result, "{{"+k+"}}", v)
@@ -27,7 +28,8 @@ func substituteCaptureVars(input string, captures map[string]string) string {
 	return result
 }
 
-func resolveCapture(query string, r runner.Result) string {
+// ResolveCapture extracts a value from a runner.Result based on the query string.
+func ResolveCapture(query string, r runner.Result) string {
 	switch query {
 	case "stdout":
 		return strings.TrimSuffix(r.Stdout, "\n")
