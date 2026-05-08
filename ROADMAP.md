@@ -18,10 +18,9 @@
 - [x] `@skip` — Skip entries/files with optional reason, displayed as SKIP in output with skip count in summary
 - [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 - [x] Refactor `cmd/clitest/` package structure — Extracted display, resolve, filter, vars, and executor logic into dedicated `internal/` packages. Reduced `cmd/clitest/` from 17 to 7 files.
+- [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 
 ## Planned
-
-- [ ] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
