@@ -1,0 +1,7 @@
+# Fail-fast stops after first failure
+./clitest --fail-fast test/_fixtures/fail_fast_three_entries.clitest
+EXIT 1
+[Asserts]
+stdout contains "pass: 1"
+stdout contains "fail: 1"
+stdout contains "skip: 1"

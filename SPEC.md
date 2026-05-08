@@ -465,6 +465,7 @@ clitest [options] <path...>
 | `--no-recursive` | Disable recursive directory scanning       |
 | `--parallel N`   | Max parallel file executions (default: 8)  |
 | `--no-parallel`  | Disable parallel execution (sequential)    |
+| `--fail-fast`    | Stop after first test failure              |
 
 ### Exit Codes
 

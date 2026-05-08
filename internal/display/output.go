@@ -24,7 +24,7 @@ type CompactFailure struct {
 }
 
 // PrintHeader prints the clitest run header to stdout.
-func PrintHeader(w io.Writer, version string, resolved []ResolvedArg, parallel int, noParallel, noRecursive, verbose bool, vars map[string]string, groups, excludeGroups []string) {
+func PrintHeader(w io.Writer, version string, resolved []ResolvedArg, parallel int, noParallel, noRecursive, verbose, failFast bool, vars map[string]string, groups, excludeGroups []string) {
 	fmt.Fprintf(w, "clitest v%s\n", version)
 	for _, r := range resolved {
 		suffix := fmt.Sprintf("%d file(s) loaded", r.Count)
@@ -57,6 +57,9 @@ func PrintHeader(w io.Writer, version string, resolved []ResolvedArg, parallel i
 	}
 	if len(excludeGroups) > 0 {
 		fmt.Fprintf(w, "  exclude:  %s\n", strings.Join(excludeGroups, ", "))
+	}
+	if failFast {
+		fmt.Fprintf(w, "  fail-fast\n")
 	}
 	fmt.Fprintln(w)
 }
