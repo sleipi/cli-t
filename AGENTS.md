@@ -21,7 +21,7 @@ The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this docu
 * You MUST write code using a TDD approach — write/update tests before implementation.
 * You MUST write E2E tests (in `test/e2e/`) for any new or changed behaviour.
 * You MUST NOT use `@`-prefixed directive names (e.g. `@defer`, `@poll`, `@timeout`) in commit messages or PR titles — GitHub interprets them as user mentions. Use backticks (`` `@defer` ``) or omit the `@` prefix (e.g. "support defer directive").
-* You MUST update `ROADMAP.md` when completing a planned feature — move the item from "Planned" to "Completed" and mark it `[x]`.
+* You MUST update `ROADMAP.md` when completing a planned feature — move the item from "Planned" to "Completed" and mark it `[x]`. Newest completed items MUST be placed at the top of the "Completed" list.
 
 ## Branch Naming
 

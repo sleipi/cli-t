@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [x] Linting — Introduced `golangci-lint` with CI integration and resolved all issues
 - [x] Restructure E2E tests to behavior-driven style — files named `it_<describes_behavior>.clitest` (e.g. `it_does_not_execute_skipped_entries.clitest`). One behavior per file, multiple entries allowed when orchestration is needed.
 - [x] Better CLI Help and Usage output (using `cobra`)
@@ -18,7 +19,6 @@
 - [x] `@skip` — Skip entries/files with optional reason, displayed as SKIP in output with skip count in summary
 - [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 - [x] Refactor `cmd/clitest/` package structure — Extracted display, resolve, filter, vars, and executor logic into dedicated `internal/` packages. Reduced `cmd/clitest/` from 17 to 7 files.
-- [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 
 ## Planned
 - [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
