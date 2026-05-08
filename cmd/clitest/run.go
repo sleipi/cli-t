@@ -19,6 +19,11 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 	captures := map[string]string{}
 
 	for _, entry := range regular {
+		if cancelled.Load() {
+			skip++
+			continue
+		}
+
 		if entry.Directives.Skip {
 			skip++
 			vd.EntryResult(0, display.EntryInfo{
@@ -41,6 +46,9 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 			pass++
 		} else {
 			fail++
+			if failFast {
+				cancelled.Store(true)
+			}
 		}
 
 		vd.EntryResult(0, display.EntryInfo{
@@ -70,6 +78,12 @@ func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types
 	captures := map[string]string{}
 
 	for i, entry := range regular {
+		if cancelled.Load() {
+			skip++
+			pd.UpdateProgress(fileIdx, i+1, len(regular))
+			continue
+		}
+
 		if entry.Directives.Skip {
 			skip++
 			pd.UpdateProgress(fileIdx, i+1, len(regular))
@@ -90,6 +104,9 @@ func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types
 			pass++
 		} else {
 			fail++
+			if failFast {
+				cancelled.Store(true)
+			}
 			details = append(details, display.CompactFailure{
 				Command:  cmd,
 				Failures: er.Failures,

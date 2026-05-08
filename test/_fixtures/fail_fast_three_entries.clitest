@@ -1,0 +1,11 @@
+# Entry 1 - passes
+echo "first"
+EXIT 0
+
+# Entry 2 - fails
+echo "second"
+EXIT 1
+
+# Entry 3 - should be skipped by fail-fast
+echo "third"
+EXIT 0

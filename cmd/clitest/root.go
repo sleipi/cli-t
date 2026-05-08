@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sleipi/cli-t/internal/display"
@@ -25,7 +26,11 @@ var (
 	varFlags          varMap
 	groupFlags        []string
 	excludeGroupFlags []string
+	failFast          bool
 )
+
+// cancelled is set to true when --fail-fast triggers; workers check before picking up new jobs.
+var cancelled atomic.Bool
 
 var rootCmd = &cobra.Command{
 	Use:   "clitest [options] <file.clitest|directory>...",
@@ -49,6 +54,7 @@ func init() {
 	rootCmd.Flags().Var(&varFlags, "var", "Set variable: NAME=VALUE (repeatable)")
 	rootCmd.Flags().StringSliceVar(&groupFlags, "group", nil, "Run only entries with this group tag (repeatable, OR logic)")
 	rootCmd.Flags().StringSliceVar(&excludeGroupFlags, "exclude-group", nil, "Skip entries with this group tag (repeatable)")
+	rootCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop after first test failure")
 
 	rootCmd.SetVersionTemplate("clitest version {{.Version}}\n")
 	rootCmd.Flags().BoolP("version", "V", false, "Show version")
@@ -80,7 +86,7 @@ func runMain(_ *cobra.Command, args []string) error {
 	for i, r := range resolved {
 		dArgs[i] = display.ResolvedArg{Input: r.Input, Count: r.Count}
 	}
-	display.PrintHeader(os.Stdout, version, dArgs, parallel, noParallel, noRecursive, verbose, varFlags.values, groupFlags, excludeGroupFlags)
+	display.PrintHeader(os.Stdout, version, dArgs, parallel, noParallel, noRecursive, verbose, failFast, varFlags.values, groupFlags, excludeGroupFlags)
 
 	if workers > len(files) {
 		workers = len(files)
@@ -143,6 +149,9 @@ func runVerboseTTY(files []string, workers int) []fileResult {
 		go func() {
 			defer wg.Done()
 			for idx := range jobs {
+				if cancelled.Load() {
+					continue
+				}
 				f := files[idx]
 				var buf bytes.Buffer
 
@@ -155,6 +164,9 @@ func runVerboseTTY(files []string, workers int) []fileResult {
 					appendedLines += display.CountLines(buf.String())
 					mu.Unlock()
 					results[idx] = fileResult{fail: 1, file: f}
+					if failFast {
+						cancelled.Store(true)
+					}
 					continue
 				}
 
@@ -221,6 +233,9 @@ func runVerboseNonTTY(files []string, workers int) []fileResult {
 		go func() {
 			defer wg.Done()
 			for idx := range jobs {
+				if cancelled.Load() {
+					continue
+				}
 				f := files[idx]
 				var buf bytes.Buffer
 				vd := display.NewVerboseDisplay(&buf, true)
@@ -230,6 +245,9 @@ func runVerboseNonTTY(files []string, workers int) []fileResult {
 				if err != nil {
 					vd.FileError(0, err.Error())
 					vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
+					if failFast {
+						cancelled.Store(true)
+					}
 					continue
 				}
 
@@ -283,12 +301,18 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 		go func() {
 			defer wg.Done()
 			for idx := range jobs {
+				if cancelled.Load() {
+					continue
+				}
 				f := files[idx]
 
 				parsed, err := loadAndParse(f, varFlags.values)
 				if err != nil {
 					pd.FileError(idx, err.Error())
 					results[idx] = fileResult{fail: 1, file: f}
+					if failFast {
+						cancelled.Store(true)
+					}
 					continue
 				}
 
