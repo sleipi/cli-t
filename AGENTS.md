@@ -49,22 +49,26 @@ Always run `make all` after changes — unit tests alone won't catch parser/CLI 
 ## Package Layout
 
 ```
-cmd/clitest/main.go            CLI entrypoint, flag parsing, file discovery, parallel execution
-cmd/clitest/main_test.go       Unit tests for resolveFiles, glob support
-cmd/clitest/display.go         Display interface, ProgressDisplay (compact progress bars, TTY-aware)
-cmd/clitest/display_verbose.go VerboseDisplay (per-entry output with checkmarks)
-cmd/clitest/display_test.go    Unit tests for both display implementations
-internal/parser/            .clitest format parser (entry builder, assert/capture parsing)
-internal/runner/            Command execution via sh -c, captures stdout/stderr/exit/duration
-internal/assert/            Predicate evaluation engine (queries + predicates + negation)
-pkg/types/                  Shared types: Entry, Assert, Capture, File
+cmd/clitest/main.go            CLI entrypoint
+cmd/clitest/root.go            Cobra command setup, flags, orchestration (worker pools)
+cmd/clitest/run.go             Entry orchestration with display coupling, loadAndParse
+cmd/clitest/flags.go           varMap pflag type for --var
+internal/display/              Rendering: ProgressDisplay, VerboseDisplay, ANSI colors, header/summary/failure output
+internal/resolve/              File discovery: glob expansion, recursive dir walk, path resolution
+internal/filter/               Group tag filtering (include/exclude)
+internal/vars/                 Variable substitution (--var, captures, env expansion)
+internal/executor/             Entry execution, background processes, defer handling
+internal/parser/               .clitest format parser (entry builder, assert/capture parsing)
+internal/runner/               Command execution via sh -c, captures stdout/stderr/exit/duration
+internal/assert/               Predicate evaluation engine (queries + predicates + negation)
+internal/types/                Shared types: Entry, Assert, Capture, File, Directives
 examples/*.clitest             User-facing usage examples (also validated via `make examples`)
-test/e2e/syntax/            E2E tests for .clitest syntax (asserts, captures, directives)
-test/e2e/output/            E2E tests for header/footer/summary output and progress bar
-test/e2e/options/           E2E tests for CLI flags (--var, --parallel, -v, --group)
-test/e2e/resolve/           E2E tests for file discovery (recursive, glob, skip warnings)
-test/e2e/background/        E2E tests for EXIT NEVER, @defer, @poll
-test/_fixtures/             Shared test fixtures (e.g. intentionally failing .clitest files)
+test/e2e/syntax/               E2E tests for .clitest syntax (asserts, captures, directives)
+test/e2e/output/               E2E tests for header/footer/summary output and progress bar
+test/e2e/options/              E2E tests for CLI flags (--var, --parallel, -v, --group)
+test/e2e/resolve/              E2E tests for file discovery (recursive, glob, skip warnings)
+test/e2e/background/           E2E tests for EXIT NEVER, @defer, @poll
+test/_fixtures/                Shared test fixtures (e.g. intentionally failing .clitest files)
 ```
 
 ## Conventions
@@ -74,8 +78,8 @@ test/_fixtures/             Shared test fixtures (e.g. intentionally failing .cl
 - `examples/` contains user-facing usage demonstrations — validated via `make examples`.
 - Parser is hand-rolled (no parser generator). Entries separated by blank lines; sections by `[Name]` headers.
 - Values in asserts: `"quoted"` strings, `/regex/` literals, or bare tokens. See `unquoteValue` in parser.
-- Runner always uses `sh -c`; commands are single-line only (multi-line is planned but not implemented).
-- Variable substitution (`{{name}}`) happens in `cmd/clitest/main.go` before parsing — it's a simple string replace, not part of the parser.
+- Runner always uses `sh -c`; commands can span multiple lines (trailing `\` continuation).
+- Variable substitution (`{{name}}`) happens in `cmd/clitest/run.go` via `internal/vars` before parsing — it's a simple string replace, not part of the parser.
 - File discovery is recursive by default (`--no-recursive` to disable). Non-`.clitest` files are skipped with a warning to stderr.
 - Glob patterns in arguments (quoted, e.g. `"examples/*.clitest"`) are expanded by clitest itself, not the shell. The original pattern is preserved in the header output.
 - `EXIT NEVER` marks background processes — runner starts them without waiting for exit, polls asserts until pass or `@timeout`.
