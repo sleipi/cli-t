@@ -20,6 +20,7 @@ The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this docu
 * You MUST follow the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification for all commit messages.
 * You MUST write code using a TDD approach — write/update tests before implementation.
 * You MUST write E2E tests (in `test/e2e/`) for any new or changed behaviour.
+* You MUST NOT use `@`-prefixed directive names (e.g. `@defer`, `@poll`, `@timeout`) in commit messages or PR titles — GitHub interprets them as user mentions. Use backticks (`` `@defer` ``) or omit the `@` prefix (e.g. "support defer directive").
 
 ## Branch Naming
 
