@@ -38,36 +38,12 @@
 - [ ] Publish to Debian Repository
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
-- [ ] `[Stdin]` — Static stdin input section: pipe predefined input to commands before execution
 - [ ] `[Prompts]` — Interactive prompt/response section (expect-style): wait for output patterns and send responses
 - [ ] go install github.com/sleipi/cli-t
 
 ## Bugs
 
 ## Syntax Sketches
-
-### `[Stdin]` — Static stdin input
-
-Pipes predefined input to the command's stdin before execution. Simple string content, one line per input line.
-
-```clitest
-# Confirm deletion
-rm -i /tmp/testfile
-EXIT 0
-[Stdin]
-y
-```
-
-```clitest
-# Program expects multiple inputs
-python3 script.py
-EXIT 0
-[Stdin]
-Alice
-30
-[Asserts]
-stdout contains "Hello Alice"
-```
 
 ### `[Prompts]` — Interactive prompt/response (expect-style)
 
