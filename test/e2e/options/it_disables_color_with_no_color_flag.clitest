@@ -1,0 +1,11 @@
+# --no-color flag suppresses ANSI escape codes
+./clitest --no-color test/e2e/options/it_shows_version_with_version_flag.clitest
+EXIT 0
+[Asserts]
+stdout not matches /\x1b\[/
+
+# NO_COLOR env variable suppresses ANSI escape codes
+NO_COLOR=1 ./clitest test/e2e/options/it_shows_version_with_version_flag.clitest
+EXIT 0
+[Asserts]
+stdout not matches /\x1b\[/

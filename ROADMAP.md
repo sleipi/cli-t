@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] `--no-color` — Disable ANSI color codes in output. Also respects `NO_COLOR` env var (https://no-color.org/) and auto-disables when stdout is not a TTY.
 - [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [x] Refactor `cmd/clitest/` package structure — Extracted display, resolve, filter, vars, and executor logic into dedicated `internal/` packages. Reduced `cmd/clitest/` from 17 to 7 files.
 - [x] Linting — Introduced `golangci-lint` with CI integration and resolved all issues
@@ -21,7 +22,6 @@
 - [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 
 ## Planned
-- [ ] `--no-color` — Disable ANSI color codes in output (useful for CI or piping)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration

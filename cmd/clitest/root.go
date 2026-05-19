@@ -27,6 +27,7 @@ var (
 	groupFlags        []string
 	excludeGroupFlags []string
 	failFast          bool
+	noColor           bool
 )
 
 // cancelled is set to true when --fail-fast triggers; workers check before picking up new jobs.
@@ -55,6 +56,7 @@ func init() {
 	rootCmd.Flags().StringSliceVar(&groupFlags, "group", nil, "Run only entries with this group tag (repeatable, OR logic)")
 	rootCmd.Flags().StringSliceVar(&excludeGroupFlags, "exclude-group", nil, "Skip entries with this group tag (repeatable)")
 	rootCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop after first test failure")
+	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable ANSI color codes in output")
 
 	rootCmd.SetVersionTemplate("clitest version {{.Version}}\n")
 	rootCmd.Flags().BoolP("version", "V", false, "Show version")
@@ -72,6 +74,12 @@ type fileResult struct {
 }
 
 func runMain(_ *cobra.Command, args []string) error {
+	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
+
+	if noColor || os.Getenv("NO_COLOR") != "" || !isTTY {
+		display.DisableColors()
+	}
+
 	files, resolved, err := resolve.Files(args, !noRecursive)
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -92,7 +100,6 @@ func runMain(_ *cobra.Command, args []string) error {
 		workers = len(files)
 	}
 
-	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
 	start := time.Now()
 
 	var results []fileResult

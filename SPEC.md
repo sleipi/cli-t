@@ -466,6 +466,7 @@ clitest [options] <path...>
 | `--parallel N`   | Max parallel file executions (default: 8)  |
 | `--no-parallel`  | Disable parallel execution (sequential)    |
 | `--fail-fast`    | Stop after first test failure              |
+| `--no-color`     | Disable ANSI color codes. Also auto-disables when `NO_COLOR` env is set or stdout is not a TTY. |
 
 ### Exit Codes
 
