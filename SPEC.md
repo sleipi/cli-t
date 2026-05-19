@@ -105,6 +105,7 @@ Sections start with a header in square brackets. Available sections:
 
 - `[Asserts]` — explicit assertions
 - `[Captures]` — variable captures
+- `[Prompts]` — interactive stdin responses (pattern-matched)
 - `[Options]` — entry-level options (planned)
 
 ---
@@ -202,6 +203,67 @@ id: stdout
 The captured value can then be used in later entries as `{{id}}`.
 
 > **Planned**: Regex capture groups: `token: stdout regex /token=(\w+)/`
+
+---
+
+### `[Prompts]`
+
+Prompts enable testing interactive commands that read from stdin. Each prompt defines a pattern to match against stdout/stderr and a response to write to stdin when the pattern is detected.
+
+Format:
+
+```
+<pattern> => <response> [* N]
+```
+
+- **Pattern**: `"substring"` for contains-match, or `/regex/` for regex-match
+- **Response**: `"quoted string"` — written to process stdin followed by a newline
+- **Multiplier** (optional): `* N` — allows the prompt to match up to N times (default: 1)
+
+#### Semantics
+
+1. The process is started with stdin connected to a pipe
+2. clitest reads stdout/stderr asynchronously
+3. When output matches a prompt pattern, the corresponding response is written to stdin
+4. Each prompt must match exactly the expected number of times (1, or N if `* N` is specified)
+5. After the process exits, any unmatched prompts cause the entry to FAIL
+
+#### Failure conditions
+
+| Condition | Result |
+|-----------|--------|
+| Prompt pattern never matched | FAIL: "Prompt `<pattern>` was never matched" |
+| Two patterns match the same output simultaneously | FAIL: "Ambiguous prompt match" |
+| Process blocks on stdin with no matching prompt (detected via `@timeout`) | FAIL: timeout exceeded |
+
+#### Requirements
+
+- `@timeout` directive is **required** on entries with `[Prompts]`
+
+#### Examples
+
+```clitest
+# Symfony Console interactive command
+@timeout 5000
+php bin/console app:create-user
+EXIT 0
+[Prompts]
+"Enter username:" => "alice"
+"Enter email:" => "alice@example.com"
+/Confirm .* \[yes\]/ => "yes"
+[Asserts]
+stdout contains "User created"
+```
+
+```clitest
+# Repeated prompt
+@timeout 3000
+./setup.sh
+EXIT 0
+[Prompts]
+"Continue?" => "yes" * 3
+"Enter name:" => "Alice"
+```
 
 ---
 
@@ -587,6 +649,8 @@ REGEX      = '/' [^/]* '/'
 BARE       = \S+
 
 capture    = NAME ":" SPACE query
+
+prompt     = (QUOTED | REGEX) SPACE "=>" SPACE QUOTED [SPACE "*" SPACE INTEGER]
 ```
 
 ---

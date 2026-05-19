@@ -38,27 +38,48 @@
 - [ ] Publish to Debian Repository
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
-- [ ] `[Prompts]` — Interactive prompt/response section (expect-style): wait for output patterns and send responses
+- [ ] `[Prompts]` — Interactive prompt/response section: match stdout/stderr patterns and send responses via stdin. Unmatched prompts fail the entry. Requires `@timeout`.
 - [ ] go install github.com/sleipi/cli-t
 
 ## Bugs
 
 ## Syntax Sketches
 
-### `[Prompts]` — Interactive prompt/response (expect-style)
+### `[Prompts]` — Interactive prompt/response
 
-Waits for specific output patterns and sends responses. Each line: `/<regex-trigger>/ <response>`.
+Matches stdout/stderr patterns at runtime and writes responses to stdin. Syntax: `<pattern> => <response>`.
+
+- **Pattern:** `"substring"` (contains-match) or `/regex/` (regex-match)
+- **Response:** `"quoted string"` — written to stdin + newline
+- **Multiplier:** `* N` — allows the same prompt to match N times
+- **Semantics:** async stdout/stderr reading, first match wins, response sent on match
+- **Failure conditions:**
+  - Unmatched prompt at process end → FAIL ("Prompt X was never matched")
+  - Two patterns match simultaneously → FAIL (ambiguity error)
+  - Process blocks on stdin with no matching prompt defined → FAIL (via `@timeout`)
+- **Requires:** `@timeout` directive
 
 ```clitest
-# Interactive installer
-./installer.sh
+# Interactive Symfony Console command
+@timeout 5000
+php bin/console app:create-user
 EXIT 0
 [Prompts]
-/Continue\?/ "yes"
-/Enter name:/ "Alice"
-/Accept license/ "y"
+"Enter username:" => "alice"
+"Enter email:" => "alice@example.com"
+/Confirm .* \[yes\]/ => "yes"
 [Asserts]
-stdout contains "Installation complete"
+stdout contains "User created"
+```
+
+```clitest
+# Prompt that appears multiple times
+@timeout 3000
+./setup.sh
+EXIT 0
+[Prompts]
+"Continue?" => "yes" * 3
+"Enter name:" => "Alice"
 ```
 
 make all not update lines
