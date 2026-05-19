@@ -238,7 +238,16 @@ Format:
 
 #### Requirements
 
-- `@timeout` directive is **required** on entries with `[Prompts]`
+- `@timeout` is optional. If omitted, a default timeout of 30 seconds is used. Set `@timeout MS` to override.
+
+#### Limitations
+
+Prompts are **pipe-based**: clitest writes responses to the process's stdin pipe. This works with any program that reads line-by-line from stdin (e.g. shell `read`, PHP `fgets`, Python `input()`, Node `readline`, Symfony Console `QuestionHelper`).
+
+Programs that require a real terminal (PTY) are **not supported**:
+- `sudo`, `passwd` (check `isatty()` and refuse pipe input)
+- `ssh` (interactive authentication)
+- Programs using raw/termios mode (e.g. hidden password input without echo)
 
 #### Examples
 

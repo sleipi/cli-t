@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] `[Prompts]` — Interactive prompt/response section: match stdout patterns and send responses via stdin. Pipe-based (no PTY). Supports substring and regex matching, multiplier syntax, ambiguity detection, and unmatched prompt failure. Default timeout 30s.
 - [x] `--no-color` — Disable ANSI color codes in output. Also respects `NO_COLOR` env var (https://no-color.org/) and auto-disables when stdout is not a TTY.
 - [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [x] Refactor `cmd/clitest/` package structure — Extracted display, resolve, filter, vars, and executor logic into dedicated `internal/` packages. Reduced `cmd/clitest/` from 17 to 7 files.
@@ -38,7 +39,6 @@
 - [ ] Publish to Debian Repository
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
-- [ ] `[Prompts]` — Interactive prompt/response section: match stdout/stderr patterns and send responses via stdin. Unmatched prompts fail the entry. Requires `@timeout`.
 - [ ] go install github.com/sleipi/cli-t
 
 ## Bugs
