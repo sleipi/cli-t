@@ -1,0 +1,13 @@
+# Interactive prompts — respond to stdin questions
+# Prompts are pipe-based: works with programs that read line-by-line from stdin
+# (shell read, PHP fgets, Python input(), Symfony Console, etc.)
+# Programs requiring a PTY (sudo, passwd, ssh) are NOT supported.
+@timeout 3000
+sh examples/interactive_script.sh
+EXIT 0
+[Prompts]
+"Enter username:" => "alice"
+"Enter email:" => "alice@example.com"
+/Confirm\?/ => "y"
+[Asserts]
+stdout contains "Created user: alice <alice@example.com> (confirmed: y)"
