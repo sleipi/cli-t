@@ -40,6 +40,8 @@
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
 - [ ] go install github.com/sleipi/cli-t
+- [ ] `[Finally]` section — Send a signal to background processes at file-end and assert exit code + output. Syntax: `<SIGNAL> EXIT <code> [timeout <ms>]` (default timeout 1000ms). Executed LIFO, before `@defer`. See #19.
+- [ ] `later` assert modifier — Defer assertion evaluation until file-end. Decoupled from `@timeout`. Useful for asserting output produced by later entries against a background process. See #19.
 
 ## Bugs
 
