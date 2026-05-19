@@ -410,3 +410,113 @@ rm /tmp/testfile
 	}
 	assertEqual(t, entries[1].Command, "rm /tmp/testfile")
 }
+
+func TestParsePromptsSubstring(t *testing.T) {
+	input := `@timeout 5000
+printf "Enter name: " && read name && echo "Hello $name"
+EXIT 0
+[Prompts]
+"Enter name:" => "Alice"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	e := entries[0]
+	if len(e.Prompts) != 1 {
+		t.Fatalf("expected 1 prompt, got %d", len(e.Prompts))
+	}
+	p := e.Prompts[0]
+	assertEqual(t, p.Pattern, "Enter name:")
+	assertEqual(t, p.Response, "Alice")
+	if p.IsRegex {
+		t.Fatal("expected IsRegex to be false")
+	}
+	assertIntEqual(t, p.Repeat, 1)
+}
+
+func TestParsePromptsRegex(t *testing.T) {
+	input := `@timeout 3000
+./installer.sh
+EXIT 0
+[Prompts]
+/Continue\? \[y\/n\]/ => "yes"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	p := entries[0].Prompts[0]
+	assertEqual(t, p.Pattern, `Continue\? \[y\/n\]`)
+	assertEqual(t, p.Response, "yes")
+	if !p.IsRegex {
+		t.Fatal("expected IsRegex to be true")
+	}
+}
+
+func TestParsePromptsMultiplier(t *testing.T) {
+	input := `@timeout 3000
+./setup.sh
+EXIT 0
+[Prompts]
+"Continue?" => "yes" * 3
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	p := entries[0].Prompts[0]
+	assertEqual(t, p.Pattern, "Continue?")
+	assertEqual(t, p.Response, "yes")
+	assertIntEqual(t, p.Repeat, 3)
+}
+
+func TestParsePromptsMultipleEntries(t *testing.T) {
+	input := `@timeout 5000
+php bin/console app:create-user
+EXIT 0
+[Prompts]
+"Enter username:" => "alice"
+"Enter email:" => "alice@example.com"
+/Confirm .* \[yes\]/ => "yes"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	prompts := entries[0].Prompts
+	if len(prompts) != 3 {
+		t.Fatalf("expected 3 prompts, got %d", len(prompts))
+	}
+	assertEqual(t, prompts[0].Pattern, "Enter username:")
+	assertEqual(t, prompts[1].Pattern, "Enter email:")
+	assertEqual(t, prompts[2].Pattern, `Confirm .* \[yes\]`)
+	if !prompts[2].IsRegex {
+		t.Fatal("expected third prompt to be regex")
+	}
+}
+
+func TestParsePromptsWithAsserts(t *testing.T) {
+	input := `@timeout 5000
+printf "Name: " && read name && echo "Hi $name"
+EXIT 0
+[Prompts]
+"Name:" => "Bob"
+[Asserts]
+stdout contains "Hi Bob"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := entries[0]
+	if len(e.Prompts) != 1 {
+		t.Fatalf("expected 1 prompt, got %d", len(e.Prompts))
+	}
+	if len(e.Asserts) != 1 {
+		t.Fatalf("expected 1 assert, got %d", len(e.Asserts))
+	}
+}
