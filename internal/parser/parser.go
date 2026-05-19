@@ -266,10 +266,17 @@ func parsePrompt(line string) (types.Prompt, error) {
 	switch {
 	case strings.HasPrefix(line, "/"):
 		// Regex pattern: /pattern/ => "response"
-		// Find closing / (skip escaped \/)
+		// Find closing / that is not escaped (odd number of preceding backslashes)
 		end := -1
 		for j := 1; j < len(line); j++ {
-			if line[j] == '/' && line[j-1] != '\\' {
+			if line[j] != '/' {
+				continue
+			}
+			backslashes := 0
+			for k := j - 1; k >= 1 && line[k] == '\\'; k-- {
+				backslashes++
+			}
+			if backslashes%2 == 0 {
 				end = j
 				break
 			}

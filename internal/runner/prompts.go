@@ -50,42 +50,49 @@ func compilePrompts(prompts []PromptDef) ([]promptState, error) {
 	return states, nil
 }
 
-// matchPrompts finds which prompt states match the given chunk.
-func matchPrompts(states []promptState, chunk string) []int {
+// matchPrompts finds which prompt states match the given text.
+func matchPrompts(states []promptState, text string) []int {
 	var matches []int
 	for i, s := range states {
 		if s.remaining <= 0 {
 			continue
 		}
-		if s.regex != nil && s.regex.MatchString(chunk) {
+		if s.regex != nil && s.regex.MatchString(text) {
 			matches = append(matches, i)
-		} else if s.regex == nil && strings.Contains(chunk, s.def.Pattern) {
+		} else if s.regex == nil && strings.Contains(text, s.def.Pattern) {
 			matches = append(matches, i)
 		}
 	}
 	return matches
 }
 
-// readAndMatch reads from stdout, matches prompts, and writes responses to stdin.
-// Returns the accumulated stdout and any ambiguity error.
-func readAndMatch(stdout io.Reader, stdin io.Writer, states []promptState) (stdoutContent, ambiguousErr string) {
+// readAndMatch reads from stdout, accumulates output, matches prompts against the
+// full pending buffer, and writes responses to stdin. Closes stdin when stdout is exhausted.
+func readAndMatch(stdout io.Reader, stdin io.WriteCloser, states []promptState) (stdoutContent, ambiguousErr string) {
+	defer func() { _ = stdin.Close() }()
+
 	var stdoutBuf strings.Builder
+	var pending strings.Builder
 	buf := make([]byte, 1024)
+
 	for {
 		n, readErr := stdout.Read(buf)
 		if n > 0 {
 			chunk := string(buf[:n])
 			stdoutBuf.WriteString(chunk)
+			pending.WriteString(chunk)
 
-			matches := matchPrompts(states, chunk)
+			// Match against accumulated pending buffer
+			matches := matchPrompts(states, pending.String())
 			if len(matches) > 1 {
 				return stdoutBuf.String(), fmt.Sprintf("patterns %q and %q both match: %q",
-					states[matches[0]].def.Pattern, states[matches[1]].def.Pattern, chunk)
+					states[matches[0]].def.Pattern, states[matches[1]].def.Pattern, pending.String())
 			}
 			if len(matches) == 1 {
 				idx := matches[0]
 				states[idx].remaining--
 				_, _ = fmt.Fprintln(stdin, states[idx].def.Response)
+				pending.Reset()
 			}
 		}
 		if readErr != nil {
@@ -132,8 +139,8 @@ func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int) PromptRe
 
 	// Read stdout and match prompts in background
 	type readResult struct {
-		stdout   string
-		ambiguou string
+		stdout    string
+		ambiguous string
 	}
 	readDone := make(chan readResult, 1)
 	go func() {
@@ -155,7 +162,7 @@ func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int) PromptRe
 			DurationMs: duration,
 		},
 		UnmatchedPrompts: collectUnmatched(states),
-		AmbiguousMatch:   rr.ambiguou,
+		AmbiguousMatch:   rr.ambiguous,
 		TimedOut:         timedOut,
 	}
 }
