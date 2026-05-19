@@ -40,6 +40,9 @@
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
 - [ ] go install github.com/sleipi/cli-t
+- [ ] Website + Docs — Documentation website with domain, hosting (e.g. Hugo/Docusaurus + GitHub Pages), syntax reference, and getting-started guide
+- [ ] Full-text assert with linebreaks — Multi-line string assertions in `[Asserts]` section (heredoc or fenced-block syntax for values containing newlines)
+- [ ] JSONPath assertions — `json` query type for structured output assertions (e.g. `stdout.json $.items[0].name equals "foo"`). Scope TBD.
 - [ ] `[Finally]` section — Send a signal to background processes at file-end and assert exit code + output. Syntax: `<SIGNAL> EXIT <code> [timeout <ms>]` (default timeout 1000ms). Executed LIFO, before `@defer`. See #19.
 - [ ] `later` assert modifier — Defer assertion evaluation until file-end. Decoupled from `@timeout`. Useful for asserting output produced by later entries against a background process. See #19.
 
