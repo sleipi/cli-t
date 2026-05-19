@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -207,15 +208,5 @@ func TestRunWithPrompts_Timeout(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && containsSubstr(s, substr)))
-}
-
-func containsSubstr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(s, substr)
 }

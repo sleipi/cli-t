@@ -3,6 +3,7 @@ package runner
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -25,145 +26,160 @@ type PromptResult struct {
 	TimedOut         bool
 }
 
-// RunWithPrompts executes a command with interactive prompt handling.
-// It reads stdout asynchronously and writes responses to stdin when patterns match.
-func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int) PromptResult {
-	cmd := exec.Command("sh", "-c", command)
+// promptState tracks remaining matches for a single prompt definition.
+type promptState struct {
+	def       PromptDef
+	regex     *regexp.Regexp
+	remaining int
+}
 
-	stdinPipe, err := cmd.StdinPipe()
-	if err != nil {
-		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("stdin pipe error: %v", err)}}
-	}
-
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("stdout pipe error: %v", err)}}
-	}
-
-	stderrBuf := &syncBuffer{}
-	cmd.Stderr = stderrBuf
-
-	// Compile regex patterns
-	type promptState struct {
-		def       PromptDef
-		regex     *regexp.Regexp
-		remaining int
-	}
+// compilePrompts prepares prompt states with compiled regexes.
+func compilePrompts(prompts []PromptDef) ([]promptState, error) {
 	states := make([]promptState, len(prompts))
 	for i, p := range prompts {
 		var re *regexp.Regexp
 		if p.IsRegex {
+			var err error
 			re, err = regexp.Compile(p.Pattern)
 			if err != nil {
-				return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("invalid regex %q: %v", p.Pattern, err)}}
+				return nil, fmt.Errorf("invalid regex %q: %w", p.Pattern, err)
 			}
 		}
 		states[i] = promptState{def: p, regex: re, remaining: p.Repeat}
 	}
+	return states, nil
+}
 
-	start := time.Now()
-	if err := cmd.Start(); err != nil {
-		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("start error: %v", err)}}
+// matchPrompts finds which prompt states match the given chunk.
+func matchPrompts(states []promptState, chunk string) []int {
+	var matches []int
+	for i, s := range states {
+		if s.remaining <= 0 {
+			continue
+		}
+		if s.regex != nil && s.regex.MatchString(chunk) {
+			matches = append(matches, i)
+		} else if s.regex == nil && strings.Contains(chunk, s.def.Pattern) {
+			matches = append(matches, i)
+		}
 	}
+	return matches
+}
 
-	// Channels for coordination
-	stdoutDone := make(chan struct{})
+// readAndMatch reads from stdout, matches prompts, and writes responses to stdin.
+// Returns the accumulated stdout and any ambiguity error.
+func readAndMatch(stdout io.Reader, stdin io.Writer, states []promptState) (stdoutContent, ambiguousErr string) {
 	var stdoutBuf strings.Builder
-	var ambiguous string
+	buf := make([]byte, 1024)
+	for {
+		n, readErr := stdout.Read(buf)
+		if n > 0 {
+			chunk := string(buf[:n])
+			stdoutBuf.WriteString(chunk)
 
-	// Read stdout and match prompts
-	go func() {
-		defer close(stdoutDone)
-		buf := make([]byte, 1024)
-		for {
-			n, err := stdoutPipe.Read(buf)
-			if n > 0 {
-				chunk := string(buf[:n])
-				stdoutBuf.WriteString(chunk)
-
-				// Check for matches against accumulated unprocessed output
-				var matches []int
-				for i, s := range states {
-					if s.remaining <= 0 {
-						continue
-					}
-					if s.regex != nil {
-						if s.regex.MatchString(chunk) {
-							matches = append(matches, i)
-						}
-					} else {
-						if strings.Contains(chunk, s.def.Pattern) {
-							matches = append(matches, i)
-						}
-					}
-				}
-
-				if len(matches) > 1 {
-					ambiguous = fmt.Sprintf("patterns %q and %q both match: %q",
-						states[matches[0]].def.Pattern, states[matches[1]].def.Pattern, chunk)
-					return
-				}
-
-				if len(matches) == 1 {
-					idx := matches[0]
-					states[idx].remaining--
-					_, _ = fmt.Fprintln(stdinPipe, states[idx].def.Response)
-				}
+			matches := matchPrompts(states, chunk)
+			if len(matches) > 1 {
+				return stdoutBuf.String(), fmt.Sprintf("patterns %q and %q both match: %q",
+					states[matches[0]].def.Pattern, states[matches[1]].def.Pattern, chunk)
 			}
-			if err != nil {
-				return
+			if len(matches) == 1 {
+				idx := matches[0]
+				states[idx].remaining--
+				_, _ = fmt.Fprintln(stdin, states[idx].def.Response)
 			}
 		}
-	}()
-
-	// Wait with timeout
-	timeout := time.Duration(timeoutMs) * time.Millisecond
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	doneCh := make(chan error, 1)
-	go func() {
-		doneCh <- cmd.Wait()
-	}()
-
-	var timedOut bool
-	var exitCode int
-
-	select {
-	case waitErr := <-doneCh:
-		<-stdoutDone
-		if waitErr != nil {
-			var exitErr *exec.ExitError
-			if errors.As(waitErr, &exitErr) {
-				exitCode = exitErr.ExitCode()
-			}
+		if readErr != nil {
+			return stdoutBuf.String(), ""
 		}
-	case <-timer.C:
-		timedOut = true
-		_ = cmd.Process.Kill()
-		<-doneCh
-		<-stdoutDone
 	}
+}
 
-	duration := time.Since(start).Milliseconds()
-
-	// Collect unmatched prompts
+// collectUnmatched returns patterns that were never fully matched.
+func collectUnmatched(states []promptState) []string {
 	var unmatched []string
 	for _, s := range states {
 		if s.remaining > 0 {
 			unmatched = append(unmatched, s.def.Pattern)
 		}
 	}
+	return unmatched
+}
+
+// RunWithPrompts executes a command with interactive prompt handling.
+// It reads stdout asynchronously and writes responses to stdin when patterns match.
+func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int) PromptResult {
+	states, err := compilePrompts(prompts)
+	if err != nil {
+		return PromptResult{Result: Result{ExitCode: -1, Stderr: err.Error()}}
+	}
+
+	cmd := exec.Command("sh", "-c", command)
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("stdin pipe error: %v", err)}}
+	}
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("stdout pipe error: %v", err)}}
+	}
+	stderrBuf := &syncBuffer{}
+	cmd.Stderr = stderrBuf
+
+	start := time.Now()
+	if err := cmd.Start(); err != nil {
+		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("start error: %v", err)}}
+	}
+
+	// Read stdout and match prompts in background
+	type readResult struct {
+		stdout   string
+		ambiguou string
+	}
+	readDone := make(chan readResult, 1)
+	go func() {
+		stdout, ambiguous := readAndMatch(stdoutPipe, stdinPipe, states)
+		readDone <- readResult{stdout, ambiguous}
+	}()
+
+	// Wait for process with timeout
+	timedOut, exitCode := waitWithTimeout(cmd, timeoutMs)
+
+	rr := <-readDone
+	duration := time.Since(start).Milliseconds()
 
 	return PromptResult{
 		Result: Result{
-			Stdout:     stdoutBuf.String(),
+			Stdout:     rr.stdout,
 			Stderr:     stderrBuf.String(),
 			ExitCode:   exitCode,
 			DurationMs: duration,
 		},
-		UnmatchedPrompts: unmatched,
-		AmbiguousMatch:   ambiguous,
+		UnmatchedPrompts: collectUnmatched(states),
+		AmbiguousMatch:   rr.ambiguou,
 		TimedOut:         timedOut,
+	}
+}
+
+// waitWithTimeout waits for process exit or kills on timeout. Returns (timedOut, exitCode).
+func waitWithTimeout(cmd *exec.Cmd, timeoutMs int) (timedOut bool, exitCode int) {
+	timer := time.NewTimer(time.Duration(timeoutMs) * time.Millisecond)
+	defer timer.Stop()
+
+	doneCh := make(chan error, 1)
+	go func() { doneCh <- cmd.Wait() }()
+
+	select {
+	case waitErr := <-doneCh:
+		if waitErr != nil {
+			var exitErr *exec.ExitError
+			if errors.As(waitErr, &exitErr) {
+				return false, exitErr.ExitCode()
+			}
+		}
+		return false, 0
+	case <-timer.C:
+		_ = cmd.Process.Kill()
+		<-doneCh
+		return true, -1
 	}
 }

@@ -263,7 +263,8 @@ func parsePrompt(line string) (types.Prompt, error) {
 	var isRegex bool
 	var rest string
 
-	if strings.HasPrefix(line, "/") {
+	switch {
+	case strings.HasPrefix(line, "/"):
 		// Regex pattern: /pattern/ => "response"
 		// Find closing / (skip escaped \/)
 		end := -1
@@ -279,7 +280,7 @@ func parsePrompt(line string) (types.Prompt, error) {
 		pattern = line[1:end]
 		isRegex = true
 		rest = strings.TrimSpace(line[end+1:])
-	} else if strings.HasPrefix(line, `"`) {
+	case strings.HasPrefix(line, `"`):
 		// Quoted pattern: "pattern" => "response"
 		end := strings.Index(line[1:], `"`)
 		if end == -1 {
@@ -287,7 +288,7 @@ func parsePrompt(line string) (types.Prompt, error) {
 		}
 		pattern = line[1 : end+1]
 		rest = strings.TrimSpace(line[end+2:])
-	} else {
+	default:
 		return types.Prompt{}, fmt.Errorf("prompt pattern must be quoted or regex: %s", line)
 	}
 
