@@ -1,0 +1,8 @@
+# Supports prompt multiplier for repeated questions
+@timeout 3000
+sh test/_fixtures/ask_repeat.sh
+EXIT 0
+[Prompts]
+"Next?" => "y" * 3
+[Asserts]
+stdout contains "y"

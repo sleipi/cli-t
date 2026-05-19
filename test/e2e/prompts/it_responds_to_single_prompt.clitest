@@ -1,0 +1,8 @@
+# Responds to a single stdin prompt
+@timeout 3000
+sh test/_fixtures/ask_name.sh
+EXIT 0
+[Prompts]
+"Enter name:" => "Alice"
+[Asserts]
+stdout contains "Hello Alice"

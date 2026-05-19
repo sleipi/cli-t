@@ -26,6 +26,7 @@ type Entry struct {
 	Body       []string
 	Asserts    []Assert
 	Captures   []Capture
+	Prompts    []Prompt
 	Directives EntryDirectives
 }
 
@@ -41,6 +42,14 @@ type Assert struct {
 type Capture struct {
 	Name  string // variable name
 	Query string // e.g. "stdout", "line 1"
+}
+
+// Prompt represents an interactive prompt/response pair.
+type Prompt struct {
+	Pattern  string // substring or regex content (without delimiters)
+	IsRegex  bool   // true if pattern was /regex/, false if "substring"
+	Response string // response to write to stdin (without trailing newline)
+	Repeat   int    // number of times this prompt can match (default 1)
 }
 
 // File represents a parsed .clitest file.

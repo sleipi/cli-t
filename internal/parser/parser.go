@@ -158,6 +158,10 @@ func parsePostCommand(lines []string, i int, current *entryBuilder) (int, error)
 		return collectCaptures(lines, i+1, current)
 	}
 
+	if strings.TrimSpace(line) == "[Prompts]" {
+		return collectPrompts(lines, i+1, current)
+	}
+
 	if strings.TrimSpace(line) == "```" {
 		current.body, i = collectFencedBody(lines, i+1)
 		return i, nil
@@ -241,6 +245,96 @@ func collectCaptures(lines []string, i int, current *entryBuilder) (int, error) 
 	return i, nil
 }
 
+func collectPrompts(lines []string, i int, current *entryBuilder) (int, error) {
+	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
+		p, err := parsePrompt(lines[i])
+		if err != nil {
+			return 0, fmt.Errorf("line %d: %w", i+1, err)
+		}
+		current.prompts = append(current.prompts, p)
+		i++
+	}
+	return i, nil
+}
+
+func parsePrompt(line string) (types.Prompt, error) {
+	line = strings.TrimSpace(line)
+	var pattern string
+	var isRegex bool
+	var rest string
+
+	switch {
+	case strings.HasPrefix(line, "/"):
+		// Regex pattern: /pattern/ => "response"
+		// Find closing / that is not escaped (odd number of preceding backslashes)
+		end := -1
+		for j := 1; j < len(line); j++ {
+			if line[j] != '/' {
+				continue
+			}
+			backslashes := 0
+			for k := j - 1; k >= 1 && line[k] == '\\'; k-- {
+				backslashes++
+			}
+			if backslashes%2 == 0 {
+				end = j
+				break
+			}
+		}
+		if end == -1 {
+			return types.Prompt{}, fmt.Errorf("unterminated regex pattern: %s", line)
+		}
+		pattern = line[1:end]
+		isRegex = true
+		rest = strings.TrimSpace(line[end+1:])
+	case strings.HasPrefix(line, `"`):
+		// Quoted pattern: "pattern" => "response"
+		end := strings.Index(line[1:], `"`)
+		if end == -1 {
+			return types.Prompt{}, fmt.Errorf("unterminated quoted pattern: %s", line)
+		}
+		pattern = line[1 : end+1]
+		rest = strings.TrimSpace(line[end+2:])
+	default:
+		return types.Prompt{}, fmt.Errorf("prompt pattern must be quoted or regex: %s", line)
+	}
+
+	// Expect =>
+	if !strings.HasPrefix(rest, "=>") {
+		return types.Prompt{}, fmt.Errorf("expected '=>' after pattern: %s", line)
+	}
+	rest = strings.TrimSpace(rest[2:])
+
+	// Parse response: "response"
+	if !strings.HasPrefix(rest, `"`) {
+		return types.Prompt{}, fmt.Errorf("response must be quoted: %s", line)
+	}
+	endQuote := strings.Index(rest[1:], `"`)
+	if endQuote == -1 {
+		return types.Prompt{}, fmt.Errorf("unterminated response: %s", line)
+	}
+	response := rest[1 : endQuote+1]
+	rest = strings.TrimSpace(rest[endQuote+2:])
+
+	// Parse optional multiplier: * N
+	repeat := 1
+	if strings.HasPrefix(rest, "*") {
+		rest = strings.TrimSpace(rest[1:])
+		n, err := strconv.Atoi(rest)
+		if err != nil {
+			return types.Prompt{}, fmt.Errorf("invalid multiplier: %s", line)
+		}
+		repeat = n
+	}
+
+	return types.Prompt{
+		Pattern:  pattern,
+		IsRegex:  isRegex,
+		Response: response,
+		Repeat:   repeat,
+	}, nil
+}
+
 func collectFencedBody(lines []string, i int) (body []string, next int) {
 	for i < len(lines) && strings.TrimSpace(lines[i]) != "```" {
 		body = append(body, lines[i])
@@ -259,6 +353,7 @@ type entryBuilder struct {
 	body       []string
 	asserts    []types.Assert
 	captures   []types.Capture
+	prompts    []types.Prompt
 	directives []directive
 }
 
@@ -271,6 +366,7 @@ func (b *entryBuilder) build() types.Entry {
 		Body:      b.body,
 		Asserts:   b.asserts,
 		Captures:  b.captures,
+		Prompts:   b.prompts,
 	}
 	interpretEntryDirectives(&entry, b.directives)
 	return entry

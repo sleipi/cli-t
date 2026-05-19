@@ -75,3 +75,19 @@ func TestExecuteDefers_ErrorLogged(t *testing.T) {
 		t.Fatalf("expected 1 error log, got %d", len(logs))
 	}
 }
+
+func TestEntry_PromptResponds(t *testing.T) {
+	entry := types.Entry{
+		Command:  `printf "Enter name: " && read name && echo "Hello $name"`,
+		ExitCode: 0,
+		Prompts: []types.Prompt{
+			{Pattern: "Enter name:", IsRegex: false, Response: "Alice", Repeat: 1},
+		},
+		Directives: types.EntryDirectives{Timeout: 3000},
+	}
+	captures := map[string]string{}
+	er := Entry(entry, captures)
+	if !er.Pass {
+		t.Fatalf("expected pass, got failures: %v (stdout: %q)", er.Failures, er.Runner.Stdout)
+	}
+}

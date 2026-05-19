@@ -1,0 +1,8 @@
+# Matches prompts using regex patterns
+@timeout 3000
+sh test/_fixtures/ask_confirm.sh
+EXIT 0
+[Prompts]
+/Continue\?/ => "yes"
+[Asserts]
+stdout contains "Got: yes"

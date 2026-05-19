@@ -1,0 +1,9 @@
+# Responds to multiple prompts in sequence
+@timeout 3000
+sh test/_fixtures/ask_two.sh
+EXIT 0
+[Prompts]
+"First:" => "Jane"
+"Last:" => "Doe"
+[Asserts]
+stdout contains "Hi Jane Doe"

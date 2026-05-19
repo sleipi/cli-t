@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -121,4 +122,91 @@ func TestRunBackground_Stderr(t *testing.T) {
 	if bp.Stderr() == "" {
 		t.Fatal("expected stderr output")
 	}
+}
+
+func TestRunWithPrompts_SinglePrompt(t *testing.T) {
+	prompts := []PromptDef{
+		{Pattern: "Enter name:", IsRegex: false, Response: "Alice", Repeat: 1},
+	}
+	result := RunWithPrompts(`printf "Enter name: " && read name && echo "Hello $name"`, prompts, 5000)
+	if result.ExitCode != 0 {
+		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
+	}
+	if !contains(result.Stdout, "Hello Alice") {
+		t.Fatalf("expected stdout to contain 'Hello Alice', got %q", result.Stdout)
+	}
+	if len(result.UnmatchedPrompts) != 0 {
+		t.Fatalf("expected no unmatched prompts, got %v", result.UnmatchedPrompts)
+	}
+}
+
+func TestRunWithPrompts_MultiplePrompts(t *testing.T) {
+	prompts := []PromptDef{
+		{Pattern: "First:", IsRegex: false, Response: "Jane", Repeat: 1},
+		{Pattern: "Last:", IsRegex: false, Response: "Doe", Repeat: 1},
+	}
+	cmd := `printf "First: " && read f && printf "Last: " && read l && echo "Hi $f $l"`
+	result := RunWithPrompts(cmd, prompts, 5000)
+	if result.ExitCode != 0 {
+		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
+	}
+	if !contains(result.Stdout, "Hi Jane Doe") {
+		t.Fatalf("expected stdout to contain 'Hi Jane Doe', got %q", result.Stdout)
+	}
+}
+
+func TestRunWithPrompts_RegexPattern(t *testing.T) {
+	prompts := []PromptDef{
+		{Pattern: `Continue\?`, IsRegex: true, Response: "yes", Repeat: 1},
+	}
+	cmd := `printf "Continue? " && read ans && echo "Got: $ans"`
+	result := RunWithPrompts(cmd, prompts, 5000)
+	if result.ExitCode != 0 {
+		t.Fatalf("expected exit 0, got %d", result.ExitCode)
+	}
+	if !contains(result.Stdout, "Got: yes") {
+		t.Fatalf("expected stdout to contain 'Got: yes', got %q", result.Stdout)
+	}
+}
+
+func TestRunWithPrompts_Multiplier(t *testing.T) {
+	prompts := []PromptDef{
+		{Pattern: "Next?", IsRegex: false, Response: "y", Repeat: 3},
+	}
+	cmd := `for i in 1 2 3; do printf "Next? " && read ans && echo "$ans"; done`
+	result := RunWithPrompts(cmd, prompts, 5000)
+	if result.ExitCode != 0 {
+		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
+	}
+	if len(result.UnmatchedPrompts) != 0 {
+		t.Fatalf("expected no unmatched prompts, got %v", result.UnmatchedPrompts)
+	}
+}
+
+func TestRunWithPrompts_UnmatchedPrompt(t *testing.T) {
+	prompts := []PromptDef{
+		{Pattern: "Never appears:", IsRegex: false, Response: "x", Repeat: 1},
+	}
+	result := RunWithPrompts("echo done", prompts, 5000)
+	if len(result.UnmatchedPrompts) != 1 {
+		t.Fatalf("expected 1 unmatched prompt, got %d", len(result.UnmatchedPrompts))
+	}
+	if result.UnmatchedPrompts[0] != "Never appears:" {
+		t.Fatalf("expected unmatched prompt 'Never appears:', got %q", result.UnmatchedPrompts[0])
+	}
+}
+
+func TestRunWithPrompts_Timeout(t *testing.T) {
+	prompts := []PromptDef{
+		{Pattern: "Name:", IsRegex: false, Response: "x", Repeat: 1},
+	}
+	// Program blocks on read but never prints "Name:", so prompt never matches
+	result := RunWithPrompts("read x", prompts, 500)
+	if !result.TimedOut {
+		t.Fatal("expected timeout")
+	}
+}
+
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }
