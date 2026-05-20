@@ -42,36 +42,7 @@ func Entry(entry types.Entry, captures map[string]string) Result {
 	}
 
 	result := runner.Run(cmd)
-	passed := true
-	var failures []string
-
-	if result.ExitCode != entry.ExitCode {
-		passed = false
-		failures = append(failures, fmt.Sprintf("exit code: expected %d, got %d", entry.ExitCode, result.ExitCode))
-	}
-
-	if len(entry.Body) > 0 {
-		res := assert.EvaluateBody(entry.Body, result)
-		if !res.Pass {
-			passed = false
-			failures = append(failures, res.Message)
-		}
-	}
-
-	for _, a := range entry.Asserts {
-		res := assert.Evaluate(a, result)
-		if !res.Pass {
-			passed = false
-			failures = append(failures, res.Message)
-		}
-	}
-
-	for _, c := range entry.Captures {
-		val := vars.ResolveCapture(c.Query, result)
-		captures[c.Name] = val
-	}
-
-	return Result{Pass: passed, Failures: failures, Runner: result}
+	return evaluateResult(entry, result, captures, nil)
 }
 
 // BackgroundEntry runs an EXIT NEVER entry and returns both the result and
@@ -102,21 +73,17 @@ func promptEntry(entry types.Entry, cmd string, captures map[string]string) Resu
 
 	pr := runner.RunWithPrompts(cmd, prompts, timeout)
 
-	passed := true
 	var failures []string
 
 	if pr.TimedOut {
-		passed = false
 		failures = append(failures, "timeout waiting for prompts")
 	}
 
 	if pr.AmbiguousMatch != "" {
-		passed = false
 		failures = append(failures, fmt.Sprintf("ambiguous prompt match: %s", pr.AmbiguousMatch))
 	}
 
 	for _, u := range pr.UnmatchedPrompts {
-		passed = false
 		failures = append(failures, fmt.Sprintf("prompt %q was never matched", u))
 	}
 
@@ -124,6 +91,15 @@ func promptEntry(entry types.Entry, cmd string, captures map[string]string) Resu
 	// Strip trailing newline for consistency with regular runner
 	result.Stdout = strings.TrimRight(result.Stdout, "\n")
 	result.Stderr = strings.TrimRight(result.Stderr, "\n")
+
+	return evaluateResult(entry, result, captures, failures)
+}
+
+// evaluateResult checks exit code, body, asserts, and captures against a runner result.
+// Any pre-existing failures (e.g. from prompt timeouts) are passed via prefailures.
+func evaluateResult(entry types.Entry, result runner.Result, captures map[string]string, prefailures []string) Result {
+	passed := len(prefailures) == 0
+	failures := prefailures
 
 	if result.ExitCode != entry.ExitCode {
 		passed = false
