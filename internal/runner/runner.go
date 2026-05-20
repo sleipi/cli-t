@@ -73,7 +73,8 @@ func (bp *BackgroundProcess) Done() <-chan struct{} {
 // Kill terminates the background process.
 func (bp *BackgroundProcess) Kill() error {
 	if bp.cmd != nil && bp.cmd.Process != nil {
-		return bp.cmd.Process.Kill()
+		// Kill the entire process group
+		return syscall.Kill(-bp.cmd.Process.Pid, syscall.SIGKILL)
 	}
 	return nil
 }
@@ -81,7 +82,8 @@ func (bp *BackgroundProcess) Kill() error {
 // Signal sends a signal to the background process.
 func (bp *BackgroundProcess) Signal(sig syscall.Signal) error {
 	if bp.cmd != nil && bp.cmd.Process != nil {
-		return bp.cmd.Process.Signal(sig)
+		// Send signal to the process group to reach child processes
+		return syscall.Kill(-bp.cmd.Process.Pid, sig)
 	}
 	return nil
 }
@@ -125,6 +127,7 @@ func RunBackground(command string) (*BackgroundProcess, error) {
 // RunBackgroundWithEnv starts a command in the background with additional env vars.
 func RunBackgroundWithEnv(command string, env map[string]string) (*BackgroundProcess, error) {
 	cmd := exec.Command("sh", "-c", command)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	bp := &BackgroundProcess{
 		cmd:    cmd,

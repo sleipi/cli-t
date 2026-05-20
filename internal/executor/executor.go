@@ -190,77 +190,88 @@ func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) 
 	ticker := time.NewTicker(time.Duration(poll) * time.Millisecond)
 	defer ticker.Stop()
 
-	var lastFailures []string
-	var lastResult runner.Result
-
 	for {
 		select {
 		case <-bp.Done():
-			lastResult = runner.Result{
-				Stdout: strings.TrimRight(bp.Stdout(), "\n"),
-				Stderr: strings.TrimRight(bp.Stderr(), "\n"),
-				Pid:    bp.Pid(),
-			}
-			return Result{
-				Pass:     false,
-				Failures: []string{"background process exited unexpectedly"},
-				Runner:   lastResult,
-			}, nil
+			return backgroundExitedResult(bp), nil
 		case <-ticker.C:
-			lastResult = runner.Result{
-				Stdout: strings.TrimRight(bp.Stdout(), "\n"),
-				Stderr: strings.TrimRight(bp.Stderr(), "\n"),
-				Pid:    bp.Pid(),
-			}
-
-			allPass := true
-			lastFailures = nil
-
-			if len(entry.Body) > 0 {
-				res := assert.EvaluateBody(entry.Body, lastResult)
-				if !res.Pass {
-					allPass = false
-					lastFailures = append(lastFailures, res.Message)
-				}
-			}
-
-			// Only evaluate non-later asserts during polling
-			for _, a := range entry.Asserts {
-				if a.Later {
-					continue
-				}
-				res := assert.Evaluate(a, lastResult)
-				if !res.Pass {
-					allPass = false
-					lastFailures = append(lastFailures, res.Message)
-				}
-			}
-
-			if allPass {
-				for _, c := range entry.Captures {
-					val := vars.ResolveCapture(c.Query, lastResult)
-					captures[c.Name] = val
-				}
-				if keepAlive {
-					return Result{Pass: true, Runner: lastResult}, &BackgroundResult{
-						Entry:   entry,
-						Process: bp,
-						Command: cmd,
-					}
-				}
-				return Result{Pass: true, Runner: lastResult}, nil
-			}
-
-			if time.Now().After(deadline) {
-				_ = bp.Kill()
-				return Result{
-					Pass:     false,
-					Failures: append([]string{"timeout waiting for assertions to pass"}, lastFailures...),
-					Runner:   lastResult,
-				}, nil
+			result, bg, done := pollBackgroundAsserts(entry, bp, cmd, captures, keepAlive, deadline)
+			if done {
+				return result, bg
 			}
 		}
 	}
+}
+
+// backgroundExitedResult returns a failure result for a process that exited unexpectedly.
+func backgroundExitedResult(bp *runner.BackgroundProcess) Result {
+	return Result{
+		Pass:     false,
+		Failures: []string{"background process exited unexpectedly"},
+		Runner: runner.Result{
+			Stdout: strings.TrimRight(bp.Stdout(), "\n"),
+			Stderr: strings.TrimRight(bp.Stderr(), "\n"),
+			Pid:    bp.Pid(),
+		},
+	}
+}
+
+// pollBackgroundAsserts evaluates non-later asserts on a single tick.
+// Returns (result, bgResult, done). If done is false, keep polling.
+func pollBackgroundAsserts(entry types.Entry, bp *runner.BackgroundProcess, cmd string, captures map[string]string, keepAlive bool, deadline time.Time) (Result, *BackgroundResult, bool) {
+	lastResult := runner.Result{
+		Stdout: strings.TrimRight(bp.Stdout(), "\n"),
+		Stderr: strings.TrimRight(bp.Stderr(), "\n"),
+		Pid:    bp.Pid(),
+	}
+
+	allPass := true
+	var lastFailures []string
+
+	if len(entry.Body) > 0 {
+		res := assert.EvaluateBody(entry.Body, lastResult)
+		if !res.Pass {
+			allPass = false
+			lastFailures = append(lastFailures, res.Message)
+		}
+	}
+
+	for _, a := range entry.Asserts {
+		if a.Later {
+			continue
+		}
+		res := assert.Evaluate(a, lastResult)
+		if !res.Pass {
+			allPass = false
+			lastFailures = append(lastFailures, res.Message)
+		}
+	}
+
+	if allPass {
+		for _, c := range entry.Captures {
+			val := vars.ResolveCapture(c.Query, lastResult)
+			captures[c.Name] = val
+		}
+		if keepAlive {
+			return Result{Pass: true, Runner: lastResult}, &BackgroundResult{
+				Entry:   entry,
+				Process: bp,
+				Command: cmd,
+			}, true
+		}
+		return Result{Pass: true, Runner: lastResult}, nil, true
+	}
+
+	if time.Now().After(deadline) {
+		_ = bp.Kill()
+		return Result{
+			Pass:     false,
+			Failures: append([]string{"timeout waiting for assertions to pass"}, lastFailures...),
+			Runner:   lastResult,
+		}, nil, true
+	}
+
+	return Result{}, nil, false
 }
 
 // EvaluateLaterAsserts evaluates all "later" asserts for background entries

@@ -8,6 +8,8 @@ import (
 	"github.com/sleipi/cli-t/internal/types"
 )
 
+const keywordTimeout = "timeout"
+
 // directive represents a parsed @directive line (parser-internal).
 type directive struct {
 	Name  string
@@ -317,12 +319,12 @@ func parseFinallySignalLine(line string) (*types.Finally, error) {
 	}
 
 	timeout := 1000 // default 1000ms
-	if len(parts) >= 5 && parts[3] == "timeout" {
+	if len(parts) >= 5 && parts[3] == keywordTimeout {
 		timeout, err = strconv.Atoi(parts[4])
 		if err != nil {
 			return nil, fmt.Errorf("invalid timeout value %q: %w", parts[4], err)
 		}
-	} else if len(parts) > 3 && parts[3] != "timeout" {
+	} else if len(parts) > 3 && parts[3] != keywordTimeout {
 		return nil, fmt.Errorf("unexpected token %q after exit code (expected 'timeout')", parts[3])
 	}
 
@@ -566,11 +568,6 @@ func extractQuery(line string) (query, rest string) {
 		return parts[0], parts[1]
 	}
 	return parts[0], ""
-}
-
-func extractPredicate(s string) (predicate, value string) {
-	p, v, _ := extractPredicateWithLater(s)
-	return p, v
 }
 
 // extractPredicateWithLater parses predicate, optional "later" modifier, and value.

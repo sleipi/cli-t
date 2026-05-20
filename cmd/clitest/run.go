@@ -74,49 +74,58 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 		})
 	}
 
-	// File-end: evaluate later asserts
-	if len(backgrounds) > 0 {
-		laterResults := executor.EvaluateLaterAsserts(backgrounds)
-		for _, lr := range laterResults {
-			if !lr.Pass {
-				fail++
-				if failFast {
-					cancelled.Store(true)
-				}
-				vd.EntryResult(0, display.EntryInfo{
-					Command:  lr.Command,
-					Passed:   false,
-					Failures: lr.Failures,
-					Stdout:   lr.Runner.Stdout,
-					Stderr:   lr.Runner.Stderr,
-				})
-			}
-		}
-
-		// File-end: execute [Finally] sections (LIFO)
-		finallyResults := executor.ExecuteFinally(backgrounds)
-		for _, fr := range finallyResults {
-			if !fr.Pass {
-				fail++
-				if failFast {
-					cancelled.Store(true)
-				}
-				vd.EntryResult(0, display.EntryInfo{
-					Command:  fr.Command,
-					Passed:   false,
-					Failures: fr.Failures,
-					Stdout:   fr.Runner.Stdout,
-					Stderr:   fr.Runner.Stderr,
-				})
-			}
-		}
-	}
+	fail += processBackgroundsVerbose(vd, backgrounds)
 
 	// Execute defers and display them
 	for _, entry := range defers {
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
 		result := runner.Run(cmd)
 		vd.DeferResult(cmd, result.ExitCode)
+	}
+
+	return
+}
+
+// processBackgroundsVerbose evaluates later asserts and finally sections, reporting to VerboseDisplay.
+func processBackgroundsVerbose(vd *display.VerboseDisplay, backgrounds []*executor.BackgroundResult) (fail int) {
+	if len(backgrounds) == 0 {
+		return 0
+	}
+
+	laterResults := executor.EvaluateLaterAsserts(backgrounds)
+	for _, lr := range laterResults {
+		if lr.Pass {
+			continue
+		}
+		fail++
+		if failFast {
+			cancelled.Store(true)
+		}
+		vd.EntryResult(0, display.EntryInfo{
+			Command:  lr.Command,
+			Passed:   false,
+			Failures: lr.Failures,
+			Stdout:   lr.Runner.Stdout,
+			Stderr:   lr.Runner.Stderr,
+		})
+	}
+
+	finallyResults := executor.ExecuteFinally(backgrounds)
+	for _, fr := range finallyResults {
+		if fr.Pass {
+			continue
+		}
+		fail++
+		if failFast {
+			cancelled.Store(true)
+		}
+		vd.EntryResult(0, display.EntryInfo{
+			Command:  fr.Command,
+			Passed:   false,
+			Failures: fr.Failures,
+			Stdout:   fr.Runner.Stdout,
+			Stderr:   fr.Runner.Stderr,
+		})
 	}
 
 	return
@@ -179,44 +188,55 @@ func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types
 		pd.UpdateProgress(fileIdx, i+1, len(regular))
 	}
 
-	// File-end: evaluate later asserts
-	if len(backgrounds) > 0 {
-		laterResults := executor.EvaluateLaterAsserts(backgrounds)
-		for _, lr := range laterResults {
-			if !lr.Pass {
-				fail++
-				if failFast {
-					cancelled.Store(true)
-				}
-				details = append(details, display.CompactFailure{
-					Command:  lr.Command,
-					Failures: lr.Failures,
-					Stdout:   lr.Runner.Stdout,
-					Stderr:   lr.Runner.Stderr,
-				})
-			}
-		}
-
-		// File-end: execute [Finally] sections (LIFO)
-		finallyResults := executor.ExecuteFinally(backgrounds)
-		for _, fr := range finallyResults {
-			if !fr.Pass {
-				fail++
-				if failFast {
-					cancelled.Store(true)
-				}
-				details = append(details, display.CompactFailure{
-					Command:  fr.Command,
-					Failures: fr.Failures,
-					Stdout:   fr.Runner.Stdout,
-					Stderr:   fr.Runner.Stderr,
-				})
-			}
-		}
-	}
+	bgFail, bgDetails := processBackgroundsCompact(backgrounds)
+	fail += bgFail
+	details = append(details, bgDetails...)
 
 	// Execute defers silently in compact mode
 	executor.ExecuteDefers(defers, captures)
+
+	return
+}
+
+// processBackgroundsCompact evaluates later asserts and finally sections for compact mode.
+func processBackgroundsCompact(backgrounds []*executor.BackgroundResult) (fail int, details []display.CompactFailure) {
+	if len(backgrounds) == 0 {
+		return 0, nil
+	}
+
+	laterResults := executor.EvaluateLaterAsserts(backgrounds)
+	for _, lr := range laterResults {
+		if lr.Pass {
+			continue
+		}
+		fail++
+		if failFast {
+			cancelled.Store(true)
+		}
+		details = append(details, display.CompactFailure{
+			Command:  lr.Command,
+			Failures: lr.Failures,
+			Stdout:   lr.Runner.Stdout,
+			Stderr:   lr.Runner.Stderr,
+		})
+	}
+
+	finallyResults := executor.ExecuteFinally(backgrounds)
+	for _, fr := range finallyResults {
+		if fr.Pass {
+			continue
+		}
+		fail++
+		if failFast {
+			cancelled.Store(true)
+		}
+		details = append(details, display.CompactFailure{
+			Command:  fr.Command,
+			Failures: fr.Failures,
+			Stdout:   fr.Runner.Stdout,
+			Stderr:   fr.Runner.Stderr,
+		})
+	}
 
 	return
 }
