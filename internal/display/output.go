@@ -104,28 +104,4 @@ func PrintFailureDetails(w io.Writer, failures []CompactFailure, file string) {
 	fmt.Fprintln(w)
 }
 
-// OverwriteHeaderLine moves the cursor up to the header line at fileIdx,
-// overwrites it with OK/FAIL status, then moves back down.
-func OverwriteHeaderLine(w io.Writer, fileIdx int, filename string, passed bool, headerLines, appendedLines int) {
-	cursorUp := (headerLines - fileIdx) + appendedLines
-	fmt.Fprintf(w, "\033[%dA", cursorUp)
-	fmt.Fprintf(w, "\r\033[K")
-	if passed {
-		fmt.Fprintf(w, "  %s▶ %s%s %sOK%s\n", ColorBold, filename, ColorReset, ColorGreen, ColorReset)
-	} else {
-		fmt.Fprintf(w, "  %s▶ %s%s %sFAIL%s\n", ColorBold, filename, ColorReset, ColorRed, ColorReset)
-	}
-	if cursorUp-1 > 0 {
-		fmt.Fprintf(w, "\033[%dB", cursorUp-1)
-	}
-}
 
-// ClearHeaderLine clears a header line (used when a file has no matching entries).
-func ClearHeaderLine(w io.Writer, fileIdx, headerLines, appendedLines int) {
-	cursorUp := (headerLines - fileIdx) + appendedLines
-	fmt.Fprintf(w, "\033[%dA", cursorUp)
-	fmt.Fprintf(w, "\r\033[K\n")
-	if cursorUp-1 > 0 {
-		fmt.Fprintf(w, "\033[%dB", cursorUp-1)
-	}
-}

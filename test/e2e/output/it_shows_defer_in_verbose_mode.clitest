@@ -1,0 +1,6 @@
+# Verbose output shows defer entries with tilde marker
+./clitest -v test/_fixtures/with_defer.clitest
+EXIT 0
+[Asserts]
+stdout contains "~"
+stdout contains "[defer]"
