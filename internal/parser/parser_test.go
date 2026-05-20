@@ -346,7 +346,7 @@ echo "hello"
 
 func assertAssert(t *testing.T, got, want types.Assert) {
 	t.Helper()
-	if got.Query != want.Query || got.Predicate != want.Predicate || got.Value != want.Value || got.Negated != want.Negated {
+	if got.Query != want.Query || got.Predicate != want.Predicate || got.Value != want.Value || got.Negated != want.Negated || got.Later != want.Later {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
 }
@@ -518,5 +518,111 @@ stdout contains "Hi Bob"
 	}
 	if len(e.Asserts) != 1 {
 		t.Fatalf("expected 1 assert, got %d", len(e.Asserts))
+	}
+}
+
+func TestParseLaterModifier(t *testing.T) {
+	input := `@timeout 5000
+sh -c 'echo "ready"; sleep 999'
+EXIT NEVER
+[Asserts]
+stderr contains "ready"
+stderr contains later "later output"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := entries[0]
+	if len(e.Asserts) != 2 {
+		t.Fatalf("expected 2 asserts, got %d", len(e.Asserts))
+	}
+	assertAssert(t, e.Asserts[0], types.Assert{Query: "stderr", Predicate: "contains", Value: "ready"})
+	assertAssert(t, e.Asserts[1], types.Assert{Query: "stderr", Predicate: "contains", Value: "later output", Later: true})
+}
+
+func TestParseLaterWithNegation(t *testing.T) {
+	input := `sh -c 'sleep 999'
+EXIT NEVER
+[Asserts]
+stdout not contains later "error"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	a := entries[0].Asserts[0]
+	assertAssert(t, a, types.Assert{Query: "stdout", Predicate: "contains", Value: "error", Negated: true, Later: true})
+}
+
+func TestParseFinallySection(t *testing.T) {
+	input := `@timeout 5000
+sh -c 'echo "ready"; sleep 999'
+EXIT NEVER
+[Asserts]
+stderr contains "ready"
+[Finally]
+TERM EXIT 0 timeout 3000
+stderr contains "shutdown"
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := entries[0]
+	if e.Finally == nil {
+		t.Fatal("expected Finally section")
+	}
+	if e.Finally.Signal != "TERM" {
+		t.Fatalf("expected signal TERM, got %s", e.Finally.Signal)
+	}
+	if e.Finally.ExitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", e.Finally.ExitCode)
+	}
+	if e.Finally.Timeout != 3000 {
+		t.Fatalf("expected timeout 3000, got %d", e.Finally.Timeout)
+	}
+	if len(e.Finally.Asserts) != 1 {
+		t.Fatalf("expected 1 finally assert, got %d", len(e.Finally.Asserts))
+	}
+	assertAssert(t, e.Finally.Asserts[0], types.Assert{Query: "stderr", Predicate: "contains", Value: "shutdown"})
+}
+
+func TestParseFinallyDefaultTimeout(t *testing.T) {
+	input := `sh -c 'sleep 999'
+EXIT NEVER
+[Finally]
+KILL EXIT 137
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entries[0].Finally.Timeout != 1000 {
+		t.Fatalf("expected default timeout 1000, got %d", entries[0].Finally.Timeout)
+	}
+}
+
+func TestParseFinallyOnNonExitNeverFails(t *testing.T) {
+	input := `echo hello
+EXIT 0
+[Finally]
+TERM EXIT 0
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for [Finally] on non-EXIT NEVER entry")
+	}
+}
+
+func TestParseFinallyInvalidSignal(t *testing.T) {
+	input := `sh -c 'sleep 999'
+EXIT NEVER
+[Finally]
+USR1 EXIT 0
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for unsupported signal")
 	}
 }

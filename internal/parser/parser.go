@@ -8,6 +8,8 @@ import (
 	"github.com/sleipi/cli-t/internal/types"
 )
 
+const keywordTimeout = "timeout"
+
 // directive represents a parsed @directive line (parser-internal).
 type directive struct {
 	Name  string
@@ -162,6 +164,13 @@ func parsePostCommand(lines []string, i int, current *entryBuilder) (int, error)
 		return collectPrompts(lines, i+1, current)
 	}
 
+	if strings.TrimSpace(line) == "[Finally]" {
+		if !current.exitNever {
+			return 0, fmt.Errorf("[Finally] section is only valid on EXIT NEVER entries")
+		}
+		return collectFinally(lines, i+1, current)
+	}
+
 	if strings.TrimSpace(line) == "```" {
 		current.body, i = collectFencedBody(lines, i+1)
 		return i, nil
@@ -255,6 +264,75 @@ func collectPrompts(lines []string, i int, current *entryBuilder) (int, error) {
 		i++
 	}
 	return i, nil
+}
+
+// collectFinally parses a [Finally] section for EXIT NEVER entries.
+// First line: <SIGNAL> EXIT <code> [timeout <ms>]
+// Subsequent lines: asserts (until blank line or next section).
+func collectFinally(lines []string, i int, current *entryBuilder) (int, error) {
+	if i >= len(lines) || strings.TrimSpace(lines[i]) == "" {
+		return 0, fmt.Errorf("[Finally] section requires a signal line")
+	}
+
+	fin, err := parseFinallySignalLine(lines[i])
+	if err != nil {
+		return 0, fmt.Errorf("line %d: %w", i+1, err)
+	}
+	i++
+
+	// Collect optional asserts
+	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
+		a, err := parseAssert(lines[i])
+		if err != nil {
+			return 0, fmt.Errorf("line %d: %w", i+1, err)
+		}
+		fin.Asserts = append(fin.Asserts, a)
+		i++
+	}
+
+	current.finally = fin
+	return i, nil
+}
+
+// parseFinallySignalLine parses: <SIGNAL> EXIT <code> [timeout <ms>]
+func parseFinallySignalLine(line string) (*types.Finally, error) {
+	line = strings.TrimSpace(line)
+	parts := strings.Fields(line)
+
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("invalid [Finally] signal line: %s (expected: SIGNAL EXIT CODE [timeout MS])", line)
+	}
+
+	signal := parts[0]
+	validSignals := map[string]bool{"TERM": true, "KILL": true, "INT": true, "HUP": true, "QUIT": true}
+	if !validSignals[signal] {
+		return nil, fmt.Errorf("unsupported signal %q (supported: TERM, KILL, INT, HUP, QUIT)", signal)
+	}
+
+	if parts[1] != "EXIT" {
+		return nil, fmt.Errorf("expected EXIT after signal name, got %q", parts[1])
+	}
+
+	code, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("invalid exit code %q: %w", parts[2], err)
+	}
+
+	timeout := 1000 // default 1000ms
+	if len(parts) >= 5 && parts[3] == keywordTimeout {
+		timeout, err = strconv.Atoi(parts[4])
+		if err != nil {
+			return nil, fmt.Errorf("invalid timeout value %q: %w", parts[4], err)
+		}
+	} else if len(parts) > 3 && parts[3] != keywordTimeout {
+		return nil, fmt.Errorf("unexpected token %q after exit code (expected 'timeout')", parts[3])
+	}
+
+	return &types.Finally{
+		Signal:   signal,
+		ExitCode: code,
+		Timeout:  timeout,
+	}, nil
 }
 
 func parsePrompt(line string) (types.Prompt, error) {
@@ -354,6 +432,7 @@ type entryBuilder struct {
 	asserts    []types.Assert
 	captures   []types.Capture
 	prompts    []types.Prompt
+	finally    *types.Finally
 	directives []directive
 }
 
@@ -367,6 +446,7 @@ func (b *entryBuilder) build() types.Entry {
 		Asserts:   b.asserts,
 		Captures:  b.captures,
 		Prompts:   b.prompts,
+		Finally:   b.finally,
 	}
 	interpretEntryDirectives(&entry, b.directives)
 	return entry
@@ -453,14 +533,15 @@ func parseAssert(line string) (types.Assert, error) {
 		rest = strings.TrimSpace(rest)
 	}
 
-	// Extract predicate and value
-	predicate, value := extractPredicate(rest)
+	// Extract predicate and value (with possible "later" modifier)
+	predicate, value, later := extractPredicateWithLater(rest)
 
 	return types.Assert{
 		Query:     query,
 		Predicate: predicate,
 		Value:     value,
 		Negated:   negated,
+		Later:     later,
 	}, nil
 }
 
@@ -489,12 +570,15 @@ func extractQuery(line string) (query, rest string) {
 	return parts[0], ""
 }
 
-func extractPredicate(s string) (predicate, value string) {
+// extractPredicateWithLater parses predicate, optional "later" modifier, and value.
+// Syntax: <predicate> [later] <value>
+// e.g. "contains later \"hello\"" → ("contains", "hello", true)
+func extractPredicateWithLater(s string) (predicate, value string, later bool) {
 	// Predicates without value
 	noValuePredicates := []string{"isEmpty"}
 	for _, p := range noValuePredicates {
 		if s == p {
-			return p, ""
+			return p, "", false
 		}
 	}
 
@@ -503,12 +587,17 @@ func extractPredicate(s string) (predicate, value string) {
 	for _, p := range predicates {
 		if strings.HasPrefix(s, p+" ") || s == p {
 			val := strings.TrimSpace(strings.TrimPrefix(s, p))
+			// Check for "later" modifier before value
+			if strings.HasPrefix(val, "later ") {
+				later = true
+				val = strings.TrimSpace(strings.TrimPrefix(val, "later"))
+			}
 			val = unquoteValue(val)
-			return p, val
+			return p, val, later
 		}
 	}
 
-	return s, ""
+	return s, "", false
 }
 
 func unquoteValue(s string) string {

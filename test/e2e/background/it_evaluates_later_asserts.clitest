@@ -1,0 +1,18 @@
+# later assert: evaluated after all entries complete
+# The "later" assert checks stdout accumulated by file-end
+@timeout 2000
+@poll 100
+sh -c 'echo "startup"; sleep 0.2; echo "delayed-output"'
+EXIT NEVER
+[Captures]
+bgpid: pid
+[Asserts]
+stdout contains "startup"
+stdout contains later "delayed-output"
+
+# This entry takes time, letting background process produce more output
+sleep 0.5
+EXIT 0
+
+@defer
+kill {{bgpid}}
