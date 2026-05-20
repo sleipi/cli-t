@@ -3,6 +3,7 @@ package executor
 import (
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/sleipi/cli-t/internal/assert"
@@ -18,13 +19,22 @@ type Result struct {
 	Runner   runner.Result
 }
 
+// BackgroundResult holds information about a background process that stays alive
+// for later assert evaluation and/or [Finally] section execution.
+type BackgroundResult struct {
+	Entry   types.Entry
+	Process *runner.BackgroundProcess
+	Command string // substituted command for display
+}
+
 // Entry runs a single entry's command and evaluates all assertions.
 // It also stores any captures into the provided captures map.
 func Entry(entry types.Entry, captures map[string]string) Result {
 	cmd := vars.SubstituteCaptures(entry.Command, captures)
 
 	if entry.ExitNever {
-		return backgroundEntry(entry, cmd, captures)
+		res, _ := backgroundEntry(entry, cmd, captures)
+		return res
 	}
 
 	if len(entry.Prompts) > 0 {
@@ -62,6 +72,15 @@ func Entry(entry types.Entry, captures map[string]string) Result {
 	}
 
 	return Result{Pass: passed, Failures: failures, Runner: result}
+}
+
+// BackgroundEntry runs an EXIT NEVER entry and returns both the result and
+// a BackgroundResult if the process should stay alive for later/finally evaluation.
+// If the process should stay alive, the Result will be Pass:true but the process
+// is NOT killed — the caller is responsible for cleanup via EvaluateLaterAsserts/ExecuteFinally.
+func BackgroundEntry(entry types.Entry, captures map[string]string) (Result, *BackgroundResult) {
+	cmd := vars.SubstituteCaptures(entry.Command, captures)
+	return backgroundEntry(entry, cmd, captures)
 }
 
 // promptEntry runs a command with interactive prompts.
@@ -135,15 +154,28 @@ func promptEntry(entry types.Entry, cmd string, captures map[string]string) Resu
 	return Result{Pass: passed, Failures: failures, Runner: result}
 }
 
-// backgroundEntry starts a background process and polls asserts until pass or timeout.
-func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) Result {
+// hasLaterAsserts returns true if any assert in the entry has the Later modifier.
+func hasLaterAsserts(entry types.Entry) bool {
+	for _, a := range entry.Asserts {
+		if a.Later {
+			return true
+		}
+	}
+	return false
+}
+
+// backgroundEntry starts a background process and polls non-later asserts until pass or timeout.
+// If the entry has later asserts or a [Finally] section, the process is kept alive on success.
+func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) (Result, *BackgroundResult) {
 	bp, err := runner.RunBackground(cmd)
 	if err != nil {
 		return Result{
 			Pass:     false,
 			Failures: []string{fmt.Sprintf("failed to start background process: %v", err)},
-		}
+		}, nil
 	}
+
+	keepAlive := hasLaterAsserts(entry) || entry.Finally != nil
 
 	timeout := entry.Directives.Timeout
 	if timeout <= 0 {
@@ -173,7 +205,7 @@ func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) 
 				Pass:     false,
 				Failures: []string{"background process exited unexpectedly"},
 				Runner:   lastResult,
-			}
+			}, nil
 		case <-ticker.C:
 			lastResult = runner.Result{
 				Stdout: strings.TrimRight(bp.Stdout(), "\n"),
@@ -192,7 +224,11 @@ func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) 
 				}
 			}
 
+			// Only evaluate non-later asserts during polling
 			for _, a := range entry.Asserts {
+				if a.Later {
+					continue
+				}
 				res := assert.Evaluate(a, lastResult)
 				if !res.Pass {
 					allPass = false
@@ -205,7 +241,14 @@ func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) 
 					val := vars.ResolveCapture(c.Query, lastResult)
 					captures[c.Name] = val
 				}
-				return Result{Pass: true, Runner: lastResult}
+				if keepAlive {
+					return Result{Pass: true, Runner: lastResult}, &BackgroundResult{
+						Entry:   entry,
+						Process: bp,
+						Command: cmd,
+					}
+				}
+				return Result{Pass: true, Runner: lastResult}, nil
 			}
 
 			if time.Now().After(deadline) {
@@ -214,10 +257,145 @@ func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) 
 					Pass:     false,
 					Failures: append([]string{"timeout waiting for assertions to pass"}, lastFailures...),
 					Runner:   lastResult,
-				}
+				}, nil
 			}
 		}
 	}
+}
+
+// EvaluateLaterAsserts evaluates all "later" asserts for background entries
+// against their accumulated output. Returns failures grouped by entry command.
+func EvaluateLaterAsserts(bgs []*BackgroundResult) []LaterResult {
+	var results []LaterResult
+	for _, bg := range bgs {
+		result := runner.Result{
+			Stdout: strings.TrimRight(bg.Process.Stdout(), "\n"),
+			Stderr: strings.TrimRight(bg.Process.Stderr(), "\n"),
+			Pid:    bg.Process.Pid(),
+		}
+
+		var failures []string
+		for _, a := range bg.Entry.Asserts {
+			if !a.Later {
+				continue
+			}
+			res := assert.Evaluate(a, result)
+			if !res.Pass {
+				failures = append(failures, res.Message)
+			}
+		}
+
+		results = append(results, LaterResult{
+			Command:  bg.Command,
+			Pass:     len(failures) == 0,
+			Failures: failures,
+			Runner:   result,
+		})
+	}
+	return results
+}
+
+// LaterResult holds the result of evaluating later asserts for one background entry.
+type LaterResult struct {
+	Command  string
+	Pass     bool
+	Failures []string
+	Runner   runner.Result
+}
+
+// FinallyResult holds the result of executing a [Finally] section.
+type FinallyResult struct {
+	Command  string
+	Pass     bool
+	Failures []string
+	Runner   runner.Result
+}
+
+// signalFromName converts a signal name to a syscall.Signal.
+func signalFromName(name string) syscall.Signal {
+	switch name {
+	case "TERM":
+		return syscall.SIGTERM
+	case "KILL":
+		return syscall.SIGKILL
+	case "INT":
+		return syscall.SIGINT
+	case "HUP":
+		return syscall.SIGHUP
+	case "QUIT":
+		return syscall.SIGQUIT
+	default:
+		return syscall.SIGTERM
+	}
+}
+
+// ExecuteFinally executes [Finally] sections for background entries in LIFO order.
+// It sends the signal, waits for the process to exit, checks exit code, and
+// evaluates post-signal asserts.
+func ExecuteFinally(bgs []*BackgroundResult) []FinallyResult {
+	var results []FinallyResult
+
+	// Process in reverse (LIFO) order
+	for i := len(bgs) - 1; i >= 0; i-- {
+		bg := bgs[i]
+		if bg.Entry.Finally == nil {
+			continue
+		}
+
+		fin := bg.Entry.Finally
+		sig := signalFromName(fin.Signal)
+
+		// Send signal
+		if err := bg.Process.Signal(sig); err != nil {
+			results = append(results, FinallyResult{
+				Command:  bg.Command,
+				Pass:     false,
+				Failures: []string{fmt.Sprintf("failed to send %s signal: %v", fin.Signal, err)},
+			})
+			continue
+		}
+
+		// Wait for process to exit
+		timeout := time.Duration(fin.Timeout) * time.Millisecond
+		if !bg.Process.Wait(timeout) {
+			results = append(results, FinallyResult{
+				Command:  bg.Command,
+				Pass:     false,
+				Failures: []string{fmt.Sprintf("[Finally] timeout: process did not exit within %dms after %s", fin.Timeout, fin.Signal)},
+			})
+			continue
+		}
+
+		// Check exit code
+		var failures []string
+		actualExit := bg.Process.ExitCode()
+		if actualExit != fin.ExitCode {
+			failures = append(failures, fmt.Sprintf("[Finally] exit code: expected %d, got %d", fin.ExitCode, actualExit))
+		}
+
+		// Evaluate post-signal asserts
+		result := runner.Result{
+			Stdout:   strings.TrimRight(bg.Process.Stdout(), "\n"),
+			Stderr:   strings.TrimRight(bg.Process.Stderr(), "\n"),
+			Pid:      bg.Process.Pid(),
+			ExitCode: actualExit,
+		}
+
+		for _, a := range fin.Asserts {
+			res := assert.Evaluate(a, result)
+			if !res.Pass {
+				failures = append(failures, res.Message)
+			}
+		}
+
+		results = append(results, FinallyResult{
+			Command:  bg.Command,
+			Pass:     len(failures) == 0,
+			Failures: failures,
+			Runner:   result,
+		})
+	}
+	return results
 }
 
 // SplitDeferEntries separates defer entries from regular entries.

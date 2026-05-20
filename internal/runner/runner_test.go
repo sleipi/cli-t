@@ -207,6 +207,67 @@ func TestRunWithPrompts_Timeout(t *testing.T) {
 	}
 }
 
+func TestRunBackground_Signal(t *testing.T) {
+	// Start a process that traps TERM and exits cleanly
+	bp, err := RunBackground(`trap 'echo terminated; exit 0' TERM; echo ready; while true; do sleep 0.1; done`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Wait for process to be ready
+	time.Sleep(200 * time.Millisecond)
+	if !strings.Contains(bp.Stdout(), "ready") {
+		t.Fatalf("process not ready, stdout: %q", bp.Stdout())
+	}
+
+	err = bp.Signal(15) // SIGTERM
+	if err != nil {
+		t.Fatalf("unexpected error sending signal: %v", err)
+	}
+
+	// Wait for process to exit
+	if !bp.Wait(2 * time.Second) {
+		t.Fatal("process did not exit after TERM")
+	}
+
+	if bp.ExitCode() != 0 {
+		t.Fatalf("expected exit 0, got %d", bp.ExitCode())
+	}
+	if !strings.Contains(bp.Stdout(), "terminated") {
+		t.Fatalf("expected stdout to contain 'terminated', got %q", bp.Stdout())
+	}
+}
+
+func TestRunBackground_ExitCode_Kill(t *testing.T) {
+	bp, err := RunBackground("sleep 10")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	_ = bp.Signal(9) // SIGKILL
+
+	if !bp.Wait(2 * time.Second) {
+		t.Fatal("process did not exit after KILL")
+	}
+
+	if bp.ExitCode() != 137 {
+		t.Fatalf("expected exit 137, got %d", bp.ExitCode())
+	}
+}
+
+func TestRunBackground_Wait_Timeout(t *testing.T) {
+	bp, err := RunBackground("sleep 10")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer bp.Kill()
+
+	// Should return false because process doesn't exit within 100ms
+	if bp.Wait(100 * time.Millisecond) {
+		t.Fatal("expected Wait to return false (timeout)")
+	}
+}
+
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }

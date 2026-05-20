@@ -17,6 +17,7 @@ import (
 func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[string]string) (pass, fail, skip int) {
 	regular, defers := executor.SplitDeferEntries(entries)
 	captures := map[string]string{}
+	var backgrounds []*executor.BackgroundResult
 
 	for _, entry := range regular {
 		if cancelled.Load() {
@@ -35,7 +36,18 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 		}
 
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
-		er := executor.Entry(entry, captures)
+
+		var er executor.Result
+		var bg *executor.BackgroundResult
+
+		if entry.ExitNever {
+			er, bg = executor.BackgroundEntry(entry, captures)
+			if bg != nil {
+				backgrounds = append(backgrounds, bg)
+			}
+		} else {
+			er = executor.Entry(entry, captures)
+		}
 
 		assertCount := len(entry.Asserts)
 		if len(entry.Body) > 0 {
@@ -62,6 +74,44 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 		})
 	}
 
+	// File-end: evaluate later asserts
+	if len(backgrounds) > 0 {
+		laterResults := executor.EvaluateLaterAsserts(backgrounds)
+		for _, lr := range laterResults {
+			if !lr.Pass {
+				fail++
+				if failFast {
+					cancelled.Store(true)
+				}
+				vd.EntryResult(0, display.EntryInfo{
+					Command:  lr.Command,
+					Passed:   false,
+					Failures: lr.Failures,
+					Stdout:   lr.Runner.Stdout,
+					Stderr:   lr.Runner.Stderr,
+				})
+			}
+		}
+
+		// File-end: execute [Finally] sections (LIFO)
+		finallyResults := executor.ExecuteFinally(backgrounds)
+		for _, fr := range finallyResults {
+			if !fr.Pass {
+				fail++
+				if failFast {
+					cancelled.Store(true)
+				}
+				vd.EntryResult(0, display.EntryInfo{
+					Command:  fr.Command,
+					Passed:   false,
+					Failures: fr.Failures,
+					Stdout:   fr.Runner.Stdout,
+					Stderr:   fr.Runner.Stderr,
+				})
+			}
+		}
+	}
+
 	// Execute defers and display them
 	for _, entry := range defers {
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
@@ -76,6 +126,7 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, v map[string]string) (pass, fail, skip int, details []display.CompactFailure) {
 	regular, defers := executor.SplitDeferEntries(entries)
 	captures := map[string]string{}
+	var backgrounds []*executor.BackgroundResult
 
 	for i, entry := range regular {
 		if cancelled.Load() {
@@ -98,7 +149,17 @@ func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types
 		}
 		pd.UpdateEntry(fileIdx, subtitle)
 
-		er := executor.Entry(entry, captures)
+		var er executor.Result
+		var bg *executor.BackgroundResult
+
+		if entry.ExitNever {
+			er, bg = executor.BackgroundEntry(entry, captures)
+			if bg != nil {
+				backgrounds = append(backgrounds, bg)
+			}
+		} else {
+			er = executor.Entry(entry, captures)
+		}
 
 		if er.Pass {
 			pass++
@@ -116,6 +177,42 @@ func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types
 		}
 
 		pd.UpdateProgress(fileIdx, i+1, len(regular))
+	}
+
+	// File-end: evaluate later asserts
+	if len(backgrounds) > 0 {
+		laterResults := executor.EvaluateLaterAsserts(backgrounds)
+		for _, lr := range laterResults {
+			if !lr.Pass {
+				fail++
+				if failFast {
+					cancelled.Store(true)
+				}
+				details = append(details, display.CompactFailure{
+					Command:  lr.Command,
+					Failures: lr.Failures,
+					Stdout:   lr.Runner.Stdout,
+					Stderr:   lr.Runner.Stderr,
+				})
+			}
+		}
+
+		// File-end: execute [Finally] sections (LIFO)
+		finallyResults := executor.ExecuteFinally(backgrounds)
+		for _, fr := range finallyResults {
+			if !fr.Pass {
+				fail++
+				if failFast {
+					cancelled.Store(true)
+				}
+				details = append(details, display.CompactFailure{
+					Command:  fr.Command,
+					Failures: fr.Failures,
+					Stdout:   fr.Runner.Stdout,
+					Stderr:   fr.Runner.Stderr,
+				})
+			}
+		}
 	}
 
 	// Execute defers silently in compact mode

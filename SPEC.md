@@ -105,6 +105,7 @@ Sections start with a header in square brackets. Available sections:
 
 - `[Asserts]` — explicit assertions
 - `[Captures]` — variable captures
+- `[Finally]` — cleanup signal + post-signal asserts (EXIT NEVER only)
 - `[Prompts]` — interactive stdin responses (pattern-matched)
 - `[Options]` — entry-level options (planned)
 
@@ -161,6 +162,30 @@ stdout not contains "error"
 stderr not isEmpty
 ```
 
+#### `later` modifier (EXIT NEVER only)
+
+The `later` keyword defers an assertion to be evaluated at file-end rather than during polling. Place it after the predicate, before the value:
+
+```
+<query> [not] <predicate> later [value]
+```
+
+During polling, `later` asserts are skipped. After all entries in the file complete, `later` asserts are evaluated against the process's accumulated stdout/stderr. This is useful for output that appears after the initial "ready" state.
+
+```
+@timeout 2000
+@poll 100
+sh -c 'echo "ready"; sleep 1; echo "done"'
+EXIT NEVER
+[Asserts]
+stdout contains "ready"
+stdout contains later "done"
+```
+
+If any non-later polling assert times out, the process is killed and all `later` asserts for that entry are also marked as FAIL.
+
+---
+
 #### Values
 
 Values can be:
@@ -203,6 +228,45 @@ id: stdout
 The captured value can then be used in later entries as `{{id}}`.
 
 > **Planned**: Regex capture groups: `token: stdout regex /token=(\w+)/`
+
+---
+
+### `[Finally]`
+
+Available only on `EXIT NEVER` entries. Defines cleanup behavior: sends a signal to the background process, waits for it to exit, and optionally asserts on the final state.
+
+Format:
+
+```
+[Finally]
+<SIGNAL> EXIT <code> [timeout <ms>]
+<assert>...
+```
+
+- **SIGNAL**: One of `TERM`, `KILL`, `INT`, `HUP`, `QUIT`
+- **EXIT code**: Expected exit code after the signal is delivered
+- **timeout**: Maximum milliseconds to wait for exit (default: 1000)
+- Subsequent lines (until blank line or next section) are asserts evaluated against the process's final stdout/stderr after exit
+
+Example:
+
+```
+@timeout 2000
+@poll 100
+sh -c 'echo "ready"; trap "echo cleaned; exit 0" TERM; while true; do sleep 0.1; done'
+EXIT NEVER
+[Asserts]
+stdout contains "ready"
+[Finally]
+TERM EXIT 0 timeout 3000
+stdout contains "cleaned"
+```
+
+**Execution order at file-end:**
+1. All regular entries execute (background processes stay alive if they have `later` asserts or `[Finally]`)
+2. `later` asserts are evaluated against accumulated output
+3. `[Finally]` sections are executed in LIFO order (last started = first cleaned)
+4. `@defer` entries are executed in LIFO order
 
 ---
 
