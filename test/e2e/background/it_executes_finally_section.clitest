@@ -1,10 +1,10 @@
 # [Finally] sends signal and checks exit
 @timeout 2000
 @poll 100
-sh -c 'echo "ready"; trap "echo cleanup-done; exit 0" TERM; while true; do sleep 0.1; done'
+sh -c 'echo "ready"; trap "echo cleanup-done >&2; exit 0" TERM; while :; do sleep 0.1 & wait $!; done'
 EXIT NEVER
 [Asserts]
 stdout contains "ready"
 [Finally]
 TERM EXIT 0 timeout 3000
-stdout contains "cleanup-done"
+stderr contains "cleanup-done"
