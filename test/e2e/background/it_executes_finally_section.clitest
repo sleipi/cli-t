@@ -1,10 +1,15 @@
-# [Finally] sends signal and checks exit
-@timeout 2000
+# [Finally] sends TERM, bgserver logs graceful termination
+@timeout 5000
 @poll 100
-sh -c 'echo "ready"; trap "echo cleanup-done >&2; exit 0" TERM; while :; do sleep 0.1 & wait $!; done'
+./test/_helpers/bgserver/bgserver --fifo /tmp/clitest-bgserver.fifo
 EXIT NEVER
 [Asserts]
-stdout contains "ready"
+stdout contains "started"
+stdout contains later "msg: hello from outside"
 [Finally]
 TERM EXIT 0 timeout 3000
-stderr contains "cleanup-done"
+stderr contains "graceful termination"
+
+# Write a message to the background process via FIFO
+echo "hello from outside" > /tmp/clitest-bgserver.fifo
+EXIT 0
