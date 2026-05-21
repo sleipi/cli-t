@@ -1,6 +1,10 @@
 package executor
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -8,25 +12,48 @@ import (
 	"github.com/sleipi/cli-t/internal/types"
 )
 
-func TestExecuteFinally_SignalAndExit(t *testing.T) {
-	// Process that handles TERM and exits 0
-	bp, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo ready; while true; do sleep 1; done'`)
+var sigtestBin string
+
+func TestMain(m *testing.M) {
+	// Build sigtest helper once for all tests
+	tmp, err := os.MkdirTemp("", "sigtest")
 	if err != nil {
-		t.Fatalf("failed to start: %v", err)
+		panic(err)
 	}
-	// Wait for "ready" output
+
+	sigtestBin = filepath.Join(tmp, "sigtest")
+	cmd := exec.Command("go", "build", "-o", sigtestBin, "github.com/sleipi/cli-t/test/_helpers/sigtest")
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		panic("failed to build sigtest: " + err.Error())
+	}
+
+	code := m.Run()
+	os.RemoveAll(tmp)
+	os.Exit(code)
+}
+
+func waitForReady(t *testing.T, bp *runner.BackgroundProcess) {
+	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if bp.Stdout() != "" {
-			break
+		if strings.Contains(bp.Stdout(), "ready") {
+			return
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+	t.Fatal("process did not become ready in time")
+}
+
+func TestExecuteFinally_SignalAndExit(t *testing.T) {
+	bp, err := runner.RunBackground(sigtestBin + " --exit 0")
+	if err != nil {
+		t.Fatalf("failed to start: %v", err)
+	}
+	waitForReady(t, bp)
 
 	bgs := []*BackgroundResult{{
-		Entry: types.Entry{
-			Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000},
-		},
+		Entry:   types.Entry{Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000}},
 		Process: bp,
 		Command: "test-term",
 	}}
@@ -41,23 +68,14 @@ func TestExecuteFinally_SignalAndExit(t *testing.T) {
 }
 
 func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
-	// Process exits 1 on TERM but we expect 0
-	bp, err := runner.RunBackground(`sh -c 'trap "exit 1" TERM; echo ready; while true; do sleep 1; done'`)
+	bp, err := runner.RunBackground(sigtestBin + " --exit 1")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if bp.Stdout() != "" {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForReady(t, bp)
 
 	bgs := []*BackgroundResult{{
-		Entry: types.Entry{
-			Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000},
-		},
+		Entry:   types.Entry{Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000}},
 		Process: bp,
 		Command: "test-mismatch",
 	}}
@@ -78,23 +96,14 @@ func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
 }
 
 func TestExecuteFinally_Timeout(t *testing.T) {
-	// Process ignores TERM
-	bp, err := runner.RunBackground(`sh -c 'trap "" TERM; echo ready; while true; do sleep 1; done'`)
+	bp, err := runner.RunBackground(sigtestBin + " --ignore")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if bp.Stdout() != "" {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForReady(t, bp)
 
 	bgs := []*BackgroundResult{{
-		Entry: types.Entry{
-			Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 200},
-		},
+		Entry:   types.Entry{Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 200}},
 		Process: bp,
 		Command: "test-timeout",
 	}}
@@ -107,18 +116,11 @@ func TestExecuteFinally_Timeout(t *testing.T) {
 }
 
 func TestExecuteFinally_PostSignalAsserts(t *testing.T) {
-	// Process writes "shutdown" to stderr on TERM
-	bp, err := runner.RunBackground(`sh -c 'trap "echo shutdown >&2; exit 0" TERM; echo ready; while true; do sleep 1; done'`)
+	bp, err := runner.RunBackground(sigtestBin + ` --exit 0 --stderr "shutdown"`)
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if bp.Stdout() != "" {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForReady(t, bp)
 
 	bgs := []*BackgroundResult{{
 		Entry: types.Entry{
@@ -140,17 +142,11 @@ func TestExecuteFinally_PostSignalAsserts(t *testing.T) {
 }
 
 func TestExecuteFinally_PostSignalAssertsFail(t *testing.T) {
-	bp, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo ready; while true; do sleep 1; done'`)
+	bp, err := runner.RunBackground(sigtestBin + " --exit 0")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if bp.Stdout() != "" {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForReady(t, bp)
 
 	bgs := []*BackgroundResult{{
 		Entry: types.Entry{
@@ -172,23 +168,16 @@ func TestExecuteFinally_PostSignalAssertsFail(t *testing.T) {
 }
 
 func TestExecuteFinally_LIFO(t *testing.T) {
-	bp1, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo r1; while true; do sleep 1; done'`)
+	bp1, err := runner.RunBackground(sigtestBin + " --exit 0")
 	if err != nil {
 		t.Fatalf("failed to start bp1: %v", err)
 	}
-	bp2, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo r2; while true; do sleep 1; done'`)
+	bp2, err := runner.RunBackground(sigtestBin + " --exit 0")
 	if err != nil {
 		t.Fatalf("failed to start bp2: %v", err)
 	}
-
-	// Wait for both to be ready
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if bp1.Stdout() != "" && bp2.Stdout() != "" {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForReady(t, bp1)
+	waitForReady(t, bp2)
 
 	bgs := []*BackgroundResult{
 		{
@@ -207,7 +196,6 @@ func TestExecuteFinally_LIFO(t *testing.T) {
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
 	}
-	// LIFO: "second" processed first
 	if results[0].Command != "second" {
 		t.Fatalf("expected LIFO order, first result should be 'second', got %q", results[0].Command)
 	}
@@ -217,17 +205,11 @@ func TestExecuteFinally_LIFO(t *testing.T) {
 }
 
 func TestExecuteFinally_SkipsEntriesWithoutFinally(t *testing.T) {
-	bp, err := runner.RunBackground(`sh -c 'echo ready; sleep 10'`)
+	bp, err := runner.RunBackground(sigtestBin + " --exit 0")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if bp.Stdout() != "" {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForReady(t, bp)
 
 	bgs := []*BackgroundResult{{
 		Entry:   types.Entry{Finally: nil},
