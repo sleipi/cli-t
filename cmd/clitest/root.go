@@ -153,47 +153,7 @@ func runFiles(files []string, workers int, isTTY bool) []fileResult {
 				if cancelled.Load() {
 					continue
 				}
-				f := files[idx]
-
-				parsed, err := loadAndParse(f, varFlags.values)
-				if err != nil {
-					errOutput := fmt.Sprintf("%s%v%s\n", display.ColorRed, err, display.ColorReset)
-					pd.FileError(idx, errOutput)
-					results[idx] = fileResult{fail: 1, file: f}
-					if failFast {
-						cancelled.Store(true)
-					}
-					continue
-				}
-
-			if parsed.Directives.Skip {
-				pd.UpdateProgress(idx, 0, 0)
-				pd.FinishFile(idx, true, "")
-				results[idx] = fileResult{skip: len(parsed.Entries), file: f}
-				continue
-			}
-
-				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
-
-				if len(entries) == 0 {
-					pd.HideFile(idx)
-					results[idx] = fileResult{file: f, hidden: true}
-					continue
-				}
-
-				if verbose {
-					var buf bytes.Buffer
-					vd := display.NewVerboseDisplay(&buf, true)
-					vd.BeginFile(f)
-					pass, fail, skip := runEntriesVerbose(vd, pd, idx, entries)
-					vd.EndFile()
-					pd.FinishFile(idx, fail == 0, buf.String())
-					results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
-			} else {
-				pass, fail, skip, details := runEntriesCompact(pd, idx, entries)
-				pd.FinishFile(idx, fail == 0, "")
-				results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
-			}
+				results[idx] = processFile(files[idx], idx, pd)
 			}
 		}()
 	}
@@ -209,6 +169,46 @@ func runFiles(files []string, workers int, isTTY bool) []fileResult {
 		}
 	}
 	return results
+}
+
+// processFile handles parsing, filtering, and execution for a single file.
+func processFile(f string, idx int, pd *display.ProgressDisplay) fileResult {
+	parsed, err := loadAndParse(f, varFlags.values)
+	if err != nil {
+		errOutput := fmt.Sprintf("%s%v%s\n", display.ColorRed, err, display.ColorReset)
+		pd.FileError(idx, errOutput)
+		if failFast {
+			cancelled.Store(true)
+		}
+		return fileResult{fail: 1, file: f}
+	}
+
+	if parsed.Directives.Skip {
+		pd.UpdateProgress(idx, 0, 0)
+		pd.FinishFile(idx, true, "")
+		return fileResult{skip: len(parsed.Entries), file: f}
+	}
+
+	entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
+
+	if len(entries) == 0 {
+		pd.HideFile(idx)
+		return fileResult{file: f, hidden: true}
+	}
+
+	if verbose {
+		var buf bytes.Buffer
+		vd := display.NewVerboseDisplay(&buf, true)
+		vd.BeginFile(f)
+		pass, fail, skip := runEntriesVerbose(vd, pd, idx, entries)
+		vd.EndFile()
+		pd.FinishFile(idx, fail == 0, buf.String())
+		return fileResult{pass: pass, fail: fail, skip: skip, file: f}
+	}
+
+	pass, fail, skip, details := runEntriesCompact(pd, idx, entries)
+	pd.FinishFile(idx, fail == 0, "")
+	return fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
 }
 
 

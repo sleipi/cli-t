@@ -136,10 +136,8 @@ func (d *ProgressDisplay) FileError(fileIdx int, output string) {
 			fmt.Fprint(d.w, output)
 		}
 		d.renderDynamic()
-	} else {
-		if output != "" {
-			fmt.Fprint(d.w, output)
-		}
+	} else if output != "" {
+		fmt.Fprint(d.w, output)
 	}
 }
 
