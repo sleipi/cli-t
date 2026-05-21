@@ -1,0 +1,30 @@
+# Simple binary — auto-exec ensures signal reaches process directly
+@timeout 3000
+@poll 100
+./test/_helpers/bgserver/bgserver --fifo /tmp/clitest-autoexec1.fifo
+EXIT NEVER
+[Asserts]
+stdout contains "started"
+[Finally]
+TERM EXIT 0 timeout 3000
+stderr contains "graceful termination"
+
+# Env-prefix command — auto-exec works with ENV=val prefix
+@timeout 3000
+@poll 100
+MY_TEST_ENV=hello123 ./test/_helpers/bgserver/bgserver --fifo /tmp/clitest-autoexec2.fifo --env MY_TEST_ENV
+EXIT NEVER
+[Asserts]
+stdout contains "started"
+stdout contains "env: MY_TEST_ENV=hello123"
+[Finally]
+TERM EXIT 0 timeout 3000
+stderr contains "graceful termination"
+
+# Absolute path — auto-exec handles absolute paths (sleep exits 143 on SIGTERM)
+@timeout 3000
+@poll 100
+/bin/sleep 60
+EXIT NEVER
+[Finally]
+TERM EXIT 143 timeout 3000

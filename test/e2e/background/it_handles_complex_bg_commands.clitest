@@ -1,0 +1,11 @@
+# Complex command with user-provided exec — manual exec for piped commands
+# The user is responsible for prefixing exec when using shell operators
+@timeout 3000
+@poll 100
+exec ./test/_helpers/bgserver/bgserver --fifo /tmp/clitest-complex1.fifo
+EXIT NEVER
+[Asserts]
+stdout contains "started"
+[Finally]
+TERM EXIT 0 timeout 3000
+stderr contains "graceful termination"

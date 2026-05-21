@@ -268,6 +268,28 @@ stdout contains "cleaned"
 3. `[Finally]` sections are executed in LIFO order (last started = first cleaned)
 4. `@defer` entries are executed in LIFO order
 
+**Signal delivery and `exec`:**
+
+clitest runs all commands via `sh -c "<command>"`. For `EXIT NEVER` entries with `[Finally]`, the signal must reach the actual process (not the shell wrapper). On shells like `dash` (default `/bin/sh` on Ubuntu/Debian), the shell does *not* automatically replace itself with the target binary, causing the signal to kill the shell instead.
+
+To ensure reliable signal delivery, clitest automatically inserts `exec` for simple commands that don't use shell operators (`|`, `&`, `;`, `<`, `>`, `$`, backticks, `(`, `{`, `}`). Environment variable prefixes are handled correctly:
+
+```
+# Auto-exec applied (simple command):
+./my-server --port 8080           → exec ./my-server --port 8080
+ENV=val ./my-server               → ENV=val exec ./my-server
+
+# Auto-exec NOT applied (shell operators present):
+./server | tee log                → unchanged
+cd dir && ./server                → unchanged
+```
+
+For complex commands with shell operators that require a `[Finally]` exit-code check, prefix the main process with `exec` manually:
+
+```
+exec ./my-server --port 8080 | tee log
+```
+
 ---
 
 ### `[Prompts]`

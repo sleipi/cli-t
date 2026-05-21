@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] Auto-exec for `EXIT NEVER` background processes — Automatically inserts `exec` for simple commands to ensure signals reach the target process directly on all `/bin/sh` implementations (bash, dash, busybox ash). Handles env-prefix commands (`ENV=val exec ./cmd`). Complex commands with shell operators are left unchanged; users can manually prefix `exec` if needed.
 - [x] `[Finally]` section + `later` assert modifier — Send a signal to background processes at file-end and assert exit code + output. `later` keyword defers assert evaluation to file-end. Execution order: entries → later asserts → [Finally] LIFO → @defer LIFO. See #19.
 - [x] `[Prompts]` — Interactive prompt/response section: match stdout patterns and send responses via stdin. Pipe-based (no PTY). Supports substring and regex matching, multiplier syntax, ambiguity detection, and unmatched prompt failure. Default timeout 30s.
 - [x] `--no-color` — Disable ANSI color codes in output. Also respects `NO_COLOR` env var (https://no-color.org/) and auto-disables when stdout is not a TTY.

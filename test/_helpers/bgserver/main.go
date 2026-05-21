@@ -12,6 +12,7 @@ import (
 
 func main() {
 	fifoPath := flag.String("fifo", "", "path to named pipe for receiving messages")
+	envName := flag.String("env", "", "print the value of this environment variable on startup")
 	flag.Parse()
 
 	// Create FIFO if path provided
@@ -24,20 +25,32 @@ func main() {
 		defer os.Remove(*fifoPath)
 	}
 
+	// Open FIFO before printing "started" so it's ready for writers.
+	// O_RDWR on a named pipe doesn't block (unlike O_RDONLY which waits for a writer).
+	var fifoFile *os.File
+	if *fifoPath != "" {
+		var err error
+		fifoFile, err = os.OpenFile(*fifoPath, os.O_RDWR, 0)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "open fifo: %v\n", err)
+			os.Exit(1)
+		}
+		defer fifoFile.Close()
+	}
+
 	fmt.Println("started")
+
+	if *envName != "" {
+		fmt.Printf("env: %s=%s\n", *envName, os.Getenv(*envName))
+	}
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM)
 
 	// Read messages from FIFO in background goroutine
-	if *fifoPath != "" {
+	if fifoFile != nil {
 		go func() {
-			f, err := os.Open(*fifoPath)
-			if err != nil {
-				return
-			}
-			defer f.Close()
-			scanner := bufio.NewScanner(f)
+			scanner := bufio.NewScanner(fifoFile)
 			for scanner.Scan() {
 				fmt.Printf("msg: %s\n", scanner.Text())
 			}

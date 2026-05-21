@@ -126,7 +126,7 @@ func RunBackground(command string) (*BackgroundProcess, error) {
 
 // RunBackgroundWithEnv starts a command in the background with additional env vars.
 func RunBackgroundWithEnv(command string, env map[string]string) (*BackgroundProcess, error) {
-	cmd := exec.Command("sh", "-c", command)
+	cmd := exec.Command("sh", "-c", maybeExec(command))
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	bp := &BackgroundProcess{

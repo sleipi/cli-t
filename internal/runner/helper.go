@@ -7,11 +7,6 @@ import "strings"
 // Simple commands can safely be prefixed with "exec" to ensure the shell
 // replaces itself with the target binary — important for signal delivery
 // on shells like dash that don't auto-exec single commands.
-//
-// This check is intentionally conservative: it may reject commands that are
-// technically simple (e.g. arguments containing '$' in quotes) but will never
-// incorrectly classify a complex command as simple. False negatives only skip
-// the exec optimization and have no functional impact.
 func isSimpleCommand(cmd string) bool {
 	const meta = "|&;<>(){}$`"
 	return !strings.ContainsAny(cmd, meta)
