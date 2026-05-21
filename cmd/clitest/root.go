@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -102,16 +101,7 @@ func runMain(_ *cobra.Command, args []string) error {
 
 	start := time.Now()
 
-	var results []fileResult
-	if verbose {
-		if isTTY {
-			results = runVerboseTTY(files, workers)
-		} else {
-			results = runVerboseNonTTY(files, workers)
-		}
-	} else {
-		results = runCompact(files, workers, isTTY)
-	}
+	results := runFiles(files, workers, isTTY)
 
 	elapsed := time.Since(start)
 
@@ -134,163 +124,10 @@ func runMain(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func runVerboseTTY(files []string, workers int) []fileResult {
-	results := make([]fileResult, len(files))
-	jobs := make(chan int, len(files))
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	appendedLines := 0
-	headerLines := len(files)
-
-	for i := range files {
-		jobs <- i
-	}
-	close(jobs)
-
-	for _, f := range files {
-		fmt.Printf("  %s▶ %s%s %sRUNNING%s\n", display.ColorBold, filepath.Base(f), display.ColorReset, display.ColorYellow, display.ColorReset)
-	}
-
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for idx := range jobs {
-				if cancelled.Load() {
-					continue
-				}
-				f := files[idx]
-				var buf bytes.Buffer
-
-				parsed, err := loadAndParse(f, varFlags.values)
-				if err != nil {
-					fmt.Fprintf(&buf, "  %s%v%s\n", display.ColorRed, err, display.ColorReset)
-					mu.Lock()
-					display.OverwriteHeaderLine(os.Stdout, idx, filepath.Base(f), false, headerLines, appendedLines)
-					fmt.Print(buf.String())
-					appendedLines += display.CountLines(buf.String())
-					mu.Unlock()
-					results[idx] = fileResult{fail: 1, file: f}
-					if failFast {
-						cancelled.Store(true)
-					}
-					continue
-				}
-
-				if parsed.Directives.Skip {
-					mu.Lock()
-					display.OverwriteHeaderLine(os.Stdout, idx, filepath.Base(f), true, headerLines, appendedLines)
-					mu.Unlock()
-					results[idx] = fileResult{skip: len(parsed.Entries), file: f}
-					continue
-				}
-
-				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
-
-				if len(entries) == 0 {
-					mu.Lock()
-					display.ClearHeaderLine(os.Stdout, idx, headerLines, appendedLines)
-					mu.Unlock()
-					results[idx] = fileResult{file: f, hidden: true}
-					continue
-				}
-
-				vd := display.NewVerboseDisplay(&buf, true)
-				vd.Start([]string{f})
-				vd.BeginFile(0)
-				pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
-				vd.EndFile(0)
-
-				mu.Lock()
-				display.OverwriteHeaderLine(os.Stdout, idx, filepath.Base(f), fail == 0, headerLines, appendedLines)
-				fmt.Print(buf.String())
-				appendedLines += display.CountLines(buf.String())
-				mu.Unlock()
-
-				results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
-			}
-		}()
-	}
-	wg.Wait()
-	return results
-}
-
-func runVerboseNonTTY(files []string, workers int) []fileResult {
-	type verboseResult struct {
-		output string
-		pass   int
-		fail   int
-		skip   int
-		file   string
-		hidden bool
-	}
-
-	results := make([]fileResult, len(files))
-	vResults := make([]verboseResult, len(files))
-	jobs := make(chan int, len(files))
-	var wg sync.WaitGroup
-
-	for i := range files {
-		jobs <- i
-	}
-	close(jobs)
-
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for idx := range jobs {
-				if cancelled.Load() {
-					continue
-				}
-				f := files[idx]
-				var buf bytes.Buffer
-				vd := display.NewVerboseDisplay(&buf, true)
-				vd.Start([]string{f})
-
-				parsed, err := loadAndParse(f, varFlags.values)
-				if err != nil {
-					vd.FileError(0, err.Error())
-					vResults[idx] = verboseResult{output: buf.String(), fail: 1, file: f}
-					if failFast {
-						cancelled.Store(true)
-					}
-					continue
-				}
-
-				if parsed.Directives.Skip {
-					vResults[idx] = verboseResult{output: buf.String(), skip: len(parsed.Entries), file: f}
-					continue
-				}
-
-				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
-
-				if len(entries) == 0 {
-					vResults[idx] = verboseResult{file: f, hidden: true}
-					continue
-				}
-
-				vd.BeginFile(0)
-				pass, fail, skip := runEntriesVerbose(vd, entries, varFlags.values)
-				vd.EndFile(0)
-				vResults[idx] = verboseResult{output: buf.String(), pass: pass, fail: fail, skip: skip, file: f}
-			}
-		}()
-	}
-	wg.Wait()
-
-	for i, r := range vResults {
-		if r.hidden {
-			results[i] = fileResult{file: r.file, hidden: true}
-			continue
-		}
-		fmt.Print(r.output)
-		results[i] = fileResult{pass: r.pass, fail: r.fail, skip: r.skip, file: r.file}
-	}
-	return results
-}
-
-func runCompact(files []string, workers int, isTTY bool) []fileResult {
+// runFiles is the unified execution function for both compact and verbose modes.
+// It uses ProgressDisplay for the dynamic running-file block at the bottom,
+// and emits finished file output (compact line or verbose block) permanently above.
+func runFiles(files []string, workers int, isTTY bool) []fileResult {
 	results := make([]fileResult, len(files))
 	jobs := make(chan int, len(files))
 	var wg sync.WaitGroup
@@ -300,7 +137,12 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 	}
 	close(jobs)
 
-	pd := display.NewProgressDisplay(os.Stdout, isTTY)
+	maxDynamic := workers
+	if maxDynamic > 16 {
+		maxDynamic = 16
+	}
+
+	pd := display.NewProgressDisplay(os.Stdout, isTTY, maxDynamic)
 	pd.Start(files)
 
 	for w := 0; w < workers; w++ {
@@ -315,7 +157,8 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 
 				parsed, err := loadAndParse(f, varFlags.values)
 				if err != nil {
-					pd.FileError(idx, err.Error())
+					errOutput := fmt.Sprintf("%s%v%s\n", display.ColorRed, err, display.ColorReset)
+					pd.FileError(idx, errOutput)
 					results[idx] = fileResult{fail: 1, file: f}
 					if failFast {
 						cancelled.Store(true)
@@ -323,11 +166,12 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 					continue
 				}
 
-				if parsed.Directives.Skip {
-					pd.FinishFile(idx, true)
-					results[idx] = fileResult{skip: len(parsed.Entries), file: f}
-					continue
-				}
+			if parsed.Directives.Skip {
+				pd.UpdateProgress(idx, 0, 0)
+				pd.FinishFile(idx, true, "")
+				results[idx] = fileResult{skip: len(parsed.Entries), file: f}
+				continue
+			}
 
 				entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
 
@@ -337,20 +181,34 @@ func runCompact(files []string, workers int, isTTY bool) []fileResult {
 					continue
 				}
 
-				pd.UpdateProgress(idx, 0, len(entries))
-				pass, fail, skip, details := runEntriesCompact(pd, idx, entries, varFlags.values)
-				pd.FinishFile(idx, fail == 0)
+				if verbose {
+					var buf bytes.Buffer
+					vd := display.NewVerboseDisplay(&buf, true)
+					vd.BeginFile(f)
+					pass, fail, skip := runEntriesVerbose(vd, pd, idx, entries)
+					vd.EndFile()
+					pd.FinishFile(idx, fail == 0, buf.String())
+					results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f}
+			} else {
+				pass, fail, skip, details := runEntriesCompact(pd, idx, entries)
+				pd.FinishFile(idx, fail == 0, "")
 				results[idx] = fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
+			}
 			}
 		}()
 	}
 	wg.Wait()
 	pd.Finish()
 
-	for _, r := range results {
-		if len(r.failures) > 0 {
-			display.PrintFailureDetails(os.Stdout, r.failures, r.file)
+	// Print failure details after all files complete (compact mode only)
+	if !verbose {
+		for _, r := range results {
+			if len(r.failures) > 0 {
+				display.PrintFailureDetails(os.Stdout, r.failures, r.file)
+			}
 		}
 	}
 	return results
 }
+
+

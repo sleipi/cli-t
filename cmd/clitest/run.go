@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/sleipi/cli-t/internal/display"
 	"github.com/sleipi/cli-t/internal/executor"
@@ -13,25 +12,28 @@ import (
 	"github.com/sleipi/cli-t/internal/vars"
 )
 
-// runEntriesVerbose executes entries and reports to VerboseDisplay.
-func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[string]string) (pass, fail, skip int) {
+// runEntriesVerbose executes entries and reports to VerboseDisplay (buffer-based).
+func runEntriesVerbose(vd *display.VerboseDisplay, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry) (pass, fail, skip int) {
 	regular, defers := executor.SplitDeferEntries(entries)
+	pd.UpdateProgress(fileIdx, 0, len(regular))
 	captures := map[string]string{}
 	var backgrounds []*executor.BackgroundResult
 
-	for _, entry := range regular {
+	for i, entry := range regular {
 		if cancelled.Load() {
 			skip++
+			pd.UpdateProgress(fileIdx, i+1, len(regular))
 			continue
 		}
 
 		if entry.Directives.Skip {
 			skip++
-			vd.EntryResult(0, display.EntryInfo{
+			vd.EntryResult(display.EntryInfo{
 				Command:    entry.Command,
 				Skipped:    true,
 				SkipReason: entry.Directives.SkipReason,
 			})
+			pd.UpdateProgress(fileIdx, i+1, len(regular))
 			continue
 		}
 
@@ -63,7 +65,7 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 			}
 		}
 
-		vd.EntryResult(0, display.EntryInfo{
+		vd.EntryResult(display.EntryInfo{
 			Command:     cmd,
 			Passed:      er.Pass,
 			ExitCode:    er.Runner.ExitCode,
@@ -72,15 +74,18 @@ func runEntriesVerbose(vd *display.VerboseDisplay, entries []types.Entry, v map[
 			Stdout:      er.Runner.Stdout,
 			Stderr:      er.Runner.Stderr,
 		})
+
+		pd.UpdateProgress(fileIdx, i+1, len(regular))
 	}
 
-	fail += processBackgroundsVerbose(vd, backgrounds)
+	bgFail := processBackgroundsVerbose(vd, backgrounds)
+	fail += bgFail
 
 	// Execute defers and display them
 	for _, entry := range defers {
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
-		result := runner.Run(cmd)
-		vd.DeferResult(cmd, result.ExitCode)
+		runner.Run(cmd)
+		vd.DeferResult(cmd)
 	}
 
 	return
@@ -101,7 +106,7 @@ func processBackgroundsVerbose(vd *display.VerboseDisplay, backgrounds []*execut
 		if failFast {
 			cancelled.Store(true)
 		}
-		vd.EntryResult(0, display.EntryInfo{
+		vd.EntryResult(display.EntryInfo{
 			Command:  lr.Command,
 			Passed:   false,
 			Failures: lr.Failures,
@@ -119,7 +124,7 @@ func processBackgroundsVerbose(vd *display.VerboseDisplay, backgrounds []*execut
 		if failFast {
 			cancelled.Store(true)
 		}
-		vd.EntryResult(0, display.EntryInfo{
+		vd.EntryResult(display.EntryInfo{
 			Command:  fr.Command,
 			Passed:   false,
 			Failures: fr.Failures,
@@ -132,8 +137,9 @@ func processBackgroundsVerbose(vd *display.VerboseDisplay, backgrounds []*execut
 }
 
 // runEntriesCompact executes entries and reports progress to ProgressDisplay.
-func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, v map[string]string) (pass, fail, skip int, details []display.CompactFailure) {
+func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types.Entry) (pass, fail, skip int, details []display.CompactFailure) {
 	regular, defers := executor.SplitDeferEntries(entries)
+	pd.UpdateProgress(fileIdx, 0, len(regular))
 	captures := map[string]string{}
 	var backgrounds []*executor.BackgroundResult
 
@@ -151,12 +157,6 @@ func runEntriesCompact(pd *display.ProgressDisplay, fileIdx int, entries []types
 		}
 
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
-
-		subtitle := cmd
-		if entry.Comment != "" {
-			subtitle = strings.TrimPrefix(entry.Comment, "# ")
-		}
-		pd.UpdateEntry(fileIdx, subtitle)
 
 		var er executor.Result
 		var bg *executor.BackgroundResult
@@ -255,3 +255,5 @@ func loadAndParse(path string, v map[string]string) (*types.File, error) {
 	f.Path = path
 	return f, nil
 }
+
+

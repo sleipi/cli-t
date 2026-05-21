@@ -1,0 +1,6 @@
+# Verbose output shows skip marker for @skip entries
+./clitest -v examples/04_directives.clitest
+EXIT 0
+[Asserts]
+stdout contains "⊘"
+stdout contains "SKIP"

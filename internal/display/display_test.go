@@ -35,7 +35,7 @@ func TestProgressBar(t *testing.T) {
 
 func TestProgressDisplay_RenderRunning(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true)
+	d := NewProgressDisplay(&buf, true, 8)
 	d.Start([]string{"01_basic.clitest", "02_errors.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
@@ -52,12 +52,12 @@ func TestProgressDisplay_RenderRunning(t *testing.T) {
 
 func TestProgressDisplay_RenderComplete(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, false)
+	d := NewProgressDisplay(&buf, false, 8)
 	d.Start([]string{"01_basic.clitest"})
 	d.UpdateProgress(0, 0, 3)
 	d.UpdateProgress(0, 3, 3)
 
-	d.FinishFile(0, true)
+	d.FinishFile(0, true, "")
 	d.Finish()
 
 	output := buf.String()
@@ -77,12 +77,12 @@ func TestProgressDisplay_RenderComplete(t *testing.T) {
 
 func TestProgressDisplay_RenderFailed(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, false)
+	d := NewProgressDisplay(&buf, false, 8)
 	d.Start([]string{"02_errors.clitest"})
 	d.UpdateProgress(0, 0, 2)
 	d.UpdateProgress(0, 2, 2)
 
-	d.FinishFile(0, false)
+	d.FinishFile(0, false, "")
 	d.Finish()
 
 	output := buf.String()
@@ -102,13 +102,13 @@ func TestProgressDisplay_RenderFailed(t *testing.T) {
 
 func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, false)
+	d := NewProgressDisplay(&buf, false, 8)
 	d.Start([]string{"a.clitest", "b.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
 	d.UpdateProgress(0, 2, 3)
-	d.FinishFile(0, true)
-	d.FinishFile(1, false)
+	d.FinishFile(0, true, "")
+	d.FinishFile(1, false, "")
 	d.Finish()
 
 	output := buf.String()
@@ -127,12 +127,12 @@ func TestProgressDisplay_StaticMode_PrintsOnFinish(t *testing.T) {
 
 func TestProgressDisplay_DynamicMode_UpdatesInPlace(t *testing.T) {
 	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true)
+	d := NewProgressDisplay(&buf, true, 8)
 	d.Start([]string{"a.clitest", "b.clitest"})
 
 	d.UpdateProgress(0, 1, 3)
-	d.FinishFile(0, true)
-	d.FinishFile(1, true)
+	d.FinishFile(0, true, "")
+	d.FinishFile(1, true, "")
 	d.Finish()
 
 	output := buf.String()
@@ -147,15 +147,13 @@ func TestProgressDisplay_DynamicMode_UpdatesInPlace(t *testing.T) {
 func TestVerboseDisplay_EntryPass(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewVerboseDisplay(&buf, false)
-	d.Start([]string{"01_basic.clitest"})
-	d.BeginFile(0)
-	d.EntryResult(0, EntryInfo{
+	d.BeginFile("01_basic.clitest")
+	d.EntryResult(EntryInfo{
 		Command:     "echo hello",
 		Passed:      true,
 		ExitCode:    0,
 		AssertCount: 1,
 	})
-	d.Finish()
 
 	output := buf.String()
 	if !strings.Contains(output, "✓") {
@@ -169,16 +167,14 @@ func TestVerboseDisplay_EntryPass(t *testing.T) {
 func TestVerboseDisplay_EntryFail(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewVerboseDisplay(&buf, false)
-	d.Start([]string{"01_basic.clitest"})
-	d.BeginFile(0)
-	d.EntryResult(0, EntryInfo{
+	d.BeginFile("01_basic.clitest")
+	d.EntryResult(EntryInfo{
 		Command:  "cat /nope",
 		Passed:   false,
 		Failures: []string{"exit code: expected 0, got 1"},
 		Stdout:   "",
 		Stderr:   "cat: /nope: No such file or directory",
 	})
-	d.Finish()
 
 	output := buf.String()
 	if !strings.Contains(output, "✗") {
@@ -192,64 +188,11 @@ func TestVerboseDisplay_EntryFail(t *testing.T) {
 func TestVerboseDisplay_ShowsFileHeader(t *testing.T) {
 	var buf bytes.Buffer
 	d := NewVerboseDisplay(&buf, false)
-	d.Start([]string{"my_test.clitest"})
-	d.BeginFile(0)
-	d.Finish()
+	d.BeginFile("my_test.clitest")
 
 	output := buf.String()
 	if !strings.Contains(output, "▶ my_test.clitest") {
 		t.Errorf("expected file header in verbose output, got:\n%s", output)
-	}
-}
-
-func TestProgressDisplay_ShowsEntryComment(t *testing.T) {
-	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true)
-	d.Start([]string{"a.clitest"})
-
-	d.UpdateProgress(0, 0, 3)
-	d.UpdateEntry(0, "Header shows version")
-	d.Finish()
-
-	output := buf.String()
-	if !strings.Contains(output, "Header shows version") {
-		t.Errorf("expected entry comment in dynamic output, got:\n%q", output)
-	}
-}
-
-func TestProgressDisplay_FallbackToCommand(t *testing.T) {
-	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true)
-	d.Start([]string{"a.clitest"})
-
-	d.UpdateProgress(0, 0, 3)
-	d.UpdateEntry(0, "./clitest examples/01_basic.clitest")
-	d.Finish()
-
-	output := buf.String()
-	if !strings.Contains(output, "./clitest examples/01_basic.clitest") {
-		t.Errorf("expected command fallback in dynamic output, got:\n%q", output)
-	}
-}
-
-func TestProgressDisplay_SubtitleDisappearsOnFinish(t *testing.T) {
-	var buf bytes.Buffer
-	d := NewProgressDisplay(&buf, true)
-	d.Start([]string{"a.clitest"})
-
-	d.UpdateProgress(0, 0, 3)
-	d.UpdateEntry(0, "Some comment")
-	d.FinishFile(0, true)
-	d.Finish()
-
-	output := buf.String()
-	lastOK := strings.LastIndex(output, "OK")
-	if lastOK == -1 {
-		t.Fatalf("expected OK in output, got:\n%q", output)
-	}
-	finalSection := output[lastOK:]
-	if strings.Contains(finalSection, "Some comment") {
-		t.Errorf("subtitle should disappear after finish, got:\n%q", finalSection)
 	}
 }
 
@@ -296,5 +239,126 @@ func TestTruncateCmd_OverLimit(t *testing.T) {
 	got := TruncateCmd("a very long command string", 10)
 	if got != "a very lon..." {
 		t.Errorf("expected 'a very lon...', got %q", got)
+	}
+}
+
+func TestProgressDisplay_HideFile(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewProgressDisplay(&buf, false, 8)
+	d.Start([]string{"a.clitest", "b.clitest"})
+
+	d.HideFile(0)
+	d.FinishFile(1, true, "")
+	d.Finish()
+
+	output := buf.String()
+	if strings.Contains(output, "a.clitest") {
+		t.Errorf("hidden file should not appear in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "b.clitest") {
+		t.Errorf("non-hidden file should appear in output, got:\n%s", output)
+	}
+}
+
+func TestProgressDisplay_FileError(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewProgressDisplay(&buf, false, 8)
+	d.Start([]string{"bad.clitest"})
+
+	d.FileError(0, "parse error: unexpected token\n")
+	d.Finish()
+
+	output := buf.String()
+	if !strings.Contains(output, "parse error: unexpected token") {
+		t.Errorf("expected error message in output, got:\n%s", output)
+	}
+}
+
+func TestProgressDisplay_FinishFileWithCustomOutput(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewProgressDisplay(&buf, false, 8)
+	d.Start([]string{"a.clitest"})
+
+	d.FinishFile(0, true, "custom output line\n")
+	d.Finish()
+
+	output := buf.String()
+	if !strings.Contains(output, "custom output line") {
+		t.Errorf("expected custom output in result, got:\n%s", output)
+	}
+}
+
+func TestVerboseDisplay_DeferResult(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, false)
+	d.DeferResult("rm -f /tmp/test")
+
+	output := buf.String()
+	if !strings.Contains(output, "~") {
+		t.Errorf("expected ~ marker for defer, got:\n%s", output)
+	}
+	if !strings.Contains(output, "[defer]") {
+		t.Errorf("expected [defer] label, got:\n%s", output)
+	}
+	if !strings.Contains(output, "rm -f /tmp/test") {
+		t.Errorf("expected command in defer output, got:\n%s", output)
+	}
+}
+
+func TestVerboseDisplay_SkippedEntry(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, false)
+	d.EntryResult(EntryInfo{
+		Command:    "curl http://localhost",
+		Skipped:    true,
+		SkipReason: "service unavailable",
+	})
+
+	output := buf.String()
+	if !strings.Contains(output, "⊘") {
+		t.Errorf("expected ⊘ marker for skip, got:\n%s", output)
+	}
+	if !strings.Contains(output, "SKIP") {
+		t.Errorf("expected SKIP label, got:\n%s", output)
+	}
+	if !strings.Contains(output, "service unavailable") {
+		t.Errorf("expected skip reason, got:\n%s", output)
+	}
+}
+
+func TestVerboseDisplay_VerboseShowsStdoutOnPass(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, true) // verbose=true
+	d.EntryResult(EntryInfo{
+		Command:     "echo hello",
+		Passed:      true,
+		ExitCode:    0,
+		AssertCount: 1,
+		Stdout:      "hello\n",
+	})
+
+	output := buf.String()
+	if !strings.Contains(output, "stdout") {
+		t.Errorf("verbose=true should show stdout on pass, got:\n%s", output)
+	}
+	if !strings.Contains(output, "hello") {
+		t.Errorf("expected stdout content, got:\n%s", output)
+	}
+}
+
+func TestVerboseDisplay_NonVerboseHidesStdoutOnPass(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, false) // verbose=false
+	d.EntryResult(EntryInfo{
+		Command:     "echo hello",
+		Passed:      true,
+		ExitCode:    0,
+		AssertCount: 1,
+		Stdout:      "hello\n",
+	})
+
+	output := buf.String()
+	if strings.Contains(output, "stdout") {
+		t.Errorf("verbose=false should NOT show stdout on pass, got:\n%s", output)
 	}
 }

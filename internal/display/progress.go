@@ -28,34 +28,42 @@ type EntryInfo struct {
 	Stderr      string
 }
 
-// --- ProgressDisplay (compact progress bars) ---
+// --- ProgressDisplay (unified display for compact and verbose modes) ---
 
 type fileState struct {
-	name           string
-	completed      int
-	total          int
-	status         string // StatusRun, StatusOK, StatusERR
-	startTime      time.Time
-	endTime        time.Time
-	currentComment string
-	hidden         bool
+	name      string
+	completed int
+	total     int
+	status    string // StatusRun, StatusOK, StatusERR
+	startTime time.Time
+	endTime   time.Time
+	hidden    bool
 }
 
-// ProgressDisplay shows compact one-line-per-file progress bars.
+// ProgressDisplay shows running files as dynamic progress bars at the bottom,
+// and emits finished file output (compact or verbose) as permanent lines above.
 type ProgressDisplay struct {
 	mu                sync.Mutex
 	w                 io.Writer
 	files             []fileState
 	dynamic           bool // true = TTY (use ANSI cursor movement), false = static
-	printed           bool // whether we've printed lines (for dynamic redraws)
-	lastRenderedLines int  // number of lines in last dynamic render
+	maxDynamic        int  // max lines in dynamic block (min(parallel, 16))
+	printed           bool // whether we've rendered the dynamic block
+	lastRenderedLines int  // lines in last dynamic render
 }
 
 // NewProgressDisplay creates a ProgressDisplay.
 // dynamic=true uses ANSI escape sequences for in-place updates.
-// dynamic=false prints each file line once when it finishes.
-func NewProgressDisplay(w io.Writer, dynamic bool) *ProgressDisplay {
-	return &ProgressDisplay{w: w, dynamic: dynamic}
+// dynamic=false prints output only when files finish.
+// maxDynamic caps the number of running-file lines shown (use min(parallel, 16)).
+func NewProgressDisplay(w io.Writer, dynamic bool, maxDynamic int) *ProgressDisplay {
+	if maxDynamic <= 0 {
+		maxDynamic = 8
+	}
+	if maxDynamic > 16 {
+		maxDynamic = 16
+	}
+	return &ProgressDisplay{w: w, dynamic: dynamic, maxDynamic: maxDynamic}
 }
 
 func (d *ProgressDisplay) Start(files []string) {
@@ -65,10 +73,6 @@ func (d *ProgressDisplay) Start(files []string) {
 	d.files = make([]fileState, len(files))
 	for i, f := range files {
 		d.files[i] = fileState{name: filepath.Base(f), status: StatusRun, startTime: time.Now()}
-	}
-
-	if d.dynamic {
-		d.render()
 	}
 }
 
@@ -80,40 +84,34 @@ func (d *ProgressDisplay) UpdateProgress(fileIdx, completed, total int) {
 	d.files[fileIdx].total = total
 
 	if d.dynamic {
-		d.render()
+		d.renderDynamic()
 	}
 }
 
-// UpdateEntry sets the current entry subtitle (comment or command) for a running file.
-func (d *ProgressDisplay) UpdateEntry(fileIdx int, comment string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	d.files[fileIdx].currentComment = comment
-
-	if d.dynamic {
-		d.render()
-	}
-}
-
-func (d *ProgressDisplay) FinishFile(fileIdx int, passed bool) {
+// FinishFile marks a file as complete and prints its permanent output.
+// If output is empty, the compact status line is auto-generated.
+func (d *ProgressDisplay) FinishFile(fileIdx int, passed bool, output string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	d.files[fileIdx].completed = d.files[fileIdx].total
 	d.files[fileIdx].endTime = time.Now()
-	d.files[fileIdx].currentComment = ""
 	if passed {
 		d.files[fileIdx].status = StatusOK
 	} else {
 		d.files[fileIdx].status = StatusERR
 	}
 
+	if output == "" {
+		output = d.formatFileLine(fileIdx)
+	}
+
 	if d.dynamic {
-		d.render()
+		d.clearDynamic()
+		fmt.Fprint(d.w, output)
+		d.renderDynamic()
 	} else {
-		// Static mode: print the line once when file finishes
-		d.printFileLine(fileIdx)
+		fmt.Fprint(d.w, output)
 	}
 }
 
@@ -122,22 +120,26 @@ func (d *ProgressDisplay) HideFile(fileIdx int) {
 	defer d.mu.Unlock()
 
 	d.files[fileIdx].hidden = true
-
-	if d.dynamic {
-		d.render()
-	}
+	d.files[fileIdx].status = StatusOK // don't show in dynamic block
 }
 
-func (d *ProgressDisplay) FileError(fileIdx int, msg string) {
+func (d *ProgressDisplay) FileError(fileIdx int, output string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	d.files[fileIdx].status = StatusERR
 	d.files[fileIdx].endTime = time.Now()
+
 	if d.dynamic {
-		d.render()
+		d.clearDynamic()
+		if output != "" {
+			fmt.Fprint(d.w, output)
+		}
+		d.renderDynamic()
 	} else {
-		d.printFileLine(fileIdx)
+		if output != "" {
+			fmt.Fprint(d.w, output)
+		}
 	}
 }
 
@@ -146,51 +148,90 @@ func (d *ProgressDisplay) Finish() {
 	defer d.mu.Unlock()
 
 	if d.dynamic {
-		// Final render (all files done, no subtitles)
-		d.render()
+		d.clearDynamic()
 		fmt.Fprintln(d.w)
 	}
 }
 
-// render redraws all file lines using ANSI cursor movement.
-func (d *ProgressDisplay) render() {
-	// Move cursor up to overwrite previous output
+// renderDynamic shows up to maxDynamic running files sorted by longest-running.
+func (d *ProgressDisplay) renderDynamic() {
+	// Collect running file indices sorted by duration (longest first)
+	type runInfo struct {
+		idx int
+		dur time.Duration
+	}
+	var running []runInfo
+	for i := range d.files {
+		if d.files[i].hidden || d.files[i].status != StatusRun {
+			continue
+		}
+		running = append(running, runInfo{i, time.Since(d.files[i].startTime)})
+	}
+
+	if len(running) == 0 {
+		d.clearDynamic()
+		return
+	}
+
+	// Sort by duration descending (longest first)
+	for i := 0; i < len(running)-1; i++ {
+		for j := i + 1; j < len(running); j++ {
+			if running[j].dur > running[i].dur {
+				running[i], running[j] = running[j], running[i]
+			}
+		}
+	}
+
+	// Cap at maxDynamic
+	if len(running) > d.maxDynamic {
+		running = running[:d.maxDynamic]
+	}
+
+	var buf strings.Builder
+
+	// Overwrite previous dynamic block
 	if d.printed && d.lastRenderedLines > 0 {
-		fmt.Fprintf(d.w, "\033[%dA", d.lastRenderedLines)
+		fmt.Fprintf(&buf, "\033[%dA", d.lastRenderedLines)
 	}
 
 	lines := 0
-	for i := range d.files {
-		if d.files[i].hidden {
-			continue
-		}
-		fmt.Fprintf(d.w, "\r\033[K") // clear line
-		d.printFileLine(i)
+	for _, r := range running {
+		fmt.Fprintf(&buf, "\r\033[K")
+		buf.WriteString(d.formatFileLine(r.idx))
 		lines++
-
-		// Subtitle: only for running files with a comment
-		if d.files[i].status == StatusRun && d.files[i].currentComment != "" {
-			fmt.Fprintf(d.w, "\r\033[K") // clear line
-			fmt.Fprintf(d.w, "    %s%s%s\n", ColorGray, TruncateCmd(d.files[i].currentComment, 60), ColorReset)
-			lines++
-		}
 	}
 
-	// Clear any leftover lines from previous render (if we shrank)
+	// Clear extra lines from previous render
 	extra := d.lastRenderedLines - lines
 	for i := 0; i < extra; i++ {
-		fmt.Fprintf(d.w, "\r\033[K\n")
+		fmt.Fprintf(&buf, "\r\033[K\n")
 	}
-	// Move cursor back up to end of actual content
 	if extra > 0 {
-		fmt.Fprintf(d.w, "\033[%dA", extra)
+		fmt.Fprintf(&buf, "\033[%dA", extra)
 	}
 
 	d.lastRenderedLines = lines
 	d.printed = true
+
+	fmt.Fprint(d.w, buf.String())
 }
 
-func (d *ProgressDisplay) printFileLine(idx int) {
+// clearDynamic removes the dynamic progress lines.
+func (d *ProgressDisplay) clearDynamic() {
+	if d.printed && d.lastRenderedLines > 0 {
+		var buf strings.Builder
+		fmt.Fprintf(&buf, "\033[%dA", d.lastRenderedLines)
+		for i := 0; i < d.lastRenderedLines; i++ {
+			fmt.Fprintf(&buf, "\r\033[K\n")
+		}
+		fmt.Fprintf(&buf, "\033[%dA", d.lastRenderedLines)
+		fmt.Fprint(d.w, buf.String())
+	}
+	d.lastRenderedLines = 0
+	d.printed = false
+}
+
+func (d *ProgressDisplay) formatFileLine(idx int) string {
 	f := d.files[idx]
 	done := f.status == StatusOK || f.status == StatusERR
 	bar := RenderBar(f.completed, max(f.total, 1), done)
@@ -211,7 +252,7 @@ func (d *ProgressDisplay) printFileLine(idx int) {
 		status += strings.Repeat(" ", 3-len(status))
 	}
 
-	// Counter and timing
+	// Timing
 	var elapsed time.Duration
 	if done && !f.endTime.IsZero() {
 		elapsed = f.endTime.Sub(f.startTime)
@@ -229,7 +270,7 @@ func (d *ProgressDisplay) printFileLine(idx int) {
 		}
 	}
 
-	fmt.Fprintf(d.w, "%s%s%s %s - %s%s%s%s\n", statusColor, status, ColorReset, bar, f.name, ColorGray, suffix, ColorReset)
+	return fmt.Sprintf("%s%s%s %s - %s%s%s%s\n", statusColor, status, ColorReset, bar, f.name, ColorGray, suffix, ColorReset)
 }
 
 // RenderBar generates a progress bar string like [=====>    ] or [==========].
