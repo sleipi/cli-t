@@ -10,7 +10,7 @@ import (
 
 func TestExecuteFinally_SignalAndExit(t *testing.T) {
 	// Process that handles TERM and exits 0
-	bp, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo ready; sleep 10 & wait'`)
+	bp, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo ready; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestExecuteFinally_SignalAndExit(t *testing.T) {
 
 func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
 	// Process exits 1 on TERM but we expect 0
-	bp, err := runner.RunBackground(`sh -c 'trap "exit 1" TERM; echo ready; sleep 10 & wait'`)
+	bp, err := runner.RunBackground(`sh -c 'trap "exit 1" TERM; echo ready; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
 
 func TestExecuteFinally_Timeout(t *testing.T) {
 	// Process ignores TERM
-	bp, err := runner.RunBackground(`sh -c 'trap "" TERM; echo ready; sleep 10 & wait'`)
+	bp, err := runner.RunBackground(`sh -c 'trap "" TERM; echo ready; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestExecuteFinally_Timeout(t *testing.T) {
 
 func TestExecuteFinally_PostSignalAsserts(t *testing.T) {
 	// Process writes "shutdown" to stderr on TERM
-	bp, err := runner.RunBackground(`sh -c 'trap "echo shutdown >&2; exit 0" TERM; echo ready; sleep 10 & wait'`)
+	bp, err := runner.RunBackground(`sh -c 'trap "echo shutdown >&2; exit 0" TERM; echo ready; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestExecuteFinally_PostSignalAsserts(t *testing.T) {
 }
 
 func TestExecuteFinally_PostSignalAssertsFail(t *testing.T) {
-	bp, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo ready; sleep 10 & wait'`)
+	bp, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo ready; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -172,11 +172,11 @@ func TestExecuteFinally_PostSignalAssertsFail(t *testing.T) {
 }
 
 func TestExecuteFinally_LIFO(t *testing.T) {
-	bp1, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo r1; sleep 10 & wait'`)
+	bp1, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo r1; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start bp1: %v", err)
 	}
-	bp2, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo r2; sleep 10 & wait'`)
+	bp2, err := runner.RunBackground(`sh -c 'trap "exit 0" TERM; echo r2; while true; do sleep 1; done'`)
 	if err != nil {
 		t.Fatalf("failed to start bp2: %v", err)
 	}

@@ -82,8 +82,8 @@ func (bp *BackgroundProcess) Kill() error {
 // Signal sends a signal to the background process.
 func (bp *BackgroundProcess) Signal(sig syscall.Signal) error {
 	if bp.cmd != nil && bp.cmd.Process != nil {
-		// Send signal to the process group to reach child processes
-		return syscall.Kill(-bp.cmd.Process.Pid, sig)
+		// Send signal to the process only (not the group) so shell traps can fire
+		return bp.cmd.Process.Signal(sig)
 	}
 	return nil
 }
