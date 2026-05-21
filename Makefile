@@ -10,12 +10,15 @@ test:
 lint:
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run --output.text.print-issued-lines=false ./... || true
 
-e2e: build
+e2e: build helpers
 	./clitest test/e2e/
+
+helpers:
+	go build -o test/_helpers/bgserver/bgserver ./test/_helpers/bgserver/
 
 examples: build
 	./clitest examples/
 
 all: test lint e2e examples
 
-.PHONY: build test lint e2e examples all
+.PHONY: build test lint e2e examples all helpers

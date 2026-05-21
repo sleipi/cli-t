@@ -1,0 +1,7 @@
+# A file with a defer entry for testing verbose defer output
+echo "setup"
+EXIT 0
+
+@defer
+rm -f /tmp/clitest_defer_verbose_test
+EXIT 0
