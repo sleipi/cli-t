@@ -46,7 +46,7 @@ func waitForReady(t *testing.T, bp *runner.BackgroundProcess) {
 }
 
 func TestExecuteFinally_SignalAndExit(t *testing.T) {
-	bp, err := runner.RunBackground(sigtestBin + " --exit 0")
+	bp, err := runner.RunBackground(sigtestBin + " --exit 0", "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestExecuteFinally_SignalAndExit(t *testing.T) {
 }
 
 func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
-	bp, err := runner.RunBackground(sigtestBin + " --exit 1")
+	bp, err := runner.RunBackground(sigtestBin + " --exit 1", "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
 }
 
 func TestExecuteFinally_Timeout(t *testing.T) {
-	bp, err := runner.RunBackground(sigtestBin + " --ignore")
+	bp, err := runner.RunBackground(sigtestBin + " --ignore", "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestExecuteFinally_Timeout(t *testing.T) {
 }
 
 func TestExecuteFinally_PostSignalAsserts(t *testing.T) {
-	bp, err := runner.RunBackground(sigtestBin + ` --exit 0 --stderr "shutdown"`)
+	bp, err := runner.RunBackground(sigtestBin + ` --exit 0 --stderr "shutdown"`, "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestExecuteFinally_PostSignalAsserts(t *testing.T) {
 }
 
 func TestExecuteFinally_PostSignalAssertsFail(t *testing.T) {
-	bp, err := runner.RunBackground(sigtestBin + " --exit 0")
+	bp, err := runner.RunBackground(sigtestBin + " --exit 0", "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -168,11 +168,11 @@ func TestExecuteFinally_PostSignalAssertsFail(t *testing.T) {
 }
 
 func TestExecuteFinally_LIFO(t *testing.T) {
-	bp1, err := runner.RunBackground(sigtestBin + " --exit 0")
+	bp1, err := runner.RunBackground(sigtestBin + " --exit 0", "")
 	if err != nil {
 		t.Fatalf("failed to start bp1: %v", err)
 	}
-	bp2, err := runner.RunBackground(sigtestBin + " --exit 0")
+	bp2, err := runner.RunBackground(sigtestBin + " --exit 0", "")
 	if err != nil {
 		t.Fatalf("failed to start bp2: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestExecuteFinally_LIFO(t *testing.T) {
 }
 
 func TestExecuteFinally_SkipsEntriesWithoutFinally(t *testing.T) {
-	bp, err := runner.RunBackground(sigtestBin + " --exit 0")
+	bp, err := runner.RunBackground(sigtestBin + " --exit 0", "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}

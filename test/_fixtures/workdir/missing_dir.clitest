@@ -1,0 +1,4 @@
+# Missing directory should fail
+@workdir ./nonexistent
+echo "should not run"
+EXIT 0

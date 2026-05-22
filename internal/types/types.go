@@ -6,8 +6,9 @@ type EntryDirectives struct {
 	Skip       bool
 	SkipReason string
 	Defer      bool
-	Timeout    int // @timeout in ms (0 = not set)
-	Poll       int // @poll in ms (0 = default 100ms)
+	Timeout    int    // @timeout in ms (0 = not set)
+	Poll       int    // @poll in ms (0 = default 100ms)
+	Workdir    string // @workdir path (empty = not set)
 }
 
 // FileDirectives holds interpreted directives for a file.
@@ -15,6 +16,7 @@ type FileDirectives struct {
 	Groups     []string
 	Skip       bool
 	SkipReason string
+	Workdir    string // @workdir path (empty = not set)
 }
 
 // Finally represents a [Finally] section for EXIT NEVER entries.

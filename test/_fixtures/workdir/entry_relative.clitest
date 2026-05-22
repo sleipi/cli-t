@@ -1,0 +1,5 @@
+# Entry-level @workdir — relative path
+@workdir ./subdir
+cat hello.txt
+EXIT 0
+hello from subdir

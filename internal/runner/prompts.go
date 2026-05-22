@@ -114,13 +114,16 @@ func collectUnmatched(states []promptState) []string {
 
 // RunWithPrompts executes a command with interactive prompt handling.
 // It reads stdout asynchronously and writes responses to stdin when patterns match.
-func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int) PromptResult {
+func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int, dir string) PromptResult {
 	states, err := compilePrompts(prompts)
 	if err != nil {
 		return PromptResult{Result: Result{ExitCode: -1, Stderr: err.Error()}}
 	}
 
 	cmd := exec.Command("sh", "-c", command)
+	if dir != "" {
+		cmd.Dir = dir
+	}
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
 		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("stdin pipe error: %v", err)}}

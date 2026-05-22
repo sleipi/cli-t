@@ -1,0 +1,14 @@
+---
+@workdir ./subdir
+---
+
+# Entry-level overrides file-level
+@workdir .
+cat root.txt
+EXIT 0
+hello from root
+
+# This one inherits file-level
+cat hello.txt
+EXIT 0
+hello from subdir

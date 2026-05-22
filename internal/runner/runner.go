@@ -120,14 +120,18 @@ func (bp *BackgroundProcess) Wait(timeout time.Duration) bool {
 }
 
 // RunBackground starts a command in the background without waiting for it to exit.
-func RunBackground(command string) (*BackgroundProcess, error) {
-	return RunBackgroundWithEnv(command, nil)
+func RunBackground(command, dir string) (*BackgroundProcess, error) {
+	return RunBackgroundWithEnv(command, nil, dir)
 }
 
 // RunBackgroundWithEnv starts a command in the background with additional env vars.
-func RunBackgroundWithEnv(command string, env map[string]string) (*BackgroundProcess, error) {
+func RunBackgroundWithEnv(command string, env map[string]string, dir string) (*BackgroundProcess, error) {
 	cmd := exec.Command("sh", "-c", maybeExec(command))
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	if dir != "" {
+		cmd.Dir = dir
+	}
 
 	bp := &BackgroundProcess{
 		cmd:    cmd,
@@ -160,13 +164,19 @@ func RunBackgroundWithEnv(command string, env map[string]string) (*BackgroundPro
 }
 
 // Run executes a command via sh -c and returns the result.
-func Run(command string) Result {
-	return RunWithEnv(command, nil)
+// If dir is non-empty, the command runs in that directory.
+func Run(command, dir string) Result {
+	return RunWithEnv(command, nil, dir)
 }
 
 // RunWithEnv executes a command with additional environment variables.
-func RunWithEnv(command string, env map[string]string) Result {
+// If dir is non-empty, the command runs in that directory.
+func RunWithEnv(command string, env map[string]string, dir string) Result {
 	cmd := exec.Command("sh", "-c", command)
+
+	if dir != "" {
+		cmd.Dir = dir
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

@@ -468,6 +468,7 @@ EXIT 0
 | `@timeout` | entry | `@timeout MS` | Max time to wait (required for `EXIT NEVER`) |
 | `@poll`   | entry | `@poll MS` | Polling interval for `EXIT NEVER` asserts (default: 100ms) |
 | `@defer`  | entry | `@defer` | Marks entry as cleanup — runs at file end (LIFO), always, not a test |
+| `@workdir` | file, entry | `@workdir <path>` | Run command in specified directory |
 
 #### `@group`
 
@@ -537,13 +538,35 @@ rm {{tmpfile}}
 ~ rm /tmp/testfile                        [defer]
 ```
 
+#### `@workdir`
+
+Sets the working directory for command execution. Supported at both file-level (in frontmatter) and entry-level. Entry-level overrides file-level.
+
+**Cascading:** `cwd (default)` ← `file-level @workdir` ← `entry-level @workdir`
+
+Relative paths resolve relative to the `.clitest` file's directory. Absolute paths are used as-is. The directory must exist at execution time — clitest fails with an error if not.
+
+```
+---
+@workdir ./app
+---
+
+# Runs in ./app relative to this file
+npm test
+EXIT 0
+
+# Entry-level overrides file-level
+@workdir ./infra
+docker compose ps
+EXIT 0
+```
+
 ### Planned Directives (roadmap)
 
 | Directive | Description |
 |-----------|-------------|
 | `@retry 3` | Retry on failure N times |
 | `@env KEY=VALUE` | Set env vars for entry |
-| `@workdir ./path` | Run command in directory |
 | `@shell bash` | Override shell |
 
 ---
