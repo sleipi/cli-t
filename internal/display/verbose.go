@@ -7,28 +7,25 @@ import (
 	"strings"
 )
 
-// VerboseDisplay renders per-entry results (the original clit output style).
+// VerboseDisplay formats per-entry results into a buffer.
+// It does NOT write to stdout directly — callers collect the output
+// and pass it to ProgressDisplay.FinishFile().
 type VerboseDisplay struct {
 	w       io.Writer
-	files   []string
 	verbose bool // show stdout/stderr even on pass
 }
 
-// NewVerboseDisplay creates a VerboseDisplay.
+// NewVerboseDisplay creates a VerboseDisplay that writes to the given writer.
 // verbose controls whether passing entries also show stdout/stderr.
 func NewVerboseDisplay(w io.Writer, verbose bool) *VerboseDisplay {
 	return &VerboseDisplay{w: w, verbose: verbose}
 }
 
-func (d *VerboseDisplay) Start(files []string) {
-	d.files = files
+func (d *VerboseDisplay) BeginFile(filename string) {
+	fmt.Fprintf(d.w, "%s▶ %s%s\n", ColorBold, filepath.Base(filename), ColorReset)
 }
 
-func (d *VerboseDisplay) BeginFile(fileIdx int) {
-	fmt.Fprintf(d.w, "%s▶ %s%s\n", ColorBold, filepath.Base(d.files[fileIdx]), ColorReset)
-}
-
-func (d *VerboseDisplay) EntryResult(fileIdx int, info EntryInfo) {
+func (d *VerboseDisplay) EntryResult(info EntryInfo) {
 	if info.Skipped {
 		reason := ""
 		if info.SkipReason != "" {
@@ -55,22 +52,15 @@ func (d *VerboseDisplay) EntryResult(fileIdx int, info EntryInfo) {
 	}
 }
 
-func (d *VerboseDisplay) EndFile(fileIdx int) {
+func (d *VerboseDisplay) EndFile() {
 	fmt.Fprintln(d.w)
 }
 
-func (d *VerboseDisplay) Finish() {}
-
-// DeferResult prints a defer entry result in verbose mode.
-func (d *VerboseDisplay) DeferResult(command string, exitCode int) {
+// DeferResult prints a defer entry result.
+func (d *VerboseDisplay) DeferResult(command string) {
 	fmt.Fprintf(d.w, "  %s~%s %s %s[defer]%s\n",
 		ColorGray, ColorReset, TruncateCmd(command, 60),
 		ColorGray, ColorReset)
-}
-
-// FileError prints an error message for the file.
-func (d *VerboseDisplay) FileError(fileIdx int, msg string) {
-	fmt.Fprintf(d.w, "%s%s%s\n", ColorRed, msg, ColorReset)
 }
 
 func (d *VerboseDisplay) printOutput(info EntryInfo) {

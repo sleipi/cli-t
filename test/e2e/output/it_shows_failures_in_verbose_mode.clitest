@@ -1,0 +1,6 @@
+# Verbose output shows failure details with cross mark
+./clitest -v test/_fixtures/failing.clitest
+EXIT 1
+[Asserts]
+stdout contains "✗"
+stdout contains "FAIL:"

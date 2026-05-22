@@ -2,6 +2,8 @@
 
 ## Completed
 
+- [x] Auto-exec for `EXIT NEVER` background processes — Automatically inserts `exec` for simple commands to ensure signals reach the target process directly on all `/bin/sh` implementations (bash, dash, busybox ash). Handles env-prefix commands (`ENV=val exec ./cmd`). Complex commands with shell operators are left unchanged; users can manually prefix `exec` if needed.
+- [x] `[Finally]` section + `later` assert modifier — Send a signal to background processes at file-end and assert exit code + output. `later` keyword defers assert evaluation to file-end. Execution order: entries → later asserts → [Finally] LIFO → @defer LIFO. See #19.
 - [x] `[Prompts]` — Interactive prompt/response section: match stdout patterns and send responses via stdin. Pipe-based (no PTY). Supports substring and regex matching, multiplier syntax, ambiguity detection, and unmatched prompt failure. Default timeout 30s.
 - [x] `--no-color` — Disable ANSI color codes in output. Also respects `NO_COLOR` env var (https://no-color.org/) and auto-disables when stdout is not a TTY.
 - [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
@@ -23,6 +25,7 @@
 - [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 
 ## Planned
+- [ ] Output v3 - Improve test output formatting and usability (display pid of each background process, align formatting)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption
 - [ ] `--mardown` — Output test results as structured markdown for AI consumption
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
@@ -40,6 +43,9 @@
 - [ ] Publish to Home Brew
 - [ ] Register Domain + Docs
 - [ ] go install github.com/sleipi/cli-t
+- [ ] Website + Docs — Documentation website with domain, hosting (e.g. Hugo/Docusaurus + GitHub Pages), syntax reference, and getting-started guide
+- [ ] Full-text assert with linebreaks — Multi-line string assertions in `[Asserts]` section (heredoc or fenced-block syntax for values containing newlines)
+- [ ] JSONPath assertions — `json` query type for structured output assertions (e.g. `stdout.json $.items[0].name equals "foo"`). Scope TBD.
 
 ## Bugs
 

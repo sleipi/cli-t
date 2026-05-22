@@ -17,6 +17,15 @@ type FileDirectives struct {
 	SkipReason string
 }
 
+// Finally represents a [Finally] section for EXIT NEVER entries.
+// It sends a signal at file-end and asserts exit behavior.
+type Finally struct {
+	Signal   string // signal name: TERM, KILL, INT, HUP, QUIT
+	ExitCode int    // expected exit code after signal
+	Timeout  int    // ms to wait for process exit (default 1000)
+	Asserts  []Assert
+}
+
 // Entry represents a single test block in a .clitest file.
 type Entry struct {
 	Comment    string
@@ -27,6 +36,7 @@ type Entry struct {
 	Asserts    []Assert
 	Captures   []Capture
 	Prompts    []Prompt
+	Finally    *Finally // only valid on ExitNever entries
 	Directives EntryDirectives
 }
 
@@ -36,6 +46,7 @@ type Assert struct {
 	Predicate string // e.g. "contains", "==", "matches", "isEmpty", "startsWith"
 	Value     string // predicate value (empty for isEmpty)
 	Negated   bool   // "not contains" etc.
+	Later     bool   // if true, evaluated at file-end instead of during polling
 }
 
 // Capture represents a variable capture from command output.

@@ -25,5 +25,5 @@ rm {{tmpfile}}
 kill {{tailpid}}
 
 # Process is alive and readable after assertions pass
-ps -p {{tailpid}}
+kill -0 {{tailpid}}
 EXIT 0

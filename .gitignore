@@ -1,2 +1,3 @@
 .idea/
 /clitest
+test/_helpers/bgserver/bgserver

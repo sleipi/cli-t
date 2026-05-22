@@ -76,6 +76,77 @@ func TestExecuteDefers_ErrorLogged(t *testing.T) {
 	}
 }
 
+func TestEntry_AssertPassing(t *testing.T) {
+	entry := types.Entry{
+		Command:  "echo hello world",
+		ExitCode: 0,
+		Asserts:  []types.Assert{{Query: "stdout", Predicate: "contains", Value: "hello"}},
+	}
+	er := Entry(entry, map[string]string{})
+	if !er.Pass {
+		t.Fatalf("expected pass, got: %v", er.Failures)
+	}
+}
+
+func TestEntry_AssertFailing(t *testing.T) {
+	entry := types.Entry{
+		Command:  "echo hello",
+		ExitCode: 0,
+		Asserts:  []types.Assert{{Query: "stdout", Predicate: "contains", Value: "missing"}},
+	}
+	er := Entry(entry, map[string]string{})
+	if er.Pass {
+		t.Fatal("expected failure")
+	}
+}
+
+func TestEntry_NegatedAssert(t *testing.T) {
+	entry := types.Entry{
+		Command:  "echo hello",
+		ExitCode: 0,
+		Asserts:  []types.Assert{{Query: "stdout", Predicate: "contains", Value: "error", Negated: true}},
+	}
+	er := Entry(entry, map[string]string{})
+	if !er.Pass {
+		t.Fatalf("expected pass, got: %v", er.Failures)
+	}
+}
+
+func TestEntry_BodyMatch(t *testing.T) {
+	entry := types.Entry{
+		Command:  `printf "line1\nline2"`,
+		ExitCode: 0,
+		Body:     []string{"line1", "line2"},
+	}
+	er := Entry(entry, map[string]string{})
+	if !er.Pass {
+		t.Fatalf("expected pass, got: %v", er.Failures)
+	}
+}
+
+func TestEntry_BodyMismatch(t *testing.T) {
+	entry := types.Entry{
+		Command:  "echo actual",
+		ExitCode: 0,
+		Body:     []string{"expected"},
+	}
+	er := Entry(entry, map[string]string{})
+	if er.Pass {
+		t.Fatal("expected failure for body mismatch")
+	}
+}
+
+func TestExecuteDefers_CaptureSubstitution(t *testing.T) {
+	defers := []types.Entry{
+		{Command: `echo {{name}}`},
+	}
+	captures := map[string]string{"name": "substituted"}
+	logs := ExecuteDefers(defers, captures)
+	if len(logs) != 0 {
+		t.Errorf("expected no errors, got %v", logs)
+	}
+}
+
 func TestEntry_PromptResponds(t *testing.T) {
 	entry := types.Entry{
 		Command:  `printf "Enter name: " && read name && echo "Hello $name"`,
