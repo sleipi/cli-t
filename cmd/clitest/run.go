@@ -254,13 +254,15 @@ func resolveWorkdirs(f *types.File) error {
 		}
 
 		if entryWorkdir != "" {
-			info, err := os.Stat(entryWorkdir)
+			cleanPath := filepath.Clean(entryWorkdir)
+			info, err := os.Stat(cleanPath)
 			if err != nil {
 				return fmt.Errorf("@workdir %q: directory does not exist", f.Entries[i].Directives.Workdir)
 			}
 			if !info.IsDir() {
-				return fmt.Errorf("@workdir %q: not a directory", entryWorkdir)
+				return fmt.Errorf("@workdir %q: not a directory", cleanPath)
 			}
+			entryWorkdir = cleanPath
 		}
 
 		f.Entries[i].Directives.Workdir = entryWorkdir

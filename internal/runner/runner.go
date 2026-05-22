@@ -165,7 +165,7 @@ func RunBackgroundWithEnv(command string, env map[string]string, dir string) (*B
 
 // Run executes a command via sh -c and returns the result.
 // If dir is non-empty, the command runs in that directory.
-func Run(command string, dir string) Result {
+func Run(command, dir string) Result {
 	return RunWithEnv(command, nil, dir)
 }
 
