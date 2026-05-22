@@ -9,7 +9,7 @@ import (
 )
 
 func TestResolveFiles_SingleFile(t *testing.T) {
-	files, resolved, err := resolve.Files([]string{"../../examples/01_basic.clitest"}, true)
+	files, resolved, _, err := resolve.Files([]string{"../../examples/01_basic.clitest"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestResolveFiles_SingleFile(t *testing.T) {
 }
 
 func TestResolveFiles_Directory(t *testing.T) {
-	files, resolved, err := resolve.Files([]string{"../../test/_fixtures/resolve"}, true)
+	files, resolved, _, err := resolve.Files([]string{"../../test/_fixtures/resolve"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestResolveFiles_Directory(t *testing.T) {
 }
 
 func TestResolveFiles_DirectoryNoRecursive(t *testing.T) {
-	files, resolved, err := resolve.Files([]string{"../../test/_fixtures/resolve"}, false)
+	files, resolved, _, err := resolve.Files([]string{"../../test/_fixtures/resolve"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestResolveFiles_DirectoryNoRecursive(t *testing.T) {
 }
 
 func TestResolveFiles_GlobPattern(t *testing.T) {
-	files, resolved, err := resolve.Files([]string{"../../examples/0*.clitest"}, true)
+	files, resolved, _, err := resolve.Files([]string{"../../examples/0*.clitest"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestResolveFiles_GlobPattern(t *testing.T) {
 }
 
 func TestResolveFiles_MultipleArgs(t *testing.T) {
-	files, resolved, err := resolve.Files([]string{
+	files, resolved, _, err := resolve.Files([]string{
 		"../../examples/01_basic.clitest",
 		"../../examples/02_errors.clitest",
 	}, true)
@@ -95,7 +95,7 @@ func TestResolveFiles_NonClitFileSkipped(t *testing.T) {
 	tmp := filepath.Join(t.TempDir(), "readme.md")
 	os.WriteFile(tmp, []byte("hello"), 0o644)
 
-	files, resolved, err := resolve.Files([]string{tmp}, true)
+	files, resolved, _, err := resolve.Files([]string{tmp}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestResolveFiles_NonClitFileSkipped(t *testing.T) {
 }
 
 func TestResolveFiles_GlobWithDirectories(t *testing.T) {
-	files, resolved, err := resolve.Files([]string{"../../test/_fixtures/resolv*"}, true)
+	files, resolved, _, err := resolve.Files([]string{"../../test/_fixtures/resolv*"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

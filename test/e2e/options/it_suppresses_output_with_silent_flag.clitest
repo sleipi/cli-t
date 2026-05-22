@@ -1,0 +1,63 @@
+# --silent with all passing shows summary only
+./clitest --silent test/_fixtures/resolve/hello.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass:"
+stdout not contains "clitest v"
+stdout not contains "path:"
+stdout not contains "parallel:"
+
+# --silent -s shorthand works
+./clitest -s test/_fixtures/resolve/hello.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass:"
+stdout not contains "clitest v"
+
+# --silent with failures shows failure details + summary
+./clitest --silent test/_fixtures/failing.clitest
+EXIT 1
+[Asserts]
+stdout contains "pass:"
+stdout contains "fail:"
+stdout contains "FAIL:"
+
+# --silent suppresses resolve warnings from stderr
+./clitest --silent test/_fixtures/resolve/hello.clitest cmd/clitest/main.go
+EXIT 0
+[Asserts]
+stderr not contains "Warning:"
+stdout contains "pass:"
+stdout contains "warn:"
+
+# --silent still shows parse errors
+./clitest --silent test/_fixtures/options/malformed.clitest
+EXIT 1
+[Asserts]
+stdout contains "parsing"
+stdout contains "fail:"
+
+# --silent with @skip shows skip count in summary
+./clitest --silent test/_fixtures/syntax/frontmatter_skip.clitest
+EXIT 0
+[Asserts]
+stdout contains "skip:"
+
+# --silent + --fail-fast stops after first failure
+./clitest --silent --fail-fast test/_fixtures/fail_fast_three_entries.clitest
+EXIT 1
+[Asserts]
+stdout contains "fail: 1"
+
+# --silent + --group with no matches
+./clitest --silent --group nonexistent test/_fixtures/options/group_tagged.clitest
+EXIT 0
+[Asserts]
+stdout contains "pass: 0"
+
+# --silent + --verbose is mutually exclusive
+./clitest --silent --verbose test/_fixtures/resolve/hello.clitest
+EXIT 2
+[Asserts]
+stderr contains "silent"
+stderr contains "verbose"

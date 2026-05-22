@@ -1,0 +1,13 @@
+# Normal mode shows warnings in summary
+./clitest test/_fixtures/resolve/hello.clitest cmd/clitest/main.go
+EXIT 0
+[Asserts]
+stderr contains "Warning:"
+stdout contains "warn:"
+
+# Verbose mode shows warnings in summary
+./clitest --verbose test/_fixtures/resolve/hello.clitest cmd/clitest/main.go
+EXIT 0
+[Asserts]
+stderr contains "Warning:"
+stdout contains "warn:"

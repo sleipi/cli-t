@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -19,6 +20,7 @@ var version = "dev"
 
 var (
 	verbose           bool
+	silent            bool
 	noRecursive       bool
 	parallel          int
 	noParallel        bool
@@ -48,6 +50,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	rootCmd.Flags().BoolVarP(&silent, "silent", "s", false, "Suppress all output except summary and failures")
 	rootCmd.Flags().BoolVar(&noRecursive, "no-recursive", false, "Disable recursive directory scanning")
 	rootCmd.Flags().IntVar(&parallel, "parallel", 8, "Max parallel file executions")
 	rootCmd.Flags().BoolVar(&noParallel, "no-parallel", false, "Disable parallel execution")
@@ -61,6 +64,7 @@ func init() {
 	rootCmd.Flags().BoolP("version", "V", false, "Show version")
 	rootCmd.DisableFlagsInUseLine = true
 	rootCmd.MarkFlagsMutuallyExclusive("parallel", "no-parallel")
+	rootCmd.MarkFlagsMutuallyExclusive("verbose", "silent")
 }
 
 type fileResult struct {
@@ -79,9 +83,16 @@ func runMain(_ *cobra.Command, args []string) error {
 		display.DisableColors()
 	}
 
-	files, resolved, err := resolve.Files(args, !noRecursive)
+	files, resolved, warnings, err := resolve.Files(args, !noRecursive)
 	if err != nil {
 		return fmt.Errorf("%w", err)
+	}
+
+	// Print warnings to stderr unless silent
+	if !silent {
+		for _, w := range warnings {
+			fmt.Fprintln(os.Stderr, w)
+		}
 	}
 
 	workers := parallel
@@ -89,11 +100,13 @@ func runMain(_ *cobra.Command, args []string) error {
 		workers = 1
 	}
 
-	dArgs := make([]display.ResolvedArg, len(resolved))
-	for i, r := range resolved {
-		dArgs[i] = display.ResolvedArg{Input: r.Input, Count: r.Count}
+	if !silent {
+		dArgs := make([]display.ResolvedArg, len(resolved))
+		for i, r := range resolved {
+			dArgs[i] = display.ResolvedArg{Input: r.Input, Count: r.Count}
+		}
+		display.PrintHeader(os.Stdout, version, dArgs, parallel, noParallel, noRecursive, verbose, failFast, varFlags.values, groupFlags, excludeGroupFlags)
 	}
-	display.PrintHeader(os.Stdout, version, dArgs, parallel, noParallel, noRecursive, verbose, failFast, varFlags.values, groupFlags, excludeGroupFlags)
 
 	if workers > len(files) {
 		workers = len(files)
@@ -101,7 +114,16 @@ func runMain(_ *cobra.Command, args []string) error {
 
 	start := time.Now()
 
-	results := runFiles(files, workers, isTTY)
+	var displayWriter io.Writer
+	displayTTY := isTTY
+	if silent {
+		displayWriter = io.Discard
+		displayTTY = false
+	} else {
+		displayWriter = os.Stdout
+	}
+
+	results := runFiles(files, workers, displayTTY, displayWriter)
 
 	elapsed := time.Since(start)
 
@@ -116,7 +138,7 @@ func runMain(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	display.PrintSummary(os.Stdout, totalPass, totalFail, totalSkip, failedFiles, elapsed)
+	display.PrintSummary(os.Stdout, totalPass, totalFail, totalSkip, len(warnings), failedFiles, elapsed)
 
 	if totalFail > 0 {
 		os.Exit(1)
@@ -127,7 +149,7 @@ func runMain(_ *cobra.Command, args []string) error {
 // runFiles is the unified execution function for both compact and verbose modes.
 // It uses ProgressDisplay for the dynamic running-file block at the bottom,
 // and emits finished file output (compact line or verbose block) permanently above.
-func runFiles(files []string, workers int, isTTY bool) []fileResult {
+func runFiles(files []string, workers int, isTTY bool, w io.Writer) []fileResult {
 	results := make([]fileResult, len(files))
 	jobs := make(chan int, len(files))
 	var wg sync.WaitGroup
@@ -147,7 +169,7 @@ func runFiles(files []string, workers int, isTTY bool) []fileResult {
 		maxDynamic = 16
 	}
 
-	pd := display.NewProgressDisplay(os.Stdout, isTTY, maxDynamic)
+	pd := display.NewProgressDisplay(w, isTTY, maxDynamic)
 	pd.Start(files)
 
 	for w := 0; w < workers; w++ {
@@ -182,6 +204,10 @@ func processFile(cfg *runConfig, f string, idx int, pd *display.ProgressDisplay)
 	if err != nil {
 		errOutput := fmt.Sprintf("%s%v%s\n", display.ColorRed, err, display.ColorReset)
 		pd.FileError(idx, errOutput)
+		// In silent mode, parse errors are still printed directly
+		if silent {
+			fmt.Fprintf(os.Stdout, "%v\n", err)
+		}
 		if cfg.FailFast {
 			cfg.Cancelled.Store(true)
 		}

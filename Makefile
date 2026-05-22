@@ -11,13 +11,13 @@ lint:
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run --output.text.print-issued-lines=false ./... || true
 
 e2e: build helpers
-	./clitest test/e2e/
+	./clitest --silent test/e2e/
 
 helpers:
 	go build -o test/_helpers/bgserver/bgserver ./test/_helpers/bgserver/
 
 examples: build
-	./clitest examples/
+	./clitest --silent examples/
 
 test-dash:
 	podman run --rm -v "$(CURDIR):/work:Z" -w /work golang:1.26-bookworm sh -c "make test e2e examples"
