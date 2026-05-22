@@ -18,14 +18,10 @@ type ResolvedArg struct {
 // Files resolves CLI arguments into .clitest file paths.
 // It handles individual files, directories (recursively or not), and glob patterns.
 // Warnings are returned (not printed) so callers can decide how to display them.
-func Files(args []string, recursive bool) ([]string, []ResolvedArg, []string, error) {
-	var files []string
-	var resolved []ResolvedArg
-	var warnings []string
+func Files(args []string, recursive bool) (files []string, resolved []ResolvedArg, warnings []string, err error) {
 	for _, arg := range args {
 		countBefore := len(files)
 
-		var err error
 		var skipped bool
 		if strings.ContainsAny(arg, "*?[") {
 			files, warnings, err = resolveGlobArg(arg, recursive, files, warnings)
@@ -43,7 +39,7 @@ func Files(args []string, recursive bool) ([]string, []ResolvedArg, []string, er
 	return files, resolved, warnings, nil
 }
 
-func resolveGlobArg(pattern string, recursive bool, files, warnings []string) ([]string, []string, error) {
+func resolveGlobArg(pattern string, recursive bool, files, warnings []string) (outFiles, outWarnings []string, err error) {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, warnings, err
