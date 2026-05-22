@@ -26,6 +26,7 @@
 - [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 
 ## Planned
+- [ ] `--silent` / `-s` — Suppress all output except the summary line and failure details. Warnings are suppressed but their count is included in the summary. Three output levels: silent (`-s`) / normal (default) / verbose (`-v`). [#38](https://github.com/sleipi/cli-t/issues/38)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption [#23](https://github.com/sleipi/cli-t/issues/23)
 - [ ] `--markdown` — Output test results as structured markdown for AI consumption [#24](https://github.com/sleipi/cli-t/issues/24)
 - [ ] `@timeout MS` — Extend to regular entries (kill process after MS milliseconds). Currently only works for `EXIT NEVER` entries. [#25](https://github.com/sleipi/cli-t/issues/25)
