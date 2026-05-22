@@ -1,0 +1,13 @@
+---
+@workdir ./subdir
+---
+
+# Normal entry inherits file-level
+cat hello.txt
+EXIT 0
+hello from subdir
+
+@defer
+cat hello.txt
+EXIT 0
+hello from subdir

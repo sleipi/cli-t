@@ -85,6 +85,8 @@ func interpretFileDirectives(f *types.File, directives []directive) {
 		case "skip":
 			f.Directives.Skip = true
 			f.Directives.SkipReason = d.Value
+		case "workdir":
+			f.Directives.Workdir = d.Value
 		}
 	}
 }
@@ -110,6 +112,8 @@ func interpretEntryDirectives(e *types.Entry, directives []directive) {
 			if v, err := strconv.Atoi(d.Value); err == nil {
 				e.Directives.Poll = v
 			}
+		case "workdir":
+			e.Directives.Workdir = d.Value
 		}
 	}
 }

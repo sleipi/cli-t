@@ -1,0 +1,8 @@
+---
+@workdir ./subdir
+---
+
+# All entries inherit file-level workdir
+cat hello.txt
+EXIT 0
+hello from subdir

@@ -11,7 +11,7 @@ import (
 
 func TestEvaluateLaterAsserts_Pass(t *testing.T) {
 	// Start a process that outputs both "ready" and "later_output"
-	bp, err := runner.RunBackground(`sh -c 'echo ready; echo later_output; sleep 10'`)
+	bp, err := runner.RunBackground(`sh -c 'echo ready; echo later_output; sleep 10'`, "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestEvaluateLaterAsserts_Pass(t *testing.T) {
 }
 
 func TestEvaluateLaterAsserts_Fail(t *testing.T) {
-	bp, err := runner.RunBackground(`sh -c 'echo ready; sleep 10'`)
+	bp, err := runner.RunBackground(`sh -c 'echo ready; sleep 10'`, "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestEvaluateLaterAsserts_Fail(t *testing.T) {
 }
 
 func TestEvaluateLaterAsserts_SkipsNonLater(t *testing.T) {
-	bp, err := runner.RunBackground(`sh -c 'echo ready; sleep 10'`)
+	bp, err := runner.RunBackground(`sh -c 'echo ready; sleep 10'`, "")
 	if err != nil {
 		t.Fatalf("failed to start: %v", err)
 	}

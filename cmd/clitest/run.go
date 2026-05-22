@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync/atomic"
 
 	"github.com/sleipi/cli-t/internal/display"
@@ -131,7 +132,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 	// Execute defers
 	for _, entry := range defers {
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
-		runner.Run(cmd)
+		runner.Run(cmd, entry.Directives.Workdir)
 		if onResult != nil {
 			onResult(entryOutcome{Command: cmd, Passed: true, Skipped: true, SkipReason: "defer"})
 		}
@@ -223,5 +224,46 @@ func loadAndParse(path string, v map[string]string) (*types.File, error) {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
 	f.Path = path
+	if err := resolveWorkdirs(f); err != nil {
+		return nil, fmt.Errorf("resolving workdir in %s: %w", path, err)
+	}
 	return f, nil
+}
+
+// resolveWorkdirs resolves @workdir directives to absolute paths relative to the file's directory.
+// Entry-level @workdir overrides file-level; both resolve relative to the .clitest file location.
+func resolveWorkdirs(f *types.File) error {
+	fileDir := filepath.Dir(f.Path)
+
+	// Resolve file-level workdir to absolute
+	fileWorkdir := f.Directives.Workdir
+	if fileWorkdir != "" && !filepath.IsAbs(fileWorkdir) {
+		fileWorkdir = filepath.Join(fileDir, fileWorkdir)
+	}
+
+	for i := range f.Entries {
+		entryWorkdir := f.Entries[i].Directives.Workdir
+		if entryWorkdir != "" {
+			// Entry-level: resolve relative to file dir
+			if !filepath.IsAbs(entryWorkdir) {
+				entryWorkdir = filepath.Join(fileDir, entryWorkdir)
+			}
+		} else {
+			// Inherit file-level
+			entryWorkdir = fileWorkdir
+		}
+
+		if entryWorkdir != "" {
+			info, err := os.Stat(entryWorkdir)
+			if err != nil {
+				return fmt.Errorf("@workdir %q: directory does not exist", f.Entries[i].Directives.Workdir)
+			}
+			if !info.IsDir() {
+				return fmt.Errorf("@workdir %q: not a directory", entryWorkdir)
+			}
+		}
+
+		f.Entries[i].Directives.Workdir = entryWorkdir
+	}
+	return nil
 }

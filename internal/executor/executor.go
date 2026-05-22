@@ -24,7 +24,7 @@ func Entry(entry types.Entry, captures map[string]string) Result {
 		return promptEntry(entry, cmd, captures)
 	}
 
-	result := runner.Run(cmd)
+	result := runner.Run(cmd, entry.Directives.Workdir)
 	return evaluateResult(entry, result, captures, nil)
 }
 
@@ -45,7 +45,7 @@ func promptEntry(entry types.Entry, cmd string, captures map[string]string) Resu
 		}
 	}
 
-	pr := runner.RunWithPrompts(cmd, prompts, timeout)
+	pr := runner.RunWithPrompts(cmd, prompts, timeout, entry.Directives.Workdir)
 
 	var failures []string
 
@@ -126,7 +126,7 @@ func ExecuteDefers(defers []types.Entry, captures map[string]string) []string {
 	var logs []string
 	for _, entry := range defers {
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
-		result := runner.Run(cmd)
+		result := runner.Run(cmd, entry.Directives.Workdir)
 		if result.ExitCode != 0 {
 			logs = append(logs, fmt.Sprintf("defer %q: exit code %d", cmd, result.ExitCode))
 		}

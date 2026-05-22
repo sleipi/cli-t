@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] `@workdir ./path` — Run command in specific directory. Supported at file-level (frontmatter) and entry-level. Entry-level overrides file-level. Relative paths resolve relative to the `.clitest` file's directory. See #21.
 - [x] Auto-exec for `EXIT NEVER` background processes — Automatically inserts `exec` for simple commands to ensure signals reach the target process directly on all `/bin/sh` implementations (bash, dash, busybox ash). Handles env-prefix commands (`ENV=val exec ./cmd`). Complex commands with shell operators are left unchanged; users can manually prefix `exec` if needed.
 - [x] `[Finally]` section + `later` assert modifier — Send a signal to background processes at file-end and assert exit code + output. `later` keyword defers assert evaluation to file-end. Execution order: entries → later asserts → [Finally] LIFO → @defer LIFO. See #19.
 - [x] `[Prompts]` — Interactive prompt/response section: match stdout patterns and send responses via stdin. Pipe-based (no PTY). Supports substring and regex matching, multiplier syntax, ambiguity detection, and unmatched prompt failure. Default timeout 30s.
@@ -32,7 +33,6 @@
 - [ ] `@timeout MS` — Extend to regular entries (kill process after MS milliseconds). Currently only works for `EXIT NEVER` entries.
 - [ ] `@retry N` — Retry on failure N times
 - [ ] `@env KEY=VALUE` — Set env vars for entry
-- [ ] `@workdir ./path` — Run command in specific directory
 - [ ] `@hook` - 
 - [ ] `@shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`, `podman compose exec <container> <command>`, `podman run -it <container> <command>`)
 - [ ] Add file parser Plugin for Intellj

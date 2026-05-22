@@ -7,7 +7,7 @@ import (
 )
 
 func TestRunSimpleCommand(t *testing.T) {
-	result := Run("echo hello")
+	result := Run("echo hello", "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d", result.ExitCode)
 	}
@@ -20,35 +20,35 @@ func TestRunSimpleCommand(t *testing.T) {
 }
 
 func TestRunExitCode(t *testing.T) {
-	result := Run("exit 42")
+	result := Run("exit 42", "")
 	if result.ExitCode != 42 {
 		t.Fatalf("expected exit 42, got %d", result.ExitCode)
 	}
 }
 
 func TestRunStderr(t *testing.T) {
-	result := Run("echo error >&2")
+	result := Run("echo error >&2", "")
 	if result.Stderr != "error\n" {
 		t.Fatalf("expected stderr %q, got %q", "error\n", result.Stderr)
 	}
 }
 
 func TestRunWithEnv(t *testing.T) {
-	result := RunWithEnv("echo $MY_VAR", map[string]string{"MY_VAR": "hello"})
+	result := RunWithEnv("echo $MY_VAR", map[string]string{"MY_VAR": "hello"}, "")
 	if result.Stdout != "hello\n" {
 		t.Fatalf("expected stdout %q, got %q", "hello\n", result.Stdout)
 	}
 }
 
 func TestRunDuration(t *testing.T) {
-	result := Run("sleep 0.1")
+	result := Run("sleep 0.1", "")
 	if result.DurationMs < 50 {
 		t.Fatalf("expected duration >= 50ms, got %d", result.DurationMs)
 	}
 }
 
 func TestRunBackground_StartsProcess(t *testing.T) {
-	bp, err := RunBackground("echo ready; sleep 10")
+	bp, err := RunBackground("echo ready; sleep 10", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestRunBackground_StartsProcess(t *testing.T) {
 }
 
 func TestRunBackground_Pid(t *testing.T) {
-	bp, err := RunBackground("sleep 10")
+	bp, err := RunBackground("sleep 10", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestRunBackground_Pid(t *testing.T) {
 }
 
 func TestRunBackground_Kill(t *testing.T) {
-	bp, err := RunBackground("sleep 10")
+	bp, err := RunBackground("sleep 10", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestRunBackground_Kill(t *testing.T) {
 }
 
 func TestRunBackground_Done(t *testing.T) {
-	bp, err := RunBackground("echo done")
+	bp, err := RunBackground("echo done", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestRunBackground_Done(t *testing.T) {
 }
 
 func TestRunBackground_Stderr(t *testing.T) {
-	bp, err := RunBackground("echo err >&2; sleep 10")
+	bp, err := RunBackground("echo err >&2; sleep 10", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestRunWithPrompts_SinglePrompt(t *testing.T) {
 	prompts := []PromptDef{
 		{Pattern: "Enter name:", IsRegex: false, Response: "Alice", Repeat: 1},
 	}
-	result := RunWithPrompts(`printf "Enter name: " && read name && echo "Hello $name"`, prompts, 5000)
+	result := RunWithPrompts(`printf "Enter name: " && read name && echo "Hello $name"`, prompts, 5000, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
 	}
@@ -146,7 +146,7 @@ func TestRunWithPrompts_MultiplePrompts(t *testing.T) {
 		{Pattern: "Last:", IsRegex: false, Response: "Doe", Repeat: 1},
 	}
 	cmd := `printf "First: " && read f && printf "Last: " && read l && echo "Hi $f $l"`
-	result := RunWithPrompts(cmd, prompts, 5000)
+	result := RunWithPrompts(cmd, prompts, 5000, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
 	}
@@ -160,7 +160,7 @@ func TestRunWithPrompts_RegexPattern(t *testing.T) {
 		{Pattern: `Continue\?`, IsRegex: true, Response: "yes", Repeat: 1},
 	}
 	cmd := `printf "Continue? " && read ans && echo "Got: $ans"`
-	result := RunWithPrompts(cmd, prompts, 5000)
+	result := RunWithPrompts(cmd, prompts, 5000, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d", result.ExitCode)
 	}
@@ -174,7 +174,7 @@ func TestRunWithPrompts_Multiplier(t *testing.T) {
 		{Pattern: "Next?", IsRegex: false, Response: "y", Repeat: 3},
 	}
 	cmd := `for i in 1 2 3; do printf "Next? " && read ans && echo "$ans"; done`
-	result := RunWithPrompts(cmd, prompts, 5000)
+	result := RunWithPrompts(cmd, prompts, 5000, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
 	}
@@ -187,7 +187,7 @@ func TestRunWithPrompts_UnmatchedPrompt(t *testing.T) {
 	prompts := []PromptDef{
 		{Pattern: "Never appears:", IsRegex: false, Response: "x", Repeat: 1},
 	}
-	result := RunWithPrompts("echo done", prompts, 5000)
+	result := RunWithPrompts("echo done", prompts, 5000, "")
 	if len(result.UnmatchedPrompts) != 1 {
 		t.Fatalf("expected 1 unmatched prompt, got %d", len(result.UnmatchedPrompts))
 	}
@@ -201,7 +201,7 @@ func TestRunWithPrompts_Timeout(t *testing.T) {
 		{Pattern: "Name:", IsRegex: false, Response: "x", Repeat: 1},
 	}
 	// Program blocks on read but never prints "Name:", so prompt never matches
-	result := RunWithPrompts("read x", prompts, 500)
+	result := RunWithPrompts("read x", prompts, 500, "")
 	if !result.TimedOut {
 		t.Fatal("expected timeout")
 	}
@@ -209,7 +209,7 @@ func TestRunWithPrompts_Timeout(t *testing.T) {
 
 func TestRunBackground_Signal(t *testing.T) {
 	// Start a process that traps TERM and exits cleanly
-	bp, err := RunBackground(`trap 'echo terminated; exit 0' TERM; echo ready; while true; do sleep 0.1; done`)
+	bp, err := RunBackground(`trap 'echo terminated; exit 0' TERM; echo ready; while true; do sleep 0.1; done`, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRunBackground_Signal(t *testing.T) {
 }
 
 func TestRunBackground_ExitCode_Kill(t *testing.T) {
-	bp, err := RunBackground("sleep 10")
+	bp, err := RunBackground("sleep 10", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestRunBackground_ExitCode_Kill(t *testing.T) {
 }
 
 func TestRunBackground_Wait_Timeout(t *testing.T) {
-	bp, err := RunBackground("sleep 10")
+	bp, err := RunBackground("sleep 10", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
