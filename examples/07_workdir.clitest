@@ -1,9 +1,19 @@
+---
+@workdir ./workdir_demo
+---
+
 # === Working Directory ===
-# The @workdir directive sets the working directory for commands.
+# @workdir sets the working directory for commands.
+# Supported at file-level (frontmatter) and entry-level.
 # Relative paths resolve relative to this .clitest file's location.
 
-# Entry-level @workdir
-@workdir ./workdir_demo
+# File-level @workdir: all entries run in ./workdir_demo
 cat file.txt
 EXIT 0
 example file
+
+# Entry-level @workdir overrides file-level
+@workdir .
+ls workdir_demo/file.txt
+EXIT 0
+workdir_demo/file.txt
