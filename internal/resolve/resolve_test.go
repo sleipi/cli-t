@@ -12,7 +12,7 @@ func TestFiles_SingleFile(t *testing.T) {
 	f := filepath.Join(dir, "test.clitest")
 	os.WriteFile(f, []byte("$ echo hi\n"), 0o644)
 
-	files, resolved, err := Files([]string{f}, true)
+	files, resolved, _, err := Files([]string{f}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestFiles_NonClitestSkipped(t *testing.T) {
 	f := filepath.Join(dir, "readme.md")
 	os.WriteFile(f, []byte("hello"), 0o644)
 
-	files, resolved, err := Files([]string{f}, true)
+	files, resolved, warnings, err := Files([]string{f}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,6 +38,9 @@ func TestFiles_NonClitestSkipped(t *testing.T) {
 	}
 	if len(resolved) != 0 {
 		t.Fatalf("expected 0 resolved args, got %d", len(resolved))
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(warnings))
 	}
 }
 
@@ -48,7 +51,7 @@ func TestFiles_Directory(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, "sub"), 0o755)
 	os.WriteFile(filepath.Join(dir, "sub", "c.clitest"), []byte("$ echo c\n"), 0o644)
 
-	files, _, err := Files([]string{dir}, true)
+	files, _, _, err := Files([]string{dir}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +59,7 @@ func TestFiles_Directory(t *testing.T) {
 		t.Fatalf("expected 3 files (recursive), got %d", len(files))
 	}
 
-	files, _, err = Files([]string{dir}, false)
+	files, _, _, err = Files([]string{dir}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

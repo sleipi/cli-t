@@ -17,70 +17,68 @@ type ResolvedArg struct {
 
 // Files resolves CLI arguments into .clitest file paths.
 // It handles individual files, directories (recursively or not), and glob patterns.
-func Files(args []string, recursive bool) ([]string, []ResolvedArg, error) {
-	var files []string
-	var resolved []ResolvedArg
+// Warnings are returned (not printed) so callers can decide how to display them.
+func Files(args []string, recursive bool) (files []string, resolved []ResolvedArg, warnings []string, err error) {
 	for _, arg := range args {
 		countBefore := len(files)
 
-		var err error
 		var skipped bool
 		if strings.ContainsAny(arg, "*?[") {
-			files, err = resolveGlobArg(arg, recursive, files)
+			files, warnings, err = resolveGlobArg(arg, recursive, files, warnings)
 		} else {
-			files, skipped, err = resolvePathArg(arg, recursive, files)
+			files, skipped, warnings, err = resolvePathArg(arg, recursive, files, warnings)
 		}
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		if !skipped {
 			resolved = append(resolved, ResolvedArg{Input: arg, Count: len(files) - countBefore})
 		}
 	}
 	sort.Strings(files)
-	return files, resolved, nil
+	return files, resolved, warnings, nil
 }
 
-func resolveGlobArg(pattern string, recursive bool, files []string) ([]string, error) {
+func resolveGlobArg(pattern string, recursive bool, files, warnings []string) (outFiles, outWarnings []string, err error) {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		return nil, err
+		return nil, warnings, err
 	}
 	for _, m := range matches {
 		info, err := os.Stat(m)
 		if err != nil {
-			return nil, err
+			return nil, warnings, err
 		}
 		if info.IsDir() {
 			files, err = collectFromDir(m, recursive, files)
 			if err != nil {
-				return nil, err
+				return nil, warnings, err
 			}
 		} else {
 			if !strings.HasSuffix(m, ".clitest") {
-				fmt.Fprintf(os.Stderr, "Warning: skipping non-.clitest file: %s\n", m)
+				warnings = append(warnings, fmt.Sprintf("Warning: skipping non-.clitest file: %s", m))
 				continue
 			}
 			files = append(files, m)
 		}
 	}
-	return files, nil
+	return files, warnings, nil
 }
 
-func resolvePathArg(arg string, recursive bool, files []string) (result []string, skipped bool, err error) {
+func resolvePathArg(arg string, recursive bool, files, warnings []string) (result []string, skipped bool, w []string, err error) {
 	info, err := os.Stat(arg)
 	if err != nil {
-		return nil, false, err
+		return nil, false, warnings, err
 	}
 	if info.IsDir() {
 		files, err = collectFromDir(arg, recursive, files)
-		return files, false, err
+		return files, false, warnings, err
 	}
 	if !strings.HasSuffix(arg, ".clitest") {
-		fmt.Fprintf(os.Stderr, "Warning: skipping non-.clitest file: %s\n", arg)
-		return files, true, nil
+		warnings = append(warnings, fmt.Sprintf("Warning: skipping non-.clitest file: %s", arg))
+		return files, true, warnings, nil
 	}
-	return append(files, arg), false, nil
+	return append(files, arg), false, warnings, nil
 }
 
 func collectFromDir(dir string, recursive bool, files []string) ([]string, error) {

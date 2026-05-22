@@ -65,11 +65,14 @@ func PrintHeader(w io.Writer, version string, resolved []ResolvedArg, parallel i
 }
 
 // PrintSummary prints the test run summary.
-func PrintSummary(w io.Writer, totalPass, totalFail, totalSkip int, failedFiles []string, elapsed time.Duration) {
+func PrintSummary(w io.Writer, totalPass, totalFail, totalSkip, totalWarnings int, failedFiles []string, elapsed time.Duration) {
 	fmt.Fprintf(w, "%s━━━ Summary ━━━%s\n", ColorBold, ColorReset)
 	fmt.Fprintf(w, "  %spass: %d%s\n", ColorGreen, totalPass, ColorReset)
 	if totalSkip > 0 {
 		fmt.Fprintf(w, "  %sskip: %d%s\n", ColorYellow, totalSkip, ColorReset)
+	}
+	if totalWarnings > 0 {
+		fmt.Fprintf(w, "  %swarn: %d%s\n", ColorYellow, totalWarnings, ColorReset)
 	}
 	if totalFail > 0 {
 		fmt.Fprintf(w, "  %sfail: %d%s\n", ColorRed, totalFail, ColorReset)

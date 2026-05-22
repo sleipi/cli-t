@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] `--silent` / `-s` — Suppress all output except the summary line and failure details. Warnings are suppressed but their count is included in the summary. Three output levels: silent (`-s`) / normal (default) / verbose (`-v`). [#38](https://github.com/sleipi/cli-t/issues/38)
 - [x] `@workdir ./path` — Run command in specific directory. Supported at file-level (frontmatter) and entry-level. Entry-level overrides file-level. Relative paths resolve relative to the `.clitest` file's directory. See #21.
 - [x] Auto-exec for `EXIT NEVER` background processes — Automatically inserts `exec` for simple commands to ensure signals reach the target process directly on all `/bin/sh` implementations (bash, dash, busybox ash). Handles env-prefix commands (`ENV=val exec ./cmd`). Complex commands with shell operators are left unchanged; users can manually prefix `exec` if needed.
 - [x] `[Finally]` section + `later` assert modifier — Send a signal to background processes at file-end and assert exit code + output. `later` keyword defers assert evaluation to file-end. Execution order: entries → later asserts → [Finally] LIFO → @defer LIFO. See #19.
@@ -26,7 +27,6 @@
 - [x] Background processes — `EXIT NEVER`, `@poll`, `@defer`, `pid` capture: start long-running commands, poll asserts until pass/timeout, cleanup via defer (LIFO)
 
 ## Planned
-- [ ] `--silent` / `-s` — Suppress all output except the summary line and failure details. Warnings are suppressed but their count is included in the summary. Three output levels: silent (`-s`) / normal (default) / verbose (`-v`). [#38](https://github.com/sleipi/cli-t/issues/38)
 - [ ] `--json` — Output test results as structured JSON for programmatic consumption [#23](https://github.com/sleipi/cli-t/issues/23)
 - [ ] `--markdown` — Output test results as structured markdown for AI consumption [#24](https://github.com/sleipi/cli-t/issues/24)
 - [ ] `@timeout MS` — Extend to regular entries (kill process after MS milliseconds). Currently only works for `EXIT NEVER` entries. [#25](https://github.com/sleipi/cli-t/issues/25)

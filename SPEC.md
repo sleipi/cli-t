@@ -638,7 +638,8 @@ clitest [options] <path...>
 
 | Flag              | Description                                |
 |------------------|--------------------------------------------|
-| `-v`             | Verbose: show stdout/stderr for passing tests |
+| `-s`, `--silent` | Suppress all output except summary and failure details. Mutually exclusive with `-v`. |
+| `-v`, `--verbose`| Verbose: show stdout/stderr for passing tests |
 | `--var NAME=VAL` | Set template variable (repeatable)         |
 | `--group TAG`    | Run only entries matching this tag (repeatable, OR logic, case-sensitive). Files with no matching entries are hidden from output. |
 | `--exclude-group TAG` | Skip entries matching this tag (repeatable, case-sensitive) |
@@ -647,6 +648,18 @@ clitest [options] <path...>
 | `--no-parallel`  | Disable parallel execution (sequential)    |
 | `--fail-fast`    | Stop after first test failure              |
 | `--no-color`     | Disable ANSI color codes. Also auto-disables when `NO_COLOR` env is set or stdout is not a TTY. |
+
+#### Output Levels
+
+Three output levels exist (mutually exclusive):
+
+| Level    | Header | Progress | Failures | Summary | Warnings (stderr) |
+|----------|--------|----------|----------|---------|-------------------|
+| `--silent` | No  | No       | Yes      | Yes     | No (count in summary) |
+| normal   | Yes    | Yes      | Yes      | Yes     | Yes (count in summary) |
+| `--verbose` | Yes | Yes      | Yes      | Yes     | Yes (count in summary) |
+
+The summary always includes a `warn: N` line when resolve warnings exist (e.g. skipping non-`.clitest` files).
 
 ### Exit Codes
 
