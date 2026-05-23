@@ -26,6 +26,10 @@
         "extensions": [
           ".clitest"
         ],
+        "icon": {
+          "light": "./icons/clitest-icon-a-dollar-green-64.png",
+          "dark": "./icons/clitest-icon-a-dollar-green-64.png"
+        },
         "configuration": "./language-configuration.json"
       }
     ],
