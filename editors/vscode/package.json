@@ -1,0 +1,39 @@
+{
+  "name": "clitest",
+  "displayName": "clitest",
+  "description": "Syntax highlighting for .clitest files (CLI Test)",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sleipi/cli-t"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "clitest",
+        "aliases": [
+          "CLI Test",
+          "clitest"
+        ],
+        "extensions": [
+          ".clitest"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "clitest",
+        "scopeName": "source.clitest",
+        "path": "./syntaxes/clitest.tmLanguage.json"
+      }
+    ]
+  }
+}
