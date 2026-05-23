@@ -1,0 +1,139 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "clitest",
+  "scopeName": "source.clitest",
+  "patterns": [
+    { "include": "#frontmatter" },
+    { "include": "#comment" },
+    { "include": "#directive" },
+    { "include": "#exit" },
+    { "include": "#section-header" },
+    { "include": "#finally-signal" },
+    { "include": "#prompt" },
+    { "include": "#capture-line" },
+    { "include": "#assert-line" },
+    { "include": "#variable" }
+  ],
+  "repository": {
+    "frontmatter": {
+      "begin": "^(---)\\s*$",
+      "end": "^(---)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.clitest" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.clitest" }
+      },
+      "name": "meta.frontmatter.clitest",
+      "patterns": [
+        { "include": "#directive" },
+        { "include": "#comment" },
+        {
+          "name": "comment.block.documentation.clitest",
+          "match": "^(?!@|#|---).*$"
+        }
+      ]
+    },
+    "comment": {
+      "name": "comment.line.number-sign.clitest",
+      "match": "^\\s*#.*$"
+    },
+    "directive": {
+      "match": "^\\s*(@\\w+)(.*)$",
+      "captures": {
+        "1": { "name": "keyword.control.directive.clitest" },
+        "2": {
+          "patterns": [
+            { "include": "#string" },
+            { "include": "#number" },
+            {
+              "name": "variable.parameter.directive.clitest",
+              "match": "\\S+"
+            }
+          ]
+        }
+      }
+    },
+    "exit": {
+      "match": "^(EXIT)\\s+(NEVER|\\d+)\\s*$",
+      "captures": {
+        "1": { "name": "keyword.other.exit.clitest" },
+        "2": { "name": "constant.language.exit-code.clitest" }
+      }
+    },
+    "section-header": {
+      "match": "^(\\[)(Asserts|Captures|Finally|Prompts|Options)(\\])\\s*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.section.begin.clitest" },
+        "2": { "name": "entity.name.section.clitest" },
+        "3": { "name": "punctuation.definition.section.end.clitest" }
+      }
+    },
+    "assert-line": {
+      "match": "^\\s*(stdout|stderr|exit|pid|lineCount|duration|line\\s+\\d+)\\s+(not\\s+)?(contains|startsWith|endsWith|matches|isEmpty|==|!=|>=|<=|>|<)\\s*(later\\s+)?(.*)$",
+      "captures": {
+        "1": { "name": "variable.language.query.clitest" },
+        "2": { "name": "keyword.operator.negation.clitest" },
+        "3": { "name": "support.function.predicate.clitest" },
+        "4": { "name": "keyword.other.later.clitest" },
+        "5": {
+          "patterns": [
+            { "include": "#string" },
+            { "include": "#regex" },
+            { "include": "#variable" },
+            { "include": "#number" },
+            {
+              "name": "constant.other.value.clitest",
+              "match": "\\S+"
+            }
+          ]
+        }
+      }
+    },
+    "capture-line": {
+      "match": "^\\s*(\\w+)(:\\s*)(stdout|stderr|exit|pid|lineCount|duration|line\\s+\\d+)\\s*$",
+      "captures": {
+        "1": { "name": "variable.other.capture-name.clitest" },
+        "2": { "name": "punctuation.separator.capture.clitest" },
+        "3": { "name": "variable.language.query.clitest" }
+      }
+    },
+    "prompt": {
+      "match": "^\\s*(?:(\"[^\"]*\")|(/[^/]*/))\\s*(=>)\\s*(\"[^\"]*\")(?:\\s*(\\*)\\s*(\\d+))?\\s*$",
+      "captures": {
+        "1": { "name": "string.quoted.double.pattern.clitest" },
+        "2": { "name": "string.regexp.pattern.clitest" },
+        "3": { "name": "keyword.operator.arrow.clitest" },
+        "4": { "name": "string.quoted.double.response.clitest" },
+        "5": { "name": "keyword.operator.multiplier.clitest" },
+        "6": { "name": "constant.numeric.multiplier.clitest" }
+      }
+    },
+    "finally-signal": {
+      "match": "^\\s*(TERM|KILL|INT|HUP|QUIT)\\s+(EXIT)\\s+(\\d+)(?:\\s+(timeout)\\s+(\\d+))?\\s*$",
+      "captures": {
+        "1": { "name": "constant.language.signal.clitest" },
+        "2": { "name": "keyword.other.exit.clitest" },
+        "3": { "name": "constant.numeric.exit-code.clitest" },
+        "4": { "name": "keyword.other.timeout.clitest" },
+        "5": { "name": "constant.numeric.timeout.clitest" }
+      }
+    },
+    "variable": {
+      "name": "variable.other.template.clitest",
+      "match": "\\{\\{\\w+\\}\\}"
+    },
+    "string": {
+      "name": "string.quoted.double.clitest",
+      "match": "\"[^\"]*\""
+    },
+    "regex": {
+      "name": "string.regexp.clitest",
+      "match": "/[^/]+/"
+    },
+    "number": {
+      "name": "constant.numeric.clitest",
+      "match": "\\b\\d+\\b"
+    }
+  }
+}
