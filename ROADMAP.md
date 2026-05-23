@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] TextMate grammar for `.clitest` syntax highlighting — VS Code extension + IntelliJ/Sublime support via TextMate Bundles. [#30](https://github.com/sleipi/cli-t/issues/30)
 - [x] `--silent` / `-s` — Suppress all output except the summary line and failure details. Warnings are suppressed but their count is included in the summary. Three output levels: silent (`-s`) / normal (default) / verbose (`-v`). [#38](https://github.com/sleipi/cli-t/issues/38)
 - [x] `@workdir ./path` — Run command in specific directory. Supported at file-level (frontmatter) and entry-level. Entry-level overrides file-level. Relative paths resolve relative to the `.clitest` file's directory. See #21.
 - [x] Auto-exec for `EXIT NEVER` background processes — Automatically inserts `exec` for simple commands to ensure signals reach the target process directly on all `/bin/sh` implementations (bash, dash, busybox ash). Handles env-prefix commands (`ENV=val exec ./cmd`). Complex commands with shell operators are left unchanged; users can manually prefix `exec` if needed.
@@ -34,7 +35,7 @@
 - [ ] `@env KEY=VALUE` — Set env vars for entry [#27](https://github.com/sleipi/cli-t/issues/27)
 - [ ] `@workdir ./path` — Run command in specific directory [#28](https://github.com/sleipi/cli-t/issues/28)
 - [ ] `@shell NAME` — Override the default shell (`sh`) used to execute commands [#29](https://github.com/sleipi/cli-t/issues/29) (e.g. `bash`, `zsh`, `podman compose exec <container> <command>`, `podman run -it <container> <command>`)
-- [ ] Add file parser Plugin for Intellj [#30](https://github.com/sleipi/cli-t/issues/30)
+- [ ] IntelliJ Plugin — Run Configuration for `.clitest` files [#41](https://github.com/sleipi/cli-t/issues/41)
 - [ ] Release for Homebrew [#31](https://github.com/sleipi/cli-t/issues/31)
 - [ ] Publish to Alpine Repository [#32](https://github.com/sleipi/cli-t/issues/32)
 - [ ] Publish to Debian Repository [#33](https://github.com/sleipi/cli-t/issues/33)
@@ -47,3 +48,4 @@
 - [ ] `@hook` —
 - [ ] Shell completion (bash/zsh/fish) via cobra completion subcommand
 - [ ] Register Domain
+- [ ] Publish VS Code extension to Marketplace (requires publisher account)
