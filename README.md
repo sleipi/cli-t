@@ -50,7 +50,7 @@ You read it, you understand it, your teammates understand it. Done.
 - **Exact body matching** — assert full stdout output line-by-line
 - **Rich assertions** — `contains`, `startsWith`, `endsWith`, `matches` (regex), `lineCount`, line-based queries
 - **Negation** — `stdout not contains "error"`
-- **Directives** — `@skip`, `@group`, `@name`, `@depends` for organizing and controlling test flow
+- **Directives** — `@skip`, `@group`, `@timeout`, `@poll`, `@defer`, `@workdir` for organizing and controlling test flow
 - **Captures** — extract values from output and reuse them across entries
 - **Variables** — pass `--var key=value` from the CLI, use `{{key}}` in your tests
 - **Parallel execution** — run test files concurrently with `--parallel`
@@ -119,7 +119,7 @@ lineCount == 2
 | Part         | Required | Description                                    |
 |--------------|----------|------------------------------------------------|
 | Comment      | No       | Lines starting with `#`, describe the test     |
-| Directives   | No       | `@skip`, `@group`, `@name`, `@depends`         |
+| Directives   | No       | `@skip`, `@group`, `@timeout`, `@poll`, `@defer`, `@workdir` |
 | Command      | Yes      | Shell command executed via `sh -c`             |
 | EXIT         | No       | Expected exit code (defaults to `0`)           |
 | Body         | No       | Exact stdout match                             |
