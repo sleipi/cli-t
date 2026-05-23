@@ -3,6 +3,7 @@
   "displayName": "clitest",
   "description": "Syntax highlighting for .clitest files (CLI Test)",
   "version": "0.1.0",
+  "publisher": "sleipi",
   "license": "MIT",
   "repository": {
     "type": "git",

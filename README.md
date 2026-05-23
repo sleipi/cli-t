@@ -127,6 +127,18 @@ lineCount == 2
 
 ---
 
+## Editor Support
+
+Syntax highlighting for `.clitest` files is available via TextMate grammar:
+
+- **VS Code** — Install the extension from `editors/vscode/` (see [setup instructions](editors/vscode/README.md))
+- **IntelliJ IDEA** — Settings > Editor > TextMate Bundles > add the `editors/vscode` directory
+- **Sublime Text** — Copy the grammar file to your Packages directory
+
+Works in all JetBrains IDEs (GoLand, WebStorm, PhpStorm, etc.).
+
+---
+
 ## Full Specification
 
 See [SPEC.md](SPEC.md) for the complete syntax reference.
