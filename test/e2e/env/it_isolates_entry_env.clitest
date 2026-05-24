@@ -1,0 +1,8 @@
+# Entry A sets env
+@env ISOLATED_VAR=yes
+printenv ISOLATED_VAR
+yes
+
+# Entry B should NOT see entry A's env (printenv exits 1 if var missing)
+printenv ISOLATED_VAR
+EXIT 1

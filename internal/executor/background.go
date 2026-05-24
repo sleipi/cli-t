@@ -40,7 +40,7 @@ func hasLaterAsserts(entry types.Entry) bool {
 // backgroundEntry starts a background process and polls non-later asserts until pass or timeout.
 // If the entry has later asserts or a [Finally] section, the process is kept alive on success.
 func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) (Result, *BackgroundResult) {
-	bp, err := runner.RunBackground(cmd, entry.Directives.Workdir)
+	bp, err := runner.RunBackgroundWithEnv(cmd, entry.Directives.Env, entry.Directives.Workdir)
 	if err != nil {
 		return Result{
 			Pass:     false,

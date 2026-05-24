@@ -1,0 +1,4 @@
+# Values containing equals signs are preserved
+@env CONN=host=localhost;port=5432
+printenv CONN
+host=localhost;port=5432

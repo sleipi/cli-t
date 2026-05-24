@@ -1,0 +1,8 @@
+---
+@env X=file_value
+---
+
+# Entry-level overrides file-level for the same key
+@env X=entry_value
+printenv X
+entry_value

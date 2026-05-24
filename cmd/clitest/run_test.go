@@ -122,3 +122,65 @@ func TestProcessBackgrounds_FailFastOnLaterFailure(t *testing.T) {
 		t.Errorf("expected no details, got %d", len(details))
 	}
 }
+
+func TestResolveEnvs_FileLevelMergedIntoEntries(t *testing.T) {
+	f := &types.File{
+		Directives: types.FileDirectives{
+			Env: map[string]string{"A": "1", "B": "2"},
+		},
+		Entries: []types.Entry{
+			{Command: "echo"},
+			{Command: "echo"},
+		},
+	}
+	resolveEnvs(f)
+	for i, e := range f.Entries {
+		if e.Directives.Env["A"] != "1" || e.Directives.Env["B"] != "2" {
+			t.Errorf("entry %d: expected file-level env, got %v", i, e.Directives.Env)
+		}
+	}
+}
+
+func TestResolveEnvs_EntryOverridesFile(t *testing.T) {
+	f := &types.File{
+		Directives: types.FileDirectives{
+			Env: map[string]string{"X": "file", "Y": "file"},
+		},
+		Entries: []types.Entry{
+			{Command: "echo", Directives: types.EntryDirectives{
+				Env: map[string]string{"X": "entry"},
+			}},
+		},
+	}
+	resolveEnvs(f)
+	if f.Entries[0].Directives.Env["X"] != "entry" {
+		t.Errorf("expected entry-level X=entry, got %q", f.Entries[0].Directives.Env["X"])
+	}
+	if f.Entries[0].Directives.Env["Y"] != "file" {
+		t.Errorf("expected file-level Y=file, got %q", f.Entries[0].Directives.Env["Y"])
+	}
+}
+
+func TestResolveEnvs_NoFileEnv_NoChange(t *testing.T) {
+	f := &types.File{
+		Entries: []types.Entry{
+			{Command: "echo", Directives: types.EntryDirectives{
+				Env: map[string]string{"K": "v"},
+			}},
+		},
+	}
+	resolveEnvs(f)
+	if f.Entries[0].Directives.Env["K"] != "v" {
+		t.Errorf("expected K=v preserved, got %v", f.Entries[0].Directives.Env)
+	}
+}
+
+func TestResolveEnvs_NilEnvBoth(t *testing.T) {
+	f := &types.File{
+		Entries: []types.Entry{{Command: "echo"}},
+	}
+	resolveEnvs(f)
+	if f.Entries[0].Directives.Env != nil {
+		t.Errorf("expected nil env, got %v", f.Entries[0].Directives.Env)
+	}
+}

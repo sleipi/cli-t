@@ -227,6 +227,7 @@ func loadAndParse(path string, v map[string]string) (*types.File, error) {
 	if err := resolveWorkdirs(f); err != nil {
 		return nil, fmt.Errorf("resolving workdir in %s: %w", path, err)
 	}
+	resolveEnvs(f)
 	return f, nil
 }
 
@@ -268,4 +269,29 @@ func resolveWorkdirs(f *types.File) error {
 		f.Entries[i].Directives.Workdir = entryWorkdir
 	}
 	return nil
+}
+
+// resolveEnvs merges file-level @env into each entry's Env map.
+// Entry-level values override file-level for the same key.
+func resolveEnvs(f *types.File) {
+	if len(f.Directives.Env) == 0 {
+		return
+	}
+	for i := range f.Entries {
+		if f.Entries[i].Directives.Env == nil {
+			// No entry-level env: copy file-level directly
+			merged := make(map[string]string, len(f.Directives.Env))
+			for k, v := range f.Directives.Env {
+				merged[k] = v
+			}
+			f.Entries[i].Directives.Env = merged
+		} else {
+			// Entry-level exists: file-level fills in missing keys
+			for k, v := range f.Directives.Env {
+				if _, exists := f.Entries[i].Directives.Env[k]; !exists {
+					f.Entries[i].Directives.Env[k] = v
+				}
+			}
+		}
+	}
 }

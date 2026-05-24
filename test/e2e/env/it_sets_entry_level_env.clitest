@@ -1,0 +1,4 @@
+# Entry-level @env sets a process environment variable
+@env GREETING=hello_world
+printenv GREETING
+hello_world

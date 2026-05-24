@@ -1,0 +1,12 @@
+---
+@env CLEANUP_VAR=defer_sees_this
+---
+
+# Regular entry
+echo "main"
+main
+
+# Defer entry gets file-level env
+@defer
+printenv CLEANUP_VAR
+EXIT 0

@@ -128,7 +128,7 @@ func TestRunWithPrompts_SinglePrompt(t *testing.T) {
 	prompts := []PromptDef{
 		{Pattern: "Enter name:", IsRegex: false, Response: "Alice", Repeat: 1},
 	}
-	result := RunWithPrompts(`printf "Enter name: " && read name && echo "Hello $name"`, prompts, 5000, "")
+	result := RunWithPrompts(`printf "Enter name: " && read name && echo "Hello $name"`, prompts, 5000, nil, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
 	}
@@ -146,7 +146,7 @@ func TestRunWithPrompts_MultiplePrompts(t *testing.T) {
 		{Pattern: "Last:", IsRegex: false, Response: "Doe", Repeat: 1},
 	}
 	cmd := `printf "First: " && read f && printf "Last: " && read l && echo "Hi $f $l"`
-	result := RunWithPrompts(cmd, prompts, 5000, "")
+	result := RunWithPrompts(cmd, prompts, 5000, nil, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
 	}
@@ -160,7 +160,7 @@ func TestRunWithPrompts_RegexPattern(t *testing.T) {
 		{Pattern: `Continue\?`, IsRegex: true, Response: "yes", Repeat: 1},
 	}
 	cmd := `printf "Continue? " && read ans && echo "Got: $ans"`
-	result := RunWithPrompts(cmd, prompts, 5000, "")
+	result := RunWithPrompts(cmd, prompts, 5000, nil, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d", result.ExitCode)
 	}
@@ -174,7 +174,7 @@ func TestRunWithPrompts_Multiplier(t *testing.T) {
 		{Pattern: "Next?", IsRegex: false, Response: "y", Repeat: 3},
 	}
 	cmd := `for i in 1 2 3; do printf "Next? " && read ans && echo "$ans"; done`
-	result := RunWithPrompts(cmd, prompts, 5000, "")
+	result := RunWithPrompts(cmd, prompts, 5000, nil, "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected exit 0, got %d (stderr: %s)", result.ExitCode, result.Stderr)
 	}
@@ -187,7 +187,7 @@ func TestRunWithPrompts_UnmatchedPrompt(t *testing.T) {
 	prompts := []PromptDef{
 		{Pattern: "Never appears:", IsRegex: false, Response: "x", Repeat: 1},
 	}
-	result := RunWithPrompts("echo done", prompts, 5000, "")
+	result := RunWithPrompts("echo done", prompts, 5000, nil, "")
 	if len(result.UnmatchedPrompts) != 1 {
 		t.Fatalf("expected 1 unmatched prompt, got %d", len(result.UnmatchedPrompts))
 	}
@@ -201,7 +201,7 @@ func TestRunWithPrompts_Timeout(t *testing.T) {
 		{Pattern: "Name:", IsRegex: false, Response: "x", Repeat: 1},
 	}
 	// Program blocks on read but never prints "Name:", so prompt never matches
-	result := RunWithPrompts("read x", prompts, 500, "")
+	result := RunWithPrompts("read x", prompts, 500, nil, "")
 	if !result.TimedOut {
 		t.Fatal("expected timeout")
 	}
