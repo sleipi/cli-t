@@ -65,22 +65,19 @@ func parseEntryDirective(current *entryBuilder, line string, lineNum int) error 
 }
 
 // parseFrontmatter parses the frontmatter block between --- delimiters.
-func parseFrontmatter(lines []string, file *types.File) (int, error) {
+func parseFrontmatter(lines []string, file *types.File) (int, []error) {
 	var fileDirectives []directive
 	i := 1
 	for i < len(lines) {
 		line := strings.TrimSpace(lines[i])
 		if line == "---" {
 			errs := interpretFileDirectives(file, fileDirectives)
-			if len(errs) > 0 {
-				return 0, errs[0] // TODO: return all errors once ParseFile supports []error
-			}
-			return i + 1, nil
+			return i + 1, errs
 		}
 		if strings.HasPrefix(line, "@") {
 			d, err := parseDirective(line, i+1)
 			if err != nil {
-				return 0, fmt.Errorf("frontmatter line %d: %w", i+1, err)
+				return 0, []error{fmt.Errorf("frontmatter line %d: %w", i+1, err)}
 			}
 			if d != nil {
 				fileDirectives = append(fileDirectives, *d)
@@ -88,7 +85,7 @@ func parseFrontmatter(lines []string, file *types.File) (int, error) {
 		}
 		i++
 	}
-	return 0, fmt.Errorf("unclosed frontmatter (missing closing ---)")
+	return 0, []error{fmt.Errorf("unclosed frontmatter (missing closing ---)")}
 }
 
 // interpretFileDirectives interprets raw directives into typed FileDirectives.

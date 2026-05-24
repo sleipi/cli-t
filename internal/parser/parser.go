@@ -21,10 +21,10 @@ func ParseFile(input string) (*types.File, []error) {
 
 	// Parse frontmatter if present
 	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "---" {
-		var err error
-		startLine, err = parseFrontmatter(lines, file)
-		if err != nil {
-			return nil, []error{err}
+		var fmErrs []error
+		startLine, fmErrs = parseFrontmatter(lines, file)
+		if len(fmErrs) > 0 {
+			return nil, fmErrs
 		}
 	}
 

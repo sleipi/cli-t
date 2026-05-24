@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/sleipi/cli-t/internal/display"
@@ -226,11 +227,11 @@ func loadAndParse(path string, v map[string]string) (*types.File, error) {
 		var de *parser.DirectiveError
 		if errors.As(errs[0], &de) {
 			// Validation errors: format with file prefix
-			var msg string
-			for _, e := range errs {
-				msg += fmt.Sprintf("%s:%s\n", path, e.Error())
+			msgs := make([]string, len(errs))
+			for i, e := range errs {
+				msgs[i] = fmt.Sprintf("%s:%s", path, e.Error())
 			}
-			return nil, fmt.Errorf("%s", msg[:len(msg)-1])
+			return nil, fmt.Errorf("%s", strings.Join(msgs, "\n"))
 		}
 		// Structural parse errors: use legacy format
 		return nil, fmt.Errorf("parsing %s: %w", path, errs[0])
