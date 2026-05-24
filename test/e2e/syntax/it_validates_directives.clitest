@@ -1,0 +1,24 @@
+# Validates that malformed @timeout is rejected at parse time
+./clitest test/_fixtures/syntax/bad_timeout.clitest
+EXIT 1
+[Asserts]
+stdout contains "@timeout"
+stdout contains "non-negative integer"
+
+# Validates that malformed @poll is rejected at parse time
+./clitest test/_fixtures/syntax/bad_poll.clitest
+EXIT 1
+[Asserts]
+stdout contains "@poll"
+stdout contains "positive integer"
+
+# Validates that malformed @env is rejected at parse time
+./clitest test/_fixtures/syntax/bad_env.clitest
+EXIT 1
+[Asserts]
+stdout contains "@env"
+stdout contains "KEY=VALUE"
+
+# Validates that file-level @timeout is inherited by entries
+./clitest test/_fixtures/syntax/file_timeout_inherit.clitest
+EXIT 0

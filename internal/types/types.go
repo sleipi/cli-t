@@ -6,8 +6,8 @@ type EntryDirectives struct {
 	Skip       bool
 	SkipReason string
 	Defer      bool
-	Timeout    int               // @timeout in ms (0 = not set)
-	Poll       int               // @poll in ms (0 = default 100ms)
+	Timeout    *int              // @timeout in ms (nil = not set, 0 = no timeout)
+	Poll       *int              // @poll in ms (nil = not set, use default)
 	Workdir    string            // @workdir path (empty = not set)
 	Env        map[string]string // @env KEY=VALUE (nil = not set)
 }
@@ -17,6 +17,7 @@ type FileDirectives struct {
 	Groups     []string
 	Skip       bool
 	SkipReason string
+	Timeout    *int              // @timeout in ms (nil = not set, 0 = no timeout)
 	Workdir    string            // @workdir path (empty = not set)
 	Env        map[string]string // @env KEY=VALUE (nil = not set)
 }

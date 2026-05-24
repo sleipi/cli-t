@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/sleipi/cli-t/internal/display"
@@ -219,15 +221,27 @@ func loadAndParse(path string, v map[string]string) (*types.File, error) {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 	input := vars.Substitute(string(content), v)
-	f, err := parser.ParseFile(input)
-	if err != nil {
-		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	f, errs := parser.ParseFile(input)
+	if len(errs) > 0 {
+		// Check if these are DirectiveErrors (validation) or structural parse errors
+		var de *parser.DirectiveError
+		if errors.As(errs[0], &de) {
+			// Validation errors: format with file prefix
+			msgs := make([]string, len(errs))
+			for i, e := range errs {
+				msgs[i] = fmt.Sprintf("%s:%s", path, e.Error())
+			}
+			return nil, fmt.Errorf("%s", strings.Join(msgs, "\n"))
+		}
+		// Structural parse errors: use legacy format
+		return nil, fmt.Errorf("parsing %s: %w", path, errs[0])
 	}
 	f.Path = path
 	if err := resolveWorkdirs(f); err != nil {
 		return nil, fmt.Errorf("resolving workdir in %s: %w", path, err)
 	}
 	resolveEnvs(f)
+	resolveTimeouts(f)
 	return f, nil
 }
 
@@ -292,6 +306,18 @@ func resolveEnvs(f *types.File) {
 					f.Entries[i].Directives.Env[k] = v
 				}
 			}
+		}
+	}
+}
+
+// resolveTimeouts inherits file-level @timeout into entries that don't define their own.
+func resolveTimeouts(f *types.File) {
+	if f.Directives.Timeout == nil {
+		return
+	}
+	for i := range f.Entries {
+		if f.Entries[i].Directives.Timeout == nil {
+			f.Entries[i].Directives.Timeout = f.Directives.Timeout
 		}
 	}
 }

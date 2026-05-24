@@ -1,0 +1,6 @@
+---
+@timeout 5000
+---
+
+echo hello
+EXIT 0

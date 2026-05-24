@@ -499,7 +499,7 @@ EXIT 0
 |-----------|-------|--------|-------------|
 | `@group`  | file, entry | `@group tag1 tag2 ...` | Space-separated tags for filtering |
 | `@skip`   | file, entry | `@skip [reason]` | Skip this entry/file (reason optional) |
-| `@timeout` | entry | `@timeout MS` | Max time to wait (required for `EXIT NEVER`) |
+| `@timeout` | file, entry | `@timeout MS` | Max time to wait; file-level sets default for all entries |
 | `@poll`   | entry | `@poll MS` | Polling interval for `EXIT NEVER` asserts (default: 100ms) |
 | `@defer`  | entry | `@defer` | Marks entry as cleanup — runs at file end (LIFO), always, not a test |
 | `@workdir` | file, entry | `@workdir <path>` | Run command in specified directory |
@@ -604,7 +604,7 @@ Sets a real environment variable on the child process. Supported at both file-le
 
 **Scoping:** Entry-level env vars are isolated to that entry only — they do NOT leak to subsequent entries. File-level env vars apply to all entries in the file, including `@defer` entries.
 
-**Values:** The value is everything after the first `=`. Values may contain `=`, spaces, and special characters. Empty values (`@env KEY=`) are valid. Malformed directives without `=` are silently ignored.
+**Values:** The value is everything after the first `=`. Values may contain `=`, spaces, and special characters. Empty values (`@env KEY=`) are valid. Malformed directives without `=` are rejected at parse time.
 
 **Variable substitution:** `--var` placeholders (`{{name}}`) in values are expanded (since substitution runs before parsing).
 
@@ -626,6 +626,39 @@ printenv DEBUG
 EXIT 0
 [Asserts]
 stdout == "false"
+```
+
+#### Directive Validation
+
+All directives are validated at parse time. If any directive has an invalid value, clitest reports the error(s) and does not execute the file. Multiple errors may be reported at once.
+
+**Error format:** `<file>:line <N>: @<directive>: <message>`
+
+| Directive | Valid values | Notes |
+|-----------|-------------|-------|
+| `@timeout` | Integer >= 0 (milliseconds) | `0` means no timeout (infinite wait). No duration suffixes. |
+| `@poll` | Integer > 0 (milliseconds) | Must be positive. No duration suffixes. |
+| `@env` | `KEY=VALUE` with non-empty key | Empty value after `=` is valid. Missing `=` is rejected. |
+
+Unknown directives are silently ignored.
+
+#### File-level `@timeout`
+
+`@timeout` may appear in frontmatter to set a default timeout for all entries in the file. Entry-level `@timeout` overrides the file-level value.
+
+```
+---
+@timeout 5000
+---
+
+# This entry inherits @timeout 5000
+echo "quick"
+EXIT 0
+
+# This entry overrides to 10s
+@timeout 10000
+echo "slow"
+EXIT 0
 ```
 
 ### Planned Directives (roadmap)

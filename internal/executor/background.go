@@ -50,13 +50,17 @@ func backgroundEntry(entry types.Entry, cmd string, captures map[string]string) 
 
 	keepAlive := hasLaterAsserts(entry) || entry.Finally != nil
 
-	timeout := entry.Directives.Timeout
-	if timeout <= 0 {
-		timeout = DefaultBackgroundTimeout
+	timeout := DefaultBackgroundTimeout
+	if entry.Directives.Timeout != nil {
+		if *entry.Directives.Timeout == 0 {
+			timeout = 0 // explicitly no timeout
+		} else {
+			timeout = *entry.Directives.Timeout
+		}
 	}
-	poll := entry.Directives.Poll
-	if poll <= 0 {
-		poll = DefaultPollInterval
+	poll := DefaultPollInterval
+	if entry.Directives.Poll != nil {
+		poll = *entry.Directives.Poll
 	}
 
 	deadline := time.Now().Add(time.Duration(timeout) * time.Millisecond)

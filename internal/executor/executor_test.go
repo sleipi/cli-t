@@ -154,7 +154,7 @@ func TestEntry_PromptResponds(t *testing.T) {
 		Prompts: []types.Prompt{
 			{Pattern: "Enter name:", IsRegex: false, Response: "Alice", Repeat: 1},
 		},
-		Directives: types.EntryDirectives{Timeout: 3000},
+		Directives: types.EntryDirectives{Timeout: func() *int { v := 3000; return &v }()},
 	}
 	captures := map[string]string{}
 	er := Entry(entry, captures)

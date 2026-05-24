@@ -9,7 +9,7 @@ import (
 )
 
 // ParseFile parses a .clitest file content into a File with frontmatter and entries.
-func ParseFile(input string) (*types.File, error) {
+func ParseFile(input string) (*types.File, []error) {
 	lines := strings.Split(input, "\n")
 	// Remove trailing empty line from split
 	if len(lines) > 0 && lines[len(lines)-1] == "" {
@@ -21,17 +21,17 @@ func ParseFile(input string) (*types.File, error) {
 
 	// Parse frontmatter if present
 	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "---" {
-		var err error
-		startLine, err = parseFrontmatter(lines, file)
-		if err != nil {
-			return nil, err
+		var fmErrs []error
+		startLine, fmErrs = parseFrontmatter(lines, file)
+		if len(fmErrs) > 0 {
+			return nil, fmErrs
 		}
 	}
 
 	// Parse entries
-	entries, err := parseEntries(lines[startLine:])
-	if err != nil {
-		return nil, err
+	entries, errs := parseEntries(lines[startLine:], startLine)
+	if len(errs) > 0 {
+		return nil, errs
 	}
 	file.Entries = entries
 	return file, nil
@@ -39,20 +39,23 @@ func ParseFile(input string) (*types.File, error) {
 
 // Parse parses a .clitest file content into a list of entries (legacy API).
 func Parse(input string) ([]types.Entry, error) {
-	f, err := ParseFile(input)
-	if err != nil {
-		return nil, err
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		return nil, errs[0]
 	}
 	return f.Entries, nil
 }
 
-func parseEntries(lines []string) ([]types.Entry, error) {
+func parseEntries(lines []string, lineOffset int) ([]types.Entry, []error) {
 	var entries []types.Entry
+	var allErrors []error
 	var current *entryBuilder
 
 	flush := func() {
 		if current != nil {
-			entries = append(entries, current.build())
+			entry, errs := current.build()
+			entries = append(entries, entry)
+			allErrors = append(allErrors, errs...)
 			current = nil
 		}
 	}
@@ -80,8 +83,8 @@ func parseEntries(lines []string) ([]types.Entry, error) {
 			if current == nil {
 				current = &entryBuilder{}
 			}
-			if err := parseEntryDirective(current, line); err != nil {
-				return nil, err
+			if err := parseEntryDirective(current, line, lineOffset+i+1); err != nil {
+				return nil, []error{err}
 			}
 			i++
 			continue
@@ -102,12 +105,12 @@ func parseEntries(lines []string) ([]types.Entry, error) {
 		var err error
 		i, err = parsePostCommand(lines, i, current)
 		if err != nil {
-			return nil, err
+			return nil, []error{err}
 		}
 	}
 
 	flush()
-	return entries, nil
+	return entries, allErrors
 }
 
 // parsePostCommand handles lines after the command: EXIT, [Asserts], [Captures], fenced/implicit body.
@@ -208,7 +211,7 @@ type entryBuilder struct {
 	directives []directive
 }
 
-func (b *entryBuilder) build() types.Entry {
+func (b *entryBuilder) build() (types.Entry, []error) {
 	entry := types.Entry{
 		Comment:   b.comment,
 		Command:   b.command,
@@ -220,6 +223,6 @@ func (b *entryBuilder) build() types.Entry {
 		Prompts:   b.prompts,
 		Finally:   b.finally,
 	}
-	interpretEntryDirectives(&entry, b.directives)
-	return entry
+	errs := interpretEntryDirectives(&entry, b.directives)
+	return entry, errs
 }
