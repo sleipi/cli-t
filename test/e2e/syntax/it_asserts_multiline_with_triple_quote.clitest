@@ -1,0 +1,83 @@
+# Multi-line assert with == (equals)
+printf "hello\nworld"
+EXIT 0
+[Asserts]
+stdout == """
+hello
+world
+"""
+
+# Multi-line assert with contains
+printf "aaa\nbbb\nccc"
+EXIT 0
+[Asserts]
+stdout contains """
+bbb
+ccc
+"""
+
+# Multi-line assert with startsWith
+printf "first\nsecond\nthird"
+EXIT 0
+[Asserts]
+stdout startsWith """
+first
+second
+"""
+
+# Multi-line assert with endsWith
+printf "first\nsecond\nthird"
+EXIT 0
+[Asserts]
+stdout endsWith """
+second
+third
+"""
+
+# Negated multi-line assert
+printf "hello\nworld"
+EXIT 0
+[Asserts]
+stdout not contains """
+bad
+stuff
+"""
+
+# Multi-line with blank lines in content
+printf "foo\n\nbar"
+EXIT 0
+[Asserts]
+stdout == """
+foo
+
+bar
+"""
+
+# Multi-line with special characters
+printf 'say "hello"\npath: /usr/bin'
+EXIT 0
+[Asserts]
+stdout contains """
+say "hello"
+path: /usr/bin
+"""
+
+# Mixed: multi-line + single-line asserts in same entry
+printf "hello\nworld"
+EXIT 0
+[Asserts]
+stdout == """
+hello
+world
+"""
+stdout contains "hello"
+exit == 0
+
+# Multi-line assert on stderr
+sh -c 'printf "err1\nerr2" >&2'
+EXIT 0
+[Asserts]
+stderr == """
+err1
+err2
+"""

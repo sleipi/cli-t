@@ -11,14 +11,86 @@ import (
 // collectAsserts collects assert lines from an [Asserts] section.
 func collectAsserts(lines []string, i int, current *entryBuilder) (int, error) {
 	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
-		a, err := parseAssert(lines[i])
+		a, nextIdx, isMultiline, err := tryParseMultilineAssert(lines, i)
 		if err != nil {
 			return 0, fmt.Errorf("line %d: %w", i+1, err)
 		}
-		current.asserts = append(current.asserts, a)
+		if isMultiline {
+			current.asserts = append(current.asserts, a)
+			i = nextIdx
+			continue
+		}
+
+		a2, err := parseAssert(lines[i])
+		if err != nil {
+			return 0, fmt.Errorf("line %d: %w", i+1, err)
+		}
+		current.asserts = append(current.asserts, a2)
 		i++
 	}
 	return i, nil
+}
+
+const tripleQuote = `"""`
+
+// tryParseMultilineAssert attempts to parse a multi-line assert starting at lines[i].
+// Returns (assert, nextIndex, wasMultiline, error).
+func tryParseMultilineAssert(lines []string, i int) (types.Assert, int, bool, error) {
+	line := strings.TrimSpace(lines[i])
+
+	// Check if line ends with """
+	if !strings.HasSuffix(line, tripleQuote) {
+		return types.Assert{}, 0, false, nil
+	}
+
+	// Extract query
+	query, rest := extractQuery(line)
+	if query == "" {
+		return types.Assert{}, 0, false, fmt.Errorf("cannot parse assert: %s", line)
+	}
+	rest = strings.TrimSpace(rest)
+
+	// Check negation
+	negated := false
+	if strings.HasPrefix(rest, "not ") {
+		negated = true
+		rest = strings.TrimPrefix(rest, "not ")
+		rest = strings.TrimSpace(rest)
+	}
+
+	// Extract predicate (everything before the """)
+	predicate, valuePart, later := extractPredicateWithLater(rest)
+
+	// The value part should be exactly """ (nothing else after opening)
+	if valuePart != tripleQuote {
+		return types.Assert{}, 0, false, nil
+	}
+
+	// Reject matches with triple-quote
+	if predicate == "matches" {
+		return types.Assert{}, 0, false, fmt.Errorf("multi-line triple-quote values are not supported with 'matches' predicate")
+	}
+
+	// Consume lines until closing """
+	var contentLines []string
+	j := i + 1
+	for j < len(lines) {
+		if strings.TrimSpace(lines[j]) == tripleQuote {
+			// Found closing """
+			value := strings.Join(contentLines, "\n")
+			return types.Assert{
+				Query:     query,
+				Predicate: predicate,
+				Value:     value,
+				Negated:   negated,
+				Later:     later,
+			}, j + 1, true, nil
+		}
+		contentLines = append(contentLines, lines[j])
+		j++
+	}
+
+	return types.Assert{}, 0, false, fmt.Errorf("unterminated triple-quote block (opening \"\"\" without closing \"\"\")")
 }
 
 // collectCaptures collects capture lines from a [Captures] section.
@@ -135,6 +207,10 @@ func extractPredicateWithLater(s string) (predicate, value string, later bool) {
 }
 
 func unquoteValue(s string) string {
+	// Triple-quote marker — return as-is (handled by multi-line parser)
+	if s == tripleQuote {
+		return s
+	}
 	// Quoted string "..."
 	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
 		return s[1 : len(s)-1]
