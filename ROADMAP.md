@@ -4,7 +4,6 @@
 
 - [x] `go install github.com/sleipi/cli-t` — Enable installation via `go install`. [#35](https://github.com/sleipi/cli-t/issues/35)
 - [x] `@env KEY=VALUE` — Set env vars for entry. Supported at file-level (frontmatter) and entry-level. [#27](https://github.com/sleipi/cli-t/issues/27)
-- [x] `@shell NAME` — Override the default shell (`sh`) used to execute commands (e.g. `bash`, `zsh`). [#29](https://github.com/sleipi/cli-t/issues/29)
 - [x] Full-text assert with linebreaks — Multi-line string assertions via triple-quote (`"""`) syntax in `[Asserts]` section. Works with `==`, `!=`, `contains`, `startsWith`, `endsWith`. [#36](https://github.com/sleipi/cli-t/issues/36)
 - [x] TextMate grammar for `.clitest` syntax highlighting — VS Code extension + IntelliJ/Sublime support via TextMate Bundles. [#30](https://github.com/sleipi/cli-t/issues/30)
 - [x] `--silent` / `-s` — Suppress all output except the summary line and failure details. Warnings are suppressed but their count is included in the summary. Three output levels: silent (`-s`) / normal (default) / verbose (`-v`). [#38](https://github.com/sleipi/cli-t/issues/38)
@@ -50,3 +49,7 @@
 - [ ] Publish VS Code extension to Marketplace (requires publisher account)
 - [ ] Syntax overhaul before 1.0 release [#40](https://github.com/sleipi/cli-t/issues/40)
 - [ ] Strict directive validation — reject malformed directives at parse time [#43](https://github.com/sleipi/cli-t/issues/43)
+
+## Won't Do
+
+- `@shell NAME` — Override the default shell (`sh`) used to execute commands. [#29](https://github.com/sleipi/cli-t/issues/29)
