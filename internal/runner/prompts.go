@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -114,7 +115,7 @@ func collectUnmatched(states []promptState) []string {
 
 // RunWithPrompts executes a command with interactive prompt handling.
 // It reads stdout asynchronously and writes responses to stdin when patterns match.
-func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int, dir string) PromptResult {
+func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int, env map[string]string, dir string) PromptResult {
 	states, err := compilePrompts(prompts)
 	if err != nil {
 		return PromptResult{Result: Result{ExitCode: -1, Stderr: err.Error()}}
@@ -123,6 +124,12 @@ func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int, dir stri
 	cmd := exec.Command("sh", "-c", command)
 	if dir != "" {
 		cmd.Dir = dir
+	}
+	if len(env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
 	}
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {

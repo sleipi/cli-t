@@ -626,3 +626,103 @@ USR1 EXIT 0
 		t.Fatal("expected error for unsupported signal")
 	}
 }
+
+func TestParseEnvDirective_EntryLevel(t *testing.T) {
+	input := `@env FOO=bar
+@env BAZ=qux
+echo test
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(f.Entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(f.Entries))
+	}
+	env := f.Entries[0].Directives.Env
+	if len(env) != 2 {
+		t.Fatalf("expected 2 env vars, got %d", len(env))
+	}
+	assertEqual(t, env["FOO"], "bar")
+	assertEqual(t, env["BAZ"], "qux")
+}
+
+func TestParseEnvDirective_ValueContainsEquals(t *testing.T) {
+	input := `@env CONN=host=localhost;port=5432
+echo test
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertEqual(t, f.Entries[0].Directives.Env["CONN"], "host=localhost;port=5432")
+}
+
+func TestParseEnvDirective_EmptyValue(t *testing.T) {
+	input := `@env KEY=
+echo test
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	env := f.Entries[0].Directives.Env
+	val, exists := env["KEY"]
+	if !exists {
+		t.Fatal("expected KEY to exist in env")
+	}
+	if val != "" {
+		t.Errorf("expected empty value, got %q", val)
+	}
+}
+
+func TestParseEnvDirective_NoEquals_Ignored(t *testing.T) {
+	input := `@env NOVALUE
+echo test
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f.Entries[0].Directives.Env != nil {
+		t.Errorf("expected nil env map, got %v", f.Entries[0].Directives.Env)
+	}
+}
+
+func TestParseEnvDirective_FileLevel(t *testing.T) {
+	input := `---
+@env API_URL=http://localhost:8080
+@env DEBUG=true
+---
+
+echo test
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	env := f.Directives.Env
+	if len(env) != 2 {
+		t.Fatalf("expected 2 file-level env vars, got %d", len(env))
+	}
+	assertEqual(t, env["API_URL"], "http://localhost:8080")
+	assertEqual(t, env["DEBUG"], "true")
+}
+
+func TestParseEnvDirective_DuplicateKey_LastWins(t *testing.T) {
+	input := `@env X=first
+@env X=second
+echo test
+EXIT 0
+`
+	f, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertEqual(t, f.Entries[0].Directives.Env["X"], "second")
+}

@@ -87,6 +87,14 @@ func interpretFileDirectives(f *types.File, directives []directive) {
 			f.Directives.SkipReason = d.Value
 		case "workdir":
 			f.Directives.Workdir = d.Value
+		case "env":
+			parts := strings.SplitN(d.Value, "=", 2)
+			if len(parts) == 2 && parts[0] != "" {
+				if f.Directives.Env == nil {
+					f.Directives.Env = make(map[string]string)
+				}
+				f.Directives.Env[parts[0]] = parts[1]
+			}
 		}
 	}
 }
@@ -114,6 +122,14 @@ func interpretEntryDirectives(e *types.Entry, directives []directive) {
 			}
 		case "workdir":
 			e.Directives.Workdir = d.Value
+		case "env":
+			parts := strings.SplitN(d.Value, "=", 2)
+			if len(parts) == 2 && parts[0] != "" {
+				if e.Directives.Env == nil {
+					e.Directives.Env = make(map[string]string)
+				}
+				e.Directives.Env[parts[0]] = parts[1]
+			}
 		}
 	}
 }

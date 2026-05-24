@@ -469,6 +469,7 @@ EXIT 0
 | `@poll`   | entry | `@poll MS` | Polling interval for `EXIT NEVER` asserts (default: 100ms) |
 | `@defer`  | entry | `@defer` | Marks entry as cleanup — runs at file end (LIFO), always, not a test |
 | `@workdir` | file, entry | `@workdir <path>` | Run command in specified directory |
+| `@env`    | file, entry | `@env KEY=VALUE` | Set environment variable for child process |
 
 #### `@group`
 
@@ -561,12 +562,43 @@ docker compose ps
 EXIT 0
 ```
 
+#### `@env`
+
+Sets a real environment variable on the child process. Supported at both file-level (in frontmatter) and entry-level. One `KEY=VALUE` per directive. Entry-level overrides file-level for the same key. Duplicate keys within the same scope use last-write-wins.
+
+**Cascading:** `parent env (default)` ← `file-level @env` ← `entry-level @env`
+
+**Scoping:** Entry-level env vars are isolated to that entry only — they do NOT leak to subsequent entries. File-level env vars apply to all entries in the file, including `@defer` entries.
+
+**Values:** The value is everything after the first `=`. Values may contain `=`, spaces, and special characters. Empty values (`@env KEY=`) are valid. Malformed directives without `=` are silently ignored.
+
+**Variable substitution:** `--var` placeholders (`{{name}}`) in values are expanded (since substitution runs before parsing).
+
+```
+---
+@env API_URL=http://localhost:8080
+@env DEBUG=true
+---
+
+# All entries see API_URL and DEBUG
+printenv API_URL
+EXIT 0
+[Asserts]
+stdout == "http://localhost:8080"
+
+# Entry-level override
+@env DEBUG=false
+printenv DEBUG
+EXIT 0
+[Asserts]
+stdout == "false"
+```
+
 ### Planned Directives (roadmap)
 
 | Directive | Description |
 |-----------|-------------|
 | `@retry 3` | Retry on failure N times |
-| `@env KEY=VALUE` | Set env vars for entry |
 | `@shell bash` | Override shell |
 
 ---

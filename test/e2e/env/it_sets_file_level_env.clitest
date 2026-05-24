@@ -1,0 +1,11 @@
+---
+@env FILE_VAR=from_file
+---
+
+# File-level env is accessible to all entries
+printenv FILE_VAR
+from_file
+
+# Second entry also sees it
+printenv FILE_VAR
+from_file

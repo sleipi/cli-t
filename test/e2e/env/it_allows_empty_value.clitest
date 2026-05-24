@@ -1,0 +1,6 @@
+# Empty value is valid (printenv prints empty line)
+@env EMPTY_VAR=
+printenv EMPTY_VAR
+EXIT 0
+[Asserts]
+stdout == ""
