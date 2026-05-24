@@ -35,7 +35,7 @@ const tripleQuote = `"""`
 
 // tryParseMultilineAssert attempts to parse a multi-line assert starting at lines[i].
 // Returns (assert, nextIndex, wasMultiline, error).
-func tryParseMultilineAssert(lines []string, i int) (types.Assert, int, bool, error) {
+func tryParseMultilineAssert(lines []string, i int) (assert types.Assert, nextIndex int, wasMultiline bool, err error) {
 	line := strings.TrimSpace(lines[i])
 
 	// Check if line ends with """
