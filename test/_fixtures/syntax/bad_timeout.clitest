@@ -1,0 +1,3 @@
+@timeout abc
+echo hello
+EXIT 0

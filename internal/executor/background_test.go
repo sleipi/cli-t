@@ -6,14 +6,16 @@ import (
 	"github.com/sleipi/cli-t/internal/types"
 )
 
+func intPtr(v int) *int { return &v }
+
 func TestBackgroundEntry_PassingAsserts(t *testing.T) {
 	entry := types.Entry{
 		Command:   `sh -c 'echo ready; sleep 10'`,
 		ExitNever: true,
 		Asserts:   []types.Assert{{Query: "stdout", Predicate: "contains", Value: "ready"}},
 		Directives: types.EntryDirectives{
-			Timeout: 3000,
-			Poll:    50,
+			Timeout: intPtr(3000),
+			Poll:    intPtr(50),
 		},
 	}
 	captures := map[string]string{}
@@ -37,8 +39,8 @@ func TestBackgroundEntry_KeepAliveWithLater(t *testing.T) {
 			{Query: "stdout", Predicate: "contains", Value: "later_output", Later: true},
 		},
 		Directives: types.EntryDirectives{
-			Timeout: 3000,
-			Poll:    50,
+			Timeout: intPtr(3000),
+			Poll:    intPtr(50),
 		},
 	}
 	captures := map[string]string{}
@@ -59,8 +61,8 @@ func TestBackgroundEntry_KeepAliveWithFinally(t *testing.T) {
 		Asserts:   []types.Assert{{Query: "stdout", Predicate: "contains", Value: "ready"}},
 		Finally:   &types.Finally{Signal: "KILL", ExitCode: 137, Timeout: 1000},
 		Directives: types.EntryDirectives{
-			Timeout: 3000,
-			Poll:    50,
+			Timeout: intPtr(3000),
+			Poll:    intPtr(50),
 		},
 	}
 	captures := map[string]string{}
@@ -80,8 +82,8 @@ func TestBackgroundEntry_Timeout(t *testing.T) {
 		ExitNever: true,
 		Asserts:   []types.Assert{{Query: "stdout", Predicate: "contains", Value: "never_appears"}},
 		Directives: types.EntryDirectives{
-			Timeout: 200,
-			Poll:    50,
+			Timeout: intPtr(200),
+			Poll:    intPtr(50),
 		},
 	}
 	captures := map[string]string{}
@@ -110,8 +112,8 @@ func TestBackgroundEntry_UnexpectedExit(t *testing.T) {
 		ExitNever: true,
 		Asserts:   []types.Assert{{Query: "stdout", Predicate: "contains", Value: "ready"}},
 		Directives: types.EntryDirectives{
-			Timeout: 3000,
-			Poll:    50,
+			Timeout: intPtr(3000),
+			Poll:    intPtr(50),
 		},
 	}
 	captures := map[string]string{}
@@ -140,8 +142,8 @@ func TestBackgroundEntry_CapturesStored(t *testing.T) {
 		Asserts:   []types.Assert{{Query: "stdout", Predicate: "contains", Value: "ready"}},
 		Captures:  []types.Capture{{Name: "bgpid", Query: "pid"}},
 		Directives: types.EntryDirectives{
-			Timeout: 3000,
-			Poll:    50,
+			Timeout: intPtr(3000),
+			Poll:    intPtr(50),
 		},
 	}
 	captures := map[string]string{}

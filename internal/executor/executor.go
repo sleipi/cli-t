@@ -30,9 +30,13 @@ func Entry(entry types.Entry, captures map[string]string) Result {
 
 // promptEntry runs a command with interactive prompts.
 func promptEntry(entry types.Entry, cmd string, captures map[string]string) Result {
-	timeout := entry.Directives.Timeout
-	if timeout <= 0 {
-		timeout = 30000 // default 30s
+	timeout := 30000 // default 30s
+	if entry.Directives.Timeout != nil {
+		if *entry.Directives.Timeout == 0 {
+			timeout = 0 // explicitly no timeout
+		} else {
+			timeout = *entry.Directives.Timeout
+		}
 	}
 
 	prompts := make([]runner.PromptDef, len(entry.Prompts))

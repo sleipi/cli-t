@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sleipi/cli-t/internal/types"
@@ -243,9 +244,9 @@ func TestParseFrontmatter(t *testing.T) {
 echo "hello"
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	if len(f.Directives.Groups) != 2 {
 		t.Fatalf("expected 2 file groups, got %d: %v", len(f.Directives.Groups), f.Directives.Groups)
@@ -266,8 +267,8 @@ func TestParseFrontmatterUnclosed(t *testing.T) {
 @group test
 echo "hello"
 `
-	_, err := ParseFile(input)
-	if err == nil {
+	_, errs := ParseFile(input)
+	if len(errs) == 0 {
 		t.Fatal("expected error for unclosed frontmatter")
 	}
 }
@@ -330,9 +331,9 @@ Add your tests below
 
 echo "hello"
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	if len(f.Directives.Groups) != 2 {
 		t.Fatalf("expected 2 groups, got %d", len(f.Directives.Groups))
@@ -372,11 +373,11 @@ stdout contains "ready"
 	if !e.ExitNever {
 		t.Fatal("expected ExitNever to be true")
 	}
-	if e.Directives.Timeout != 5000 {
-		t.Fatalf("expected Timeout 5000, got %d", e.Directives.Timeout)
+	if e.Directives.Timeout == nil || *e.Directives.Timeout != 5000 {
+		t.Fatalf("expected Timeout 5000, got %v", e.Directives.Timeout)
 	}
-	if e.Directives.Poll != 200 {
-		t.Fatalf("expected Poll 200, got %d", e.Directives.Poll)
+	if e.Directives.Poll == nil || *e.Directives.Poll != 200 {
+		t.Fatalf("expected Poll 200, got %v", e.Directives.Poll)
 	}
 	if len(e.Captures) != 1 || e.Captures[0].Query != "pid" {
 		t.Fatalf("expected pid capture, got %+v", e.Captures)
@@ -633,9 +634,9 @@ func TestParseEnvDirective_EntryLevel(t *testing.T) {
 echo test
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	if len(f.Entries) != 1 {
 		t.Fatalf("expected 1 entry, got %d", len(f.Entries))
@@ -653,9 +654,9 @@ func TestParseEnvDirective_ValueContainsEquals(t *testing.T) {
 echo test
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	assertEqual(t, f.Entries[0].Directives.Env["CONN"], "host=localhost;port=5432")
 }
@@ -665,9 +666,9 @@ func TestParseEnvDirective_EmptyValue(t *testing.T) {
 echo test
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	env := f.Entries[0].Directives.Env
 	val, exists := env["KEY"]
@@ -679,17 +680,17 @@ EXIT 0
 	}
 }
 
-func TestParseEnvDirective_NoEquals_Ignored(t *testing.T) {
+func TestParseEnvDirective_NoEquals_Error(t *testing.T) {
 	input := `@env NOVALUE
 echo test
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, errs := ParseFile(input)
+	if len(errs) == 0 {
+		t.Fatal("expected error for @env without =, got none")
 	}
-	if f.Entries[0].Directives.Env != nil {
-		t.Errorf("expected nil env map, got %v", f.Entries[0].Directives.Env)
+	if !strings.Contains(errs[0].Error(), "@env") {
+		t.Fatalf("expected @env error, got: %v", errs[0])
 	}
 }
 
@@ -702,9 +703,9 @@ func TestParseEnvDirective_FileLevel(t *testing.T) {
 echo test
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	env := f.Directives.Env
 	if len(env) != 2 {
@@ -720,9 +721,9 @@ func TestParseEnvDirective_DuplicateKey_LastWins(t *testing.T) {
 echo test
 EXIT 0
 `
-	f, err := ParseFile(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
 	}
 	assertEqual(t, f.Entries[0].Directives.Env["X"], "second")
 }

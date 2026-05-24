@@ -12,6 +12,7 @@
 - [x] `[Finally]` section + `later` assert modifier — Send a signal to background processes at file-end and assert exit code + output. `later` keyword defers assert evaluation to file-end. Execution order: entries → later asserts → [Finally] LIFO → @defer LIFO. See #19.
 - [x] `[Prompts]` — Interactive prompt/response section: match stdout patterns and send responses via stdin. Pipe-based (no PTY). Supports substring and regex matching, multiplier syntax, ambiguity detection, and unmatched prompt failure. Default timeout 30s.
 - [x] `--no-color` — Disable ANSI color codes in output. Also respects `NO_COLOR` env var (https://no-color.org/) and auto-disables when stdout is not a TTY.
+- [x] Strict directive validation — reject malformed `@timeout`, `@poll`, `@env` at parse time with line-numbered errors; file-level `@timeout` support [#43](https://github.com/sleipi/cli-t/issues/43)
 - [x] `--fail-fast` — Stop execution on the first test failure instead of running all entries
 - [x] Refactor `cmd/clitest/` package structure — Extracted display, resolve, filter, vars, and executor logic into dedicated `internal/` packages. Reduced `cmd/clitest/` from 17 to 7 files.
 - [x] Linting — Introduced `golangci-lint` with CI integration and resolved all issues
@@ -48,7 +49,6 @@
 - [ ] Register Domain
 - [ ] Publish VS Code extension to Marketplace (requires publisher account)
 - [ ] Syntax overhaul before 1.0 release [#40](https://github.com/sleipi/cli-t/issues/40)
-- [ ] Strict directive validation — reject malformed directives at parse time [#43](https://github.com/sleipi/cli-t/issues/43)
 
 ## Won't Do
 
