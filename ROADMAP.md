@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] Full-text assert with linebreaks — Multi-line string assertions via triple-quote (`"""`) syntax in `[Asserts]` section. Works with `==`, `!=`, `contains`, `startsWith`, `endsWith`. [#36](https://github.com/sleipi/cli-t/issues/36)
 - [x] TextMate grammar for `.clitest` syntax highlighting — VS Code extension + IntelliJ/Sublime support via TextMate Bundles. [#30](https://github.com/sleipi/cli-t/issues/30)
 - [x] `--silent` / `-s` — Suppress all output except the summary line and failure details. Warnings are suppressed but their count is included in the summary. Three output levels: silent (`-s`) / normal (default) / verbose (`-v`). [#38](https://github.com/sleipi/cli-t/issues/38)
 - [x] `@workdir ./path` — Run command in specific directory. Supported at file-level (frontmatter) and entry-level. Entry-level overrides file-level. Relative paths resolve relative to the `.clitest` file's directory. See #21.
@@ -41,7 +42,6 @@
 - [ ] Publish to Debian Repository [#33](https://github.com/sleipi/cli-t/issues/33)
 - [ ] Website + Docs — Documentation website with domain [#34](https://github.com/sleipi/cli-t/issues/34)
 - [ ] go install github.com/sleipi/cli-t [#35](https://github.com/sleipi/cli-t/issues/35)
-- [ ] Full-text assert with linebreaks — Multi-line string assertions in `[Asserts]` section [#36](https://github.com/sleipi/cli-t/issues/36)
 - [ ] JSONPath assertions — `json` query type for structured output assertions [#37](https://github.com/sleipi/cli-t/issues/37)
 - [ ] Output v3 - Improve test output formatting and usability (display pid of each background process, align formatting)
 - [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
