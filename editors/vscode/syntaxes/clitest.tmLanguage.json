@@ -11,6 +11,7 @@
     { "include": "#finally-signal" },
     { "include": "#prompt" },
     { "include": "#capture-line" },
+    { "include": "#assert-multiline" },
     { "include": "#assert-line" },
     { "include": "#variable" }
   ],
@@ -68,6 +69,25 @@
         "2": { "name": "entity.name.section.clitest" },
         "3": { "name": "punctuation.definition.section.end.clitest" }
       }
+    },
+    "assert-multiline": {
+      "begin": "^\\s*(stdout|stderr|exit|pid|lineCount|duration|line\\s+\\d+)\\s+(not\\s+)?(contains|startsWith|endsWith|==|!=|>=|<=|>|<)\\s*(later\\s+)?(\"\"\")\\s*$",
+      "end": "^\\s*(\"\"\")\\s*$",
+      "beginCaptures": {
+        "1": { "name": "variable.language.query.clitest" },
+        "2": { "name": "keyword.operator.negation.clitest" },
+        "3": { "name": "support.function.predicate.clitest" },
+        "4": { "name": "keyword.other.later.clitest" },
+        "5": { "name": "punctuation.definition.string.begin.clitest" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.string.end.clitest" }
+      },
+      "name": "meta.assert.multiline.clitest",
+      "contentName": "string.quoted.triple.clitest",
+      "patterns": [
+        { "include": "#variable" }
+      ]
     },
     "assert-line": {
       "match": "^\\s*(stdout|stderr|exit|pid|lineCount|duration|line\\s+\\d+)\\s+(not\\s+)?(contains|startsWith|endsWith|matches|isEmpty|==|!=|>=|<=|>|<)\\s*(later\\s+)?(.*)$",

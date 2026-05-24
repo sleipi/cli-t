@@ -20,3 +20,21 @@ EXIT 0
 [Asserts]
 stdout startsWith "Hello"
 stdout endsWith "World"
+
+# Test multi-line assertions with triple-quote
+printf "hello\nworld\ndone"
+EXIT 0
+[Asserts]
+stdout == """
+hello
+world
+done
+"""
+stdout startsWith """
+hello
+world
+"""
+stdout contains """
+world
+done
+"""

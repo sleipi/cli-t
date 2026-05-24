@@ -1,0 +1,11 @@
+# Unclosed triple-quote produces parse error
+./clitest test/_fixtures/syntax/multiline_unclosed.clitest
+EXIT 1
+[Asserts]
+stdout contains "unterminated triple-quote"
+
+# matches with triple-quote produces parse error
+./clitest test/_fixtures/syntax/multiline_matches.clitest
+EXIT 1
+[Asserts]
+stdout contains "not supported with 'matches'"

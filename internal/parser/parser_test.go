@@ -726,3 +726,266 @@ EXIT 0
 	}
 	assertEqual(t, f.Entries[0].Directives.Env["X"], "second")
 }
+
+// --- Multi-line assert (triple-quote) tests ---
+
+func TestParseMultilineAssert_Basic(t *testing.T) {
+	input := `printf "hello\nworld"
+EXIT 0
+[Asserts]
+stdout == """
+hello
+world
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "==", Value: "hello\nworld",
+	})
+}
+
+func TestParseMultilineAssert_SingleLineContent(t *testing.T) {
+	input := `echo hello
+EXIT 0
+[Asserts]
+stdout == """
+hello
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "==", Value: "hello",
+	})
+}
+
+func TestParseMultilineAssert_EmptyContent(t *testing.T) {
+	input := `echo -n ""
+EXIT 0
+[Asserts]
+stdout == """
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "==", Value: "",
+	})
+}
+
+func TestParseMultilineAssert_Contains(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout contains """
+foo
+bar
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "contains", Value: "foo\nbar",
+	})
+}
+
+func TestParseMultilineAssert_StartsWith(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout startsWith """
+foo
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "startsWith", Value: "foo",
+	})
+}
+
+func TestParseMultilineAssert_EndsWith(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout endsWith """
+bar
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "endsWith", Value: "bar",
+	})
+}
+
+func TestParseMultilineAssert_MatchesRejected(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout matches """
+.*
+"""
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for matches with triple-quote, got nil")
+	}
+}
+
+func TestParseMultilineAssert_Negated(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout not contains """
+bad
+stuff
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "contains", Value: "bad\nstuff", Negated: true,
+	})
+}
+
+func TestParseMultilineAssert_LaterModifier(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout contains later """
+foo
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "contains", Value: "foo", Later: true,
+	})
+}
+
+func TestParseMultilineAssert_PreservesIndentation(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout == """
+  indented
+    more
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "==", Value: "  indented\n    more",
+	})
+}
+
+func TestParseMultilineAssert_BlankLinesInContent(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout == """
+foo
+
+bar
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "==", Value: "foo\n\nbar",
+	})
+}
+
+func TestParseMultilineAssert_Unclosed(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout == """
+hello
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for unclosed triple-quote, got nil")
+	}
+}
+
+func TestParseMultilineAssert_EqualsOperator(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout == """
+hello
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "==", Value: "hello",
+	})
+}
+
+func TestParseMultilineAssert_MixedWithSingleLine(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+stdout contains """
+hello
+world
+"""
+exit == 0
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries[0].Asserts) != 2 {
+		t.Fatalf("expected 2 asserts, got %d", len(entries[0].Asserts))
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "contains", Value: "hello\nworld",
+	})
+	assertAssert(t, entries[0].Asserts[1], types.Assert{
+		Query: "exit", Predicate: "==", Value: "0",
+	})
+}
+
+func TestParseMultilineAssert_LineNQuery(t *testing.T) {
+	input := `echo test
+EXIT 0
+[Asserts]
+line 1 == """
+foo
+"""
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "line 1", Predicate: "==", Value: "foo",
+	})
+}

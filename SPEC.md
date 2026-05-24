@@ -192,6 +192,7 @@ Values can be:
 - Quoted strings: `"hello world"` — quotes are stripped
 - Regex literals: `/\d{4}-\d{2}-\d{2}/` — slashes are stripped
 - Bare values: `42`, `hello` — used as-is
+- Triple-quoted blocks: `"""` — multi-line string values (see below)
 
 ```
 [Asserts]
@@ -202,6 +203,39 @@ line 1 startsWith "Usage:"
 stderr isEmpty
 duration < 5000
 exit == 0
+```
+
+#### Multi-line Values (Triple-quote)
+
+For asserting output that contains newlines, use triple-quoted blocks. The opening `"""` must appear at the end of the assert line, content starts on the next line, and the closing `"""` must be on its own line:
+
+```
+[Asserts]
+stdout == """
+line 1
+line 2
+"""
+```
+
+**Rules:**
+- Content between the delimiters is literal (no indentation stripping)
+- Blank lines within the content are preserved
+- Leading/trailing whitespace on each line is preserved
+- Supported predicates: `==`, `!=`, `contains`, `startsWith`, `endsWith`
+- NOT supported with `matches` (use regex patterns instead)
+- Works with `not` negation and `later` modifier
+
+```
+[Asserts]
+stdout not contains """
+error
+details
+"""
+
+stdout contains later """
+expected
+output
+"""
 ```
 
 ---
@@ -803,6 +837,7 @@ section_header = "[" NAME "]" NEWLINE
 section_body   = (TEXT NEWLINE)*          # terminated by blank line or section
 
 assert     = query SPACE ["not" SPACE] predicate [SPACE value]
+           | query SPACE ["not" SPACE] predicate [SPACE "later"] SPACE TRIPLE_QUOTE LF content LF TRIPLE_QUOTE
 query      = "stdout" | "stderr" | "exit" | "lineCount" | "duration" | "line" SPACE INTEGER
 predicate  = "contains" | "startsWith" | "endsWith" | "matches" | "isEmpty" | OP
 OP         = "==" | "!=" | ">" | ">=" | "<" | "<="
@@ -810,6 +845,7 @@ value      = QUOTED | REGEX | BARE
 QUOTED     = '"' [^"]* '"'
 REGEX      = '/' [^/]* '/'
 BARE       = \S+
+TRIPLE_QUOTE = '"""'
 
 capture    = NAME ":" SPACE query
 
