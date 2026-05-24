@@ -14,7 +14,7 @@ line3
 # Test exit code assertion
 echo "works"
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "works"
 stdout not contains "broken"
 lineCount == 1

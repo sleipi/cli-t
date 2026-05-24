@@ -3,9 +3,9 @@
 @poll 100
 sh -c 'sleep 1; echo "ready"; sleep 999'
 EXIT NEVER
-[Captures]
-bgpid: pid
-[Asserts]
+[captures]
+bgpid = pid
+[asserts]
 stdout contains "ready"
 
 @defer

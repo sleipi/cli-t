@@ -71,7 +71,7 @@ EXIT NEVER
 
 #### `EXIT NEVER`
 
-Marks the command as a background process that is not expected to terminate. The process is started and clitest does **not** wait for it to exit. Instead, the `[Asserts]` section is evaluated repeatedly (polled) until all assertions pass or the `@timeout` is reached (→ FAIL + process is killed).
+Marks the command as a background process that is not expected to terminate. The process is started and clitest does **not** wait for it to exit. Instead, the `[asserts]` section is evaluated repeatedly (polled) until all assertions pass or the `@timeout` is reached (→ FAIL + process is killed).
 
 If the process exits unexpectedly while polling, the entry is marked as FAIL.
 
@@ -103,19 +103,18 @@ b
 
 Sections start with a header in square brackets. Available sections:
 
-- `[Asserts]` — explicit assertions
-- `[Captures]` — variable captures
-- `[Finally]` — cleanup signal + post-signal asserts (EXIT NEVER only)
-- `[Prompts]` — interactive stdin responses (pattern-matched)
-- `[Options]` — entry-level options (planned)
+- `[asserts]` — explicit assertions
+- `[captures]` — variable captures
+- `[finally]` — cleanup signal + post-signal asserts (EXIT NEVER only)
+- `[prompts]` — interactive stdin responses (pattern-matched)
 
 ---
 
 ## Sections
 
-### `[Asserts]`
+### `[asserts]`
 
-Each line in the `[Asserts]` section is an assertion with the format:
+Each line in the `[asserts]` section is an assertion with the format:
 
 ```
 <query> [not] <predicate> [value]
@@ -164,10 +163,10 @@ stderr not isEmpty
 
 #### `later` modifier (EXIT NEVER only)
 
-The `later` keyword defers an assertion to be evaluated at file-end rather than during polling. Place it after the predicate, before the value:
+The `later` keyword defers an assertion to be evaluated at file-end rather than during polling. Place it at the beginning of the assert line, before the query:
 
 ```
-<query> [not] <predicate> later [value]
+later <query> [not] <predicate> [value]
 ```
 
 During polling, `later` asserts are skipped. After all entries in the file complete, `later` asserts are evaluated against the process's accumulated stdout/stderr. This is useful for output that appears after the initial "ready" state.
@@ -177,9 +176,9 @@ During polling, `later` asserts are skipped. After all entries in the file compl
 @poll 100
 sh -c 'echo "ready"; sleep 1; echo "done"'
 EXIT NEVER
-[Asserts]
+[asserts]
 stdout contains "ready"
-stdout contains later "done"
+later stdout contains "done"
 ```
 
 If any non-later polling assert times out, the process is killed and all `later` asserts for that entry are also marked as FAIL.
@@ -195,7 +194,7 @@ Values can be:
 - Triple-quoted blocks: `"""` — multi-line string values (see below)
 
 ```
-[Asserts]
+[asserts]
 stdout contains "expected output"
 stdout matches /\d+\.\d+\.\d+/
 lineCount == 3
@@ -210,7 +209,7 @@ exit == 0
 For asserting output that contains newlines, use triple-quoted blocks. The opening `"""` must appear at the end of the assert line, content starts on the next line, and the closing `"""` must be on its own line:
 
 ```
-[Asserts]
+[asserts]
 stdout == """
 line 1
 line 2
@@ -226,13 +225,13 @@ line 2
 - Works with `not` negation and `later` modifier
 
 ```
-[Asserts]
+[asserts]
 stdout not contains """
 error
 details
 """
 
-stdout contains later """
+later stdout contains """
 expected
 output
 """
@@ -240,14 +239,14 @@ output
 
 ---
 
-### `[Captures]`
+### `[captures]`
 
 Captures extract values from command output and store them as variables for use in subsequent entries.
 
 Format:
 
 ```
-<name>: <query>
+<name> = <query>
 ```
 
 Example:
@@ -255,24 +254,24 @@ Example:
 ```
 echo "abc-123"
 EXIT 0
-[Captures]
-id: stdout
+[captures]
+id = stdout
 ```
 
 The captured value can then be used in later entries as `{{id}}`.
 
-> **Planned**: Regex capture groups: `token: stdout regex /token=(\w+)/`
+> **Planned**: Regex capture groups: `token = stdout regex /token=(\w+)/`
 
 ---
 
-### `[Finally]`
+### `[finally]`
 
 Available only on `EXIT NEVER` entries. Defines cleanup behavior: sends a signal to the background process, waits for it to exit, and optionally asserts on the final state.
 
 Format:
 
 ```
-[Finally]
+[finally]
 <SIGNAL> EXIT <code> [timeout <ms>]
 <assert>...
 ```
@@ -289,22 +288,22 @@ Example:
 @poll 100
 sh -c 'echo "ready"; trap "echo cleaned; exit 0" TERM; while true; do sleep 0.1; done'
 EXIT NEVER
-[Asserts]
+[asserts]
 stdout contains "ready"
-[Finally]
+[finally]
 TERM EXIT 0 timeout 3000
 stdout contains "cleaned"
 ```
 
 **Execution order at file-end:**
-1. All regular entries execute (background processes stay alive if they have `later` asserts or `[Finally]`)
+1. All regular entries execute (background processes stay alive if they have `later` asserts or `[finally]`)
 2. `later` asserts are evaluated against accumulated output
-3. `[Finally]` sections are executed in LIFO order (last started = first cleaned)
+3. `[finally]` sections are executed in LIFO order (last started = first cleaned)
 4. `@defer` entries are executed in LIFO order
 
 **Signal delivery and `exec`:**
 
-clitest runs all commands via `sh -c "<command>"`. For `EXIT NEVER` entries with `[Finally]`, the signal must reach the actual process (not the shell wrapper). On shells like `dash` (default `/bin/sh` on Ubuntu/Debian), the shell does *not* automatically replace itself with the target binary, causing the signal to kill the shell instead.
+clitest runs all commands via `sh -c "<command>"`. For `EXIT NEVER` entries with `[finally]`, the signal must reach the actual process (not the shell wrapper). On shells like `dash` (default `/bin/sh` on Ubuntu/Debian), the shell does *not* automatically replace itself with the target binary, causing the signal to kill the shell instead.
 
 To ensure reliable signal delivery, clitest automatically inserts `exec` for simple commands that don't use shell operators (`|`, `&`, `;`, `<`, `>`, `$`, backticks, `(`, `{`, `}`). Environment variable prefixes are handled correctly:
 
@@ -318,7 +317,7 @@ ENV=val ./my-server               → ENV=val exec ./my-server
 cd dir && ./server                → unchanged
 ```
 
-For complex commands with shell operators that require a `[Finally]` exit-code check, prefix the main process with `exec` manually:
+For complex commands with shell operators that require a `[finally]` exit-code check, prefix the main process with `exec` manually:
 
 ```
 exec ./my-server --port 8080 | tee log
@@ -326,7 +325,7 @@ exec ./my-server --port 8080 | tee log
 
 ---
 
-### `[Prompts]`
+### `[prompts]`
 
 Prompts enable testing interactive commands that read from stdin. Each prompt defines a pattern to match against stdout/stderr and a response to write to stdin when the pattern is detected.
 
@@ -376,11 +375,11 @@ Programs that require a real terminal (PTY) are **not supported**:
 @timeout 5000
 php bin/console app:create-user
 EXIT 0
-[Prompts]
+[prompts]
 "Enter username:" => "alice"
 "Enter email:" => "alice@example.com"
 /Confirm .* \[yes\]/ => "yes"
-[Asserts]
+[asserts]
 stdout contains "User created"
 ```
 
@@ -389,38 +388,10 @@ stdout contains "User created"
 @timeout 3000
 ./setup.sh
 EXIT 0
-[Prompts]
+[prompts]
 "Continue?" => "yes" * 3
 "Enter name:" => "Alice"
 ```
-
----
-
-### `[Options]` (planned)
-
-Entry-level options that control execution behavior.
-
-```
-[Options]
-timeout: 5000
-workdir: /tmp
-shell: bash
-env: FOO=bar
-env: BAZ=qux
-retry: 3
-retry-interval: 1000
-skip: $CI != "true"
-```
-
-| Option           | Type    | Default   | Description                          |
-|-----------------|---------|-----------|--------------------------------------|
-| `timeout`       | integer | 30000     | Max execution time in ms             |
-| `workdir`       | string  | `.`       | Working directory for the command     |
-| `shell`         | string  | `sh`      | Shell to use (`sh`, `bash`, `zsh`)   |
-| `env`           | string  | —         | Additional env var (repeatable)      |
-| `retry`         | integer | 0         | Number of retries on failure         |
-| `retry-interval`| integer | 1000      | Delay between retries in ms          |
-| `skip`          | string  | —         | Condition to skip this entry         |
 
 ---
 
@@ -438,7 +409,7 @@ EXIT 0
 
 Variables are resolved from (in priority order):
 1. `--var NAME=VALUE` CLI flags
-2. `[Captures]` from previous entries
+2. `[captures]` from previous entries
 3. Environment variables (via `$VAR` or `${VAR}` syntax)
 
 ### Environment Variable Expansion
@@ -448,7 +419,7 @@ Standard shell-style `$VAR` and `${VAR}` are expanded from the process environme
 ```
 echo $HOME
 EXIT 0
-[Asserts]
+[asserts]
 stdout == "$HOME"
 ```
 
@@ -537,7 +508,7 @@ Sets the maximum wait time in milliseconds for an `EXIT NEVER` entry. If asserti
 @timeout 5000
 php -S localhost:8080
 EXIT NEVER
-[Asserts]
+[asserts]
 stdout contains "Development server"
 ```
 
@@ -550,7 +521,7 @@ Sets the polling interval in milliseconds for `EXIT NEVER` assertion checks. Def
 @poll 200
 tail -f /tmp/app.log
 EXIT NEVER
-[Asserts]
+[asserts]
 stdout contains "ready"
 ```
 
@@ -617,14 +588,14 @@ Sets a real environment variable on the child process. Supported at both file-le
 # All entries see API_URL and DEBUG
 printenv API_URL
 EXIT 0
-[Asserts]
+[asserts]
 stdout == "http://localhost:8080"
 
 # Entry-level override
 @env DEBUG=false
 printenv DEBUG
 EXIT 0
-[Asserts]
+[asserts]
 stdout == "false"
 ```
 
@@ -677,15 +648,15 @@ EXIT 0
 curl -s -X POST http://localhost:3000/login \
   -d '{"user":"admin","pass":"secret"}'
 EXIT 0
-[Asserts]
+[asserts]
 stdout matches /token/
-[Captures]
-token: stdout
+[captures]
+token = stdout
 
 # Use token to fetch profile
 curl -s http://localhost:3000/me -H "Authorization: Bearer {{token}}"
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "admin"
 line 1 startsWith "{"
 ```
@@ -696,8 +667,8 @@ line 1 startsWith "{"
 # setup temp file
 mktemp
 EXIT 0
-[Captures]
-tmpfile: stdout
+[captures]
+tmpfile = stdout
 
 # write content before tail starts
 echo "hello" > {{tmpfile}}
@@ -708,9 +679,9 @@ EXIT 0
 @poll 200
 tail -f {{tmpfile}}
 EXIT NEVER
-[Captures]
-tailpid: pid
-[Asserts]
+[captures]
+tailpid = pid
+[asserts]
 stdout contains "hello"
 
 # cleanup

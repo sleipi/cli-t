@@ -10,12 +10,12 @@ import (
 
 const keywordTimeout = "timeout"
 
-// collectFinally parses a [Finally] section for EXIT NEVER entries.
+// collectFinally parses a [finally] section for EXIT NEVER entries.
 // First line: <SIGNAL> EXIT <code> [timeout <ms>]
 // Subsequent lines: asserts (until blank line or next section).
 func collectFinally(lines []string, i int, current *entryBuilder) (int, error) {
 	if i >= len(lines) || strings.TrimSpace(lines[i]) == "" {
-		return 0, fmt.Errorf("[Finally] section requires a signal line")
+		return 0, fmt.Errorf("[finally] section requires a signal line")
 	}
 
 	fin, err := parseFinallySignalLine(lines[i])
@@ -44,7 +44,7 @@ func parseFinallySignalLine(line string) (*types.Finally, error) {
 	parts := strings.Fields(line)
 
 	if len(parts) < 3 {
-		return nil, fmt.Errorf("invalid [Finally] signal line: %s (expected: SIGNAL EXIT CODE [timeout MS])", line)
+		return nil, fmt.Errorf("invalid [finally] signal line: %s (expected: SIGNAL EXIT CODE [timeout MS])", line)
 	}
 
 	signal := parts[0]

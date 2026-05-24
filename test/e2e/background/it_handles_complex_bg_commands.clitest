@@ -4,8 +4,8 @@
 @poll 100
 exec ./test/_helpers/bgserver/bgserver --fifo /tmp/clitest-complex1.fifo
 EXIT NEVER
-[Asserts]
+[asserts]
 stdout contains "started"
-[Finally]
+[finally]
 TERM EXIT 0 timeout 3000
 stderr contains "graceful termination"

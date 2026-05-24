@@ -1,5 +1,5 @@
 # This file has an invalid capture that causes a parse error
 echo "hello"
 EXIT 0
-[Captures]
+[captures]
 bad capture line

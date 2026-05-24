@@ -1,12 +1,12 @@
-# [Finally] sends TERM, bgserver logs graceful termination
+# [finally] sends TERM, bgserver logs graceful termination
 @timeout 5000
 @poll 100
 ./test/_helpers/bgserver/bgserver --fifo /tmp/clitest-finally-e2e.fifo
 EXIT NEVER
-[Asserts]
+[asserts]
 stdout contains "started"
-stdout contains later "msg: hello from outside"
-[Finally]
+later stdout contains "msg: hello from outside"
+[finally]
 TERM EXIT 0 timeout 3000
 stderr contains "graceful termination"
 

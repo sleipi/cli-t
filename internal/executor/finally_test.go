@@ -86,7 +86,7 @@ func TestExecuteFinally_ExitCodeMismatch(t *testing.T) {
 	}
 	found := false
 	for _, f := range results[0].Failures {
-		if f == "[Finally] exit code: expected 0, got 1" {
+		if f == "[finally] exit code: expected 0, got 1" {
 			found = true
 		}
 	}

@@ -1,7 +1,7 @@
 # Test line-based assertions
 printf "cold beer\nwarm beer\nno beer\na lot of beer"
 EXIT 0
-[Asserts]
+[asserts]
 line 1 contains "cold beer"
 line 2 contains "warm beer"
 line 3 contains "no beer"

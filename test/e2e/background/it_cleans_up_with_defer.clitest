@@ -1,8 +1,8 @@
 # Defer entries clean up background processes and temp files
 mktemp
 EXIT 0
-[Captures]
-tmpfile: stdout
+[captures]
+tmpfile = stdout
 
 sh -c 'echo "server started" > {{tmpfile}}'
 EXIT 0
@@ -12,9 +12,9 @@ EXIT 0
 @poll 200
 tail -f {{tmpfile}}
 EXIT NEVER
-[Captures]
-tailpid: pid
-[Asserts]
+[captures]
+tailpid = pid
+[asserts]
 stdout contains "server started"
 
 # Defers run in LIFO order: file removed last, process killed first

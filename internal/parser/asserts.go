@@ -8,7 +8,7 @@ import (
 	"github.com/sleipi/cli-t/internal/types"
 )
 
-// collectAsserts collects assert lines from an [Asserts] section.
+// collectAsserts collects assert lines from an [asserts] section.
 func collectAsserts(lines []string, i int, current *entryBuilder) (int, error) {
 	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
 		a, nextIdx, isMultiline, err := tryParseMultilineAssert(lines, i)
@@ -43,6 +43,13 @@ func tryParseMultilineAssert(lines []string, i int) (assert types.Assert, nextIn
 		return types.Assert{}, 0, false, nil
 	}
 
+	// Check for "later" modifier at the start of the line
+	later := false
+	if strings.HasPrefix(line, "later ") {
+		later = true
+		line = strings.TrimSpace(strings.TrimPrefix(line, "later "))
+	}
+
 	// Extract query
 	query, rest := extractQuery(line)
 	if query == "" {
@@ -59,7 +66,7 @@ func tryParseMultilineAssert(lines []string, i int) (assert types.Assert, nextIn
 	}
 
 	// Extract predicate (everything before the """)
-	predicate, valuePart, later := extractPredicateWithLater(rest)
+	predicate, valuePart, _ := extractPredicate(rest)
 
 	// The value part should be exactly """ (nothing else after opening)
 	if valuePart != tripleQuote {
@@ -93,7 +100,7 @@ func tryParseMultilineAssert(lines []string, i int) (assert types.Assert, nextIn
 	return types.Assert{}, 0, false, fmt.Errorf("unterminated triple-quote block (opening \"\"\" without closing \"\"\")")
 }
 
-// collectCaptures collects capture lines from a [Captures] section.
+// collectCaptures collects capture lines from a [captures] section.
 func collectCaptures(lines []string, i int, current *entryBuilder) (int, error) {
 	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
 		c, err := parseCapture(lines[i])
@@ -106,7 +113,7 @@ func collectCaptures(lines []string, i int, current *entryBuilder) (int, error) 
 	return i, nil
 }
 
-// collectPrompts collects prompt lines from a [Prompts] section.
+// collectPrompts collects prompt lines from a [prompts] section.
 func collectPrompts(lines []string, i int, current *entryBuilder) (int, error) {
 	for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !strings.HasPrefix(lines[i], "[") {
 		p, err := parsePrompt(lines[i])
@@ -119,9 +126,18 @@ func collectPrompts(lines []string, i int, current *entryBuilder) (int, error) {
 	return i, nil
 }
 
-// parseAssert parses a line like: stdout contains "hello"
+// parseAssert parses an assert line.
+// Syntax: [later] <query> [not] <predicate> [<value>]
+// e.g. "later stdout contains \"hello\"" or "stdout not contains \"error\""
 func parseAssert(line string) (types.Assert, error) {
 	line = strings.TrimSpace(line)
+
+	// Check for "later" modifier at the start of the line
+	later := false
+	if strings.HasPrefix(line, "later ") {
+		later = true
+		line = strings.TrimSpace(strings.TrimPrefix(line, "later "))
+	}
 
 	// Extract query
 	query, rest := extractQuery(line)
@@ -139,8 +155,8 @@ func parseAssert(line string) (types.Assert, error) {
 		rest = strings.TrimSpace(rest)
 	}
 
-	// Extract predicate and value (with possible "later" modifier)
-	predicate, value, later := extractPredicateWithLater(rest)
+	// Extract predicate and value
+	predicate, value, _ := extractPredicate(rest)
 
 	return types.Assert{
 		Query:     query,
@@ -176,10 +192,9 @@ func extractQuery(line string) (query, rest string) {
 	return parts[0], ""
 }
 
-// extractPredicateWithLater parses predicate, optional "later" modifier, and value.
-// Syntax: <predicate> [later] <value>
-// e.g. "contains later \"hello\"" → ("contains", "hello", true)
-func extractPredicateWithLater(s string) (predicate, value string, later bool) {
+// extractPredicate parses predicate and value from the remainder of an assert line
+// (after query and optional "not" have been removed).
+func extractPredicate(s string) (predicate, value string, later bool) {
 	// Predicates without value
 	noValuePredicates := []string{"isEmpty"}
 	for _, p := range noValuePredicates {
@@ -188,18 +203,16 @@ func extractPredicateWithLater(s string) (predicate, value string, later bool) {
 		}
 	}
 
-	// Predicates with value
-	predicates := []string{"contains", "not contains", "startsWith", "endsWith", "matches", "==", "!=", ">=", "<=", ">", "<"}
+	// Predicates with value.
+	// "not" is handled upstream in parseAssert — "not contains" here is not needed.
+	// Bare-value semantics: everything after the predicate is the value;
+	// quotes are optional but stripped if present ("hello" → hello, /pat/ → pat).
+	predicates := []string{"contains", "startsWith", "endsWith", "matches", "==", "!=", ">=", "<=", ">", "<"}
 	for _, p := range predicates {
 		if strings.HasPrefix(s, p+" ") || s == p {
 			val := strings.TrimSpace(strings.TrimPrefix(s, p))
-			// Check for "later" modifier before value
-			if strings.HasPrefix(val, "later ") {
-				later = true
-				val = strings.TrimSpace(strings.TrimPrefix(val, "later"))
-			}
 			val = unquoteValue(val)
-			return p, val, later
+			return p, val, false
 		}
 	}
 
@@ -224,9 +237,12 @@ func unquoteValue(s string) string {
 
 func parseCapture(line string) (types.Capture, error) {
 	line = strings.TrimSpace(line)
-	parts := strings.SplitN(line, ":", 2)
+	parts := strings.SplitN(line, "=", 2)
 	if len(parts) != 2 {
-		return types.Capture{}, fmt.Errorf("invalid capture: %s", line)
+		if strings.Contains(line, ":") {
+			return types.Capture{}, fmt.Errorf("invalid capture syntax: use '=' instead of ':' (e.g. id = stdout)")
+		}
+		return types.Capture{}, fmt.Errorf("invalid capture: %s (expected: name = query)", line)
 	}
 	return types.Capture{
 		Name:  strings.TrimSpace(parts[0]),

@@ -2,7 +2,7 @@
 @timeout 3000
 sh test/_fixtures/ask_confirm.sh
 EXIT 0
-[Prompts]
+[prompts]
 /Continue\?/ => "yes"
-[Asserts]
+[asserts]
 stdout contains "Got: yes"
