@@ -140,7 +140,7 @@ func TestBackgroundEntry_CapturesStored(t *testing.T) {
 		Command:   `sh -c 'echo ready; sleep 10'`,
 		ExitNever: true,
 		Asserts:   []types.Assert{{Query: "stdout", Predicate: "contains", Value: "ready"}},
-		Captures:  []types.Capture{{Name: "bgpid", Query: "pid"}},
+		Captures:  []types.Capture{{Name: "bgpid", Source: types.CapturePid}},
 		Directives: types.EntryDirectives{
 			Timeout: intPtr(3000),
 			Poll:    intPtr(50),

@@ -122,7 +122,7 @@ pid = stdout
 		t.Fatalf("expected 1 capture, got %d", len(entries[0].Captures))
 	}
 	assertEqual(t, entries[0].Captures[0].Name, "pid")
-	assertEqual(t, entries[0].Captures[0].Query, "stdout")
+	assertEqual(t, string(entries[0].Captures[0].Source), "stdout")
 }
 
 func TestParseFencedBody(t *testing.T) {
@@ -389,7 +389,7 @@ result = stdout
 	}
 	c := entries[0].Captures[0]
 	assertEqual(t, c.Name, "result")
-	assertEqual(t, c.Query, "stdout")
+	assertEqual(t, string(c.Source), "stdout")
 }
 
 func TestParseCaptureOldColonSyntaxReturnsError(t *testing.T) {
@@ -532,7 +532,7 @@ stdout contains "ready"
 	if e.Directives.Poll == nil || *e.Directives.Poll != 200 {
 		t.Fatalf("expected Poll 200, got %v", e.Directives.Poll)
 	}
-	if len(e.Captures) != 1 || e.Captures[0].Query != "pid" {
+	if len(e.Captures) != 1 || e.Captures[0].Source != "pid" {
 		t.Fatalf("expected pid capture, got %+v", e.Captures)
 	}
 	if len(e.Asserts) != 1 || e.Asserts[0].Query != "stdout" {
@@ -1142,4 +1142,92 @@ foo
 	assertAssert(t, entries[0].Asserts[0], types.Assert{
 		Query: "line 1", Predicate: "==", Value: "foo",
 	})
+}
+
+func TestParseCapture_AllQueries(t *testing.T) {
+	tests := []struct {
+		input      string
+		wantName   string
+		wantSource types.CaptureSource
+		wantLine   int
+		wantRegex  bool
+	}{
+		{"echo hello\nEXIT 0\n[captures]\nout = stdout\n", "out", types.CaptureStdout, 0, false},
+		{"echo hello\nEXIT 0\n[captures]\nerr = stderr\n", "err", types.CaptureStderr, 0, false},
+		{"echo hello\nEXIT 0\n[captures]\ncount = lineCount\n", "count", types.CaptureLineCount, 0, false},
+		{"echo hello\nEXIT 0\n[captures]\nfirst = line 1\n", "first", types.CaptureLine, 1, false},
+		{"echo hello\nEXIT 0\n[captures]\nfirst = line 3\n", "first", types.CaptureLine, 3, false},
+		{"echo hello\nEXIT 0\n[captures]\nver = stdout regex /v(\\d+)/\n", "ver", types.CaptureStdout, 0, true},
+		{"echo hello\nEXIT 0\n[captures]\ncode = stderr regex /code=(\\d+)/\n", "code", types.CaptureStderr, 0, true},
+	}
+	for _, tt := range tests {
+		entries, err := Parse(tt.input)
+		if err != nil {
+			t.Fatalf("input %q: unexpected error: %v", tt.input, err)
+		}
+		c := entries[0].Captures[0]
+		if c.Name != tt.wantName {
+			t.Errorf("expected name %q, got %q", tt.wantName, c.Name)
+		}
+		if c.Source != tt.wantSource {
+			t.Errorf("input %q: expected source %q, got %q", tt.input, tt.wantSource, c.Source)
+		}
+		if c.LineNum != tt.wantLine {
+			t.Errorf("expected lineNum %d, got %d", tt.wantLine, c.LineNum)
+		}
+		if tt.wantRegex && c.Regex == nil {
+			t.Errorf("expected regex to be set")
+		}
+		if !tt.wantRegex && c.Regex != nil {
+			t.Errorf("expected regex to be nil")
+		}
+	}
+}
+
+func TestParseCapture_InvalidRegex(t *testing.T) {
+	input := "echo hello\nEXIT 0\n[captures]\nbad = stdout regex /[invalid(/\n"
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for invalid regex in capture")
+	}
+}
+
+func TestParseCapture_InvalidLineNumber(t *testing.T) {
+	input := "echo hello\nEXIT 0\n[captures]\nbad = line abc\n"
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for invalid line number")
+	}
+}
+
+func TestParseCapture_LineZero(t *testing.T) {
+	input := "echo hello\nEXIT 0\n[captures]\nbad = line 0\n"
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for line 0")
+	}
+}
+
+func TestParseCapture_UnknownQuery(t *testing.T) {
+	input := "echo hello\nEXIT 0\n[captures]\nbad = foobar\n"
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for unknown capture query")
+	}
+}
+
+func TestParseAssert_InvalidRegex(t *testing.T) {
+	input := "echo hello\nEXIT 0\n[asserts]\nstdout matches /[invalid(/\n"
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for invalid regex in assert")
+	}
+}
+
+func TestParseAssert_ValidRegex(t *testing.T) {
+	input := "echo hello\nEXIT 0\n[asserts]\nstdout matches /^hello$/\n"
+	_, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

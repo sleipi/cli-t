@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/sleipi/cli-t/internal/types"
@@ -28,7 +29,7 @@ func TestEntry_CaptureStored(t *testing.T) {
 	entry := types.Entry{
 		Command:  "echo captured_value",
 		ExitCode: 0,
-		Captures: []types.Capture{{Name: "out", Query: "stdout"}},
+		Captures: []types.Capture{{Name: "out", Source: types.CaptureStdout}},
 	}
 	captures := map[string]string{}
 	er := Entry(entry, captures)
@@ -160,5 +161,45 @@ func TestEntry_PromptResponds(t *testing.T) {
 	er := Entry(entry, captures)
 	if !er.Pass {
 		t.Fatalf("expected pass, got failures: %v (stdout: %q)", er.Failures, er.Runner.Stdout)
+	}
+}
+
+func TestEntry_RegexCapture_NoMatch_ProducesWarning(t *testing.T) {
+	re := regexp.MustCompile(`\d+`)
+	entry := types.Entry{
+		Command:  "echo no_numbers_here",
+		ExitCode: 0,
+		Captures: []types.Capture{{Name: "num", Source: types.CaptureStdout, Regex: re}},
+	}
+	captures := map[string]string{}
+	er := Entry(entry, captures)
+	if !er.Pass {
+		t.Fatalf("expected pass, got: %v", er.Failures)
+	}
+	if len(er.Warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d: %v", len(er.Warnings), er.Warnings)
+	}
+	if captures["num"] != "" {
+		t.Errorf("expected empty capture, got %q", captures["num"])
+	}
+}
+
+func TestEntry_RegexCapture_Match_NoWarning(t *testing.T) {
+	re := regexp.MustCompile(`(\d+)`)
+	entry := types.Entry{
+		Command:  "echo value42end",
+		ExitCode: 0,
+		Captures: []types.Capture{{Name: "num", Source: types.CaptureStdout, Regex: re}},
+	}
+	captures := map[string]string{}
+	er := Entry(entry, captures)
+	if !er.Pass {
+		t.Fatalf("expected pass, got: %v", er.Failures)
+	}
+	if len(er.Warnings) != 0 {
+		t.Errorf("expected no warnings, got: %v", er.Warnings)
+	}
+	if captures["num"] != "42" {
+		t.Errorf("expected '42', got %q", captures["num"])
 	}
 }

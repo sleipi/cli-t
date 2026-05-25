@@ -1,0 +1,71 @@
+# Captures
+#
+# Captures extract values from command output and store them as variables.
+# Use {{name}} to reference captured values in subsequent entries.
+#
+# Supported queries:
+#   stdout              — full trimmed stdout
+#   stderr              — full trimmed stderr
+#   line N              — Nth line of stdout (1-indexed)
+#   lineCount           — number of stdout lines
+#   stdout regex /pat/  — first capture group (or full match)
+#   stderr regex /pat/  — first capture group (or full match)
+
+# Capture stdout and reuse it
+echo "session-token-abc123"
+[captures]
+token = stdout
+
+echo "Authorization: Bearer {{token}}"
+Authorization: Bearer session-token-abc123
+
+# Extract a specific line
+printf "name: Alice\nrole: admin\nid: 42"
+[captures]
+name_line = line 1
+id_line = line 3
+
+echo "{{name_line}} | {{id_line}}"
+name: Alice | id: 42
+
+# Count output lines
+printf "one\ntwo\nthree\nfour"
+[captures]
+total = lineCount
+
+echo "{{total}} lines"
+4 lines
+
+# Regex capture group — extract a version string
+echo "myapp v2.4.1 (build 9f3a)"
+[captures]
+version = stdout regex /v(\d+\.\d+\.\d+)/
+
+echo "version is {{version}}"
+version is 2.4.1
+
+# Regex without capture group — full match
+echo "request took 237ms"
+[captures]
+duration = stdout regex /\d+ms/
+
+echo "{{duration}}"
+237ms
+
+# Regex on stderr
+echo "warn: retry in 5s" >&2
+EXIT 0
+[captures]
+wait = stderr regex /(\d+)s/
+
+echo "waiting {{wait}} seconds"
+waiting 5 seconds
+
+# Chaining captures across entries
+printf "user:alice\nuser:bob\nuser:charlie"
+[captures]
+count = lineCount
+first = line 1
+
+echo "{{count}} users, first is {{first}}"
+3 users, first is user:alice

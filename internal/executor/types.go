@@ -9,6 +9,7 @@ import (
 type Result struct {
 	Pass     bool
 	Failures []string
+	Warnings []string
 	Runner   runner.Result
 }
 

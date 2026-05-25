@@ -2,6 +2,7 @@
 
 ## Completed
 
+- [x] Capture query parity + regex capture groups — `line N`, `lineCount`, `stdout regex /pat/`, `stderr regex /pat/`. Regex validated at parse time (fail-fast). [#48](https://github.com/sleipi/cli-t/issues/48)
 - [x] `go install github.com/sleipi/cli-t` — Enable installation via `go install`. [#35](https://github.com/sleipi/cli-t/issues/35)
 - [x] `@env KEY=VALUE` — Set env vars for entry. Supported at file-level (frontmatter) and entry-level. [#27](https://github.com/sleipi/cli-t/issues/27)
 - [x] Full-text assert with linebreaks — Multi-line string assertions via triple-quote (`"""`) syntax in `[Asserts]` section. Works with `==`, `!=`, `contains`, `startsWith`, `endsWith`. [#36](https://github.com/sleipi/cli-t/issues/36)
@@ -43,7 +44,7 @@
 - [ ] Website + Docs — Documentation website with domain [#34](https://github.com/sleipi/cli-t/issues/34)
 - [ ] JSONPath assertions — `json` query type for structured output assertions [#37](https://github.com/sleipi/cli-t/issues/37)
 - [ ] Output v3 - Improve test output formatting and usability (display pid of each background process, align formatting)
-- [ ] `--junit FILE` — Write a JUnit XML report to the given file path for CI integration
+- [ ] `--report junit:<path>` — Write a JUnit XML report for CI integration (GitHub Actions, GitLab, Jenkins). Format-prefixed flag for future extensibility. [#49](https://github.com/sleipi/cli-t/issues/49)
 - [ ] `@hook` —
 - [ ] Shell completion (bash/zsh/fish) via cobra completion subcommand
 - [ ] Register Domain

@@ -362,3 +362,58 @@ func TestVerboseDisplay_NonVerboseHidesStdoutOnPass(t *testing.T) {
 		t.Errorf("verbose=false should NOT show stdout on pass, got:\n%s", output)
 	}
 }
+
+func TestVerboseDisplay_ShowsWarningsOnPass(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, true) // verbose=true
+	d.EntryResult(EntryInfo{
+		Command:     "echo test",
+		Passed:      true,
+		ExitCode:    0,
+		AssertCount: 0,
+		Warnings:    []string{`capture "num": regex /\d+/ did not match`},
+	})
+
+	output := buf.String()
+	if !strings.Contains(output, "WARN") {
+		t.Errorf("expected WARN in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "did not match") {
+		t.Errorf("expected warning message in output, got:\n%s", output)
+	}
+}
+
+func TestVerboseDisplay_NoWarningsOnPass_NonVerbose(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, false) // verbose=false
+	d.EntryResult(EntryInfo{
+		Command:     "echo test",
+		Passed:      true,
+		ExitCode:    0,
+		AssertCount: 0,
+		Warnings:    []string{`capture "num": regex /\d+/ did not match`},
+	})
+
+	output := buf.String()
+	if strings.Contains(output, "WARN") {
+		t.Errorf("verbose=false should NOT show warnings on pass, got:\n%s", output)
+	}
+}
+
+func TestVerboseDisplay_ShowsWarningsOnFail(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, false)
+	d.EntryResult(EntryInfo{
+		Command:     "echo test",
+		Passed:      false,
+		ExitCode:    0,
+		AssertCount: 1,
+		Failures:    []string{"stdout contains \"missing\""},
+		Warnings:    []string{`capture "x": regex /foo/ did not match`},
+	})
+
+	output := buf.String()
+	if !strings.Contains(output, "WARN") {
+		t.Errorf("expected WARN in failure output, got:\n%s", output)
+	}
+}
