@@ -1,7 +1,7 @@
 # matches with triple-quote — should cause parse error
 echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout matches """
 .*
 """

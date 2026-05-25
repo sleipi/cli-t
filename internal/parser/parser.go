@@ -124,28 +124,48 @@ func parsePostCommand(lines []string, i int, current *entryBuilder) (int, error)
 		return i + 1, nil
 	}
 
-	if strings.TrimSpace(line) == "[Asserts]" {
+	trimmed := strings.TrimSpace(line)
+
+	if trimmed == "[asserts]" {
 		return collectAsserts(lines, i+1, current)
 	}
+	if trimmed == "[Asserts]" {
+		return 0, fmt.Errorf("section header must be lowercase: use [asserts] instead of [Asserts]")
+	}
 
-	if strings.TrimSpace(line) == "[Captures]" {
+	if trimmed == "[captures]" {
 		return collectCaptures(lines, i+1, current)
 	}
-
-	if strings.TrimSpace(line) == "[Prompts]" {
-		return collectPrompts(lines, i+1, current)
+	if trimmed == "[Captures]" {
+		return 0, fmt.Errorf("section header must be lowercase: use [captures] instead of [Captures]")
 	}
 
-	if strings.TrimSpace(line) == "[Finally]" {
+	if trimmed == "[prompts]" {
+		return collectPrompts(lines, i+1, current)
+	}
+	if trimmed == "[Prompts]" {
+		return 0, fmt.Errorf("section header must be lowercase: use [prompts] instead of [Prompts]")
+	}
+
+	if trimmed == "[finally]" {
 		if !current.exitNever {
-			return 0, fmt.Errorf("[Finally] section is only valid on EXIT NEVER entries")
+			return 0, fmt.Errorf("[finally] section is only valid on EXIT NEVER entries")
 		}
 		return collectFinally(lines, i+1, current)
+	}
+	if trimmed == "[Finally]" {
+		return 0, fmt.Errorf("section header must be lowercase: use [finally] instead of [Finally]")
 	}
 
 	if strings.TrimSpace(line) == "```" {
 		current.body, i = collectFencedBody(lines, i+1)
 		return i, nil
+	}
+
+	// Comment line in implicit body — skip (not expected output).
+	// Use [asserts] with `line N startsWith "#"` to test stdout starting with '#'.
+	if strings.HasPrefix(strings.TrimSpace(line), "#") {
+		return i + 1, nil
 	}
 
 	// Implicit body

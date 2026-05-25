@@ -2,7 +2,7 @@
 @timeout 3000
 sh test/_fixtures/ask_name.sh
 EXIT 0
-[Prompts]
+[prompts]
 "Enter name:" => "Alice"
-[Asserts]
+[asserts]
 stdout contains "Hello Alice"

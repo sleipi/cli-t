@@ -15,5 +15,5 @@ hello beautiful world
 # Backslash in middle of line is not a continuation
 printf 'a\\b'
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains a

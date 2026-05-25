@@ -2,7 +2,7 @@
 @timeout 3000
 sh test/_fixtures/ask_repeat.sh
 EXIT 0
-[Prompts]
+[prompts]
 "Next?" => "y" * 3
-[Asserts]
+[asserts]
 stdout contains "y"

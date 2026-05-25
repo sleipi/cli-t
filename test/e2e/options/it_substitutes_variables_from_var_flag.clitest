@@ -1,6 +1,6 @@
 # --var substitution works
 ./clitest -v --var GREETING=hello test/_fixtures/options/var_sub.clitest
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "pass:"
 stdout contains "hello"

@@ -5,6 +5,6 @@ EXIT 1
 # Test stderr output
 echo "error message" >&2
 EXIT 0
-[Asserts]
+[asserts]
 stderr contains "error message"
 stdout isEmpty

@@ -60,7 +60,7 @@ func ExecuteFinally(bgs []*BackgroundResult) []FinallyResult {
 			results = append(results, FinallyResult{
 				Command:  bg.Command,
 				Pass:     false,
-				Failures: []string{fmt.Sprintf("[Finally] timeout: process did not exit within %dms after %s", fin.Timeout, fin.Signal)},
+				Failures: []string{fmt.Sprintf("[finally] timeout: process did not exit within %dms after %s", fin.Timeout, fin.Signal)},
 			})
 			continue
 		}
@@ -69,7 +69,7 @@ func ExecuteFinally(bgs []*BackgroundResult) []FinallyResult {
 		var failures []string
 		actualExit := bg.Process.ExitCode()
 		if actualExit != fin.ExitCode {
-			failures = append(failures, fmt.Sprintf("[Finally] exit code: expected %d, got %d", fin.ExitCode, actualExit))
+			failures = append(failures, fmt.Sprintf("[finally] exit code: expected %d, got %d", fin.ExitCode, actualExit))
 		}
 
 		// Evaluate post-signal asserts

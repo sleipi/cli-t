@@ -27,9 +27,9 @@
 @poll 100
 sh -c 'sleep 1; echo "ready"; sleep 999'
 EXIT NEVER
-[Captures]
-pid: pid
-[Asserts]
+[captures]
+pid = pid
+[asserts]
 stdout contains "ready"
 
 # Always clean up: kill the background process when the file ends.

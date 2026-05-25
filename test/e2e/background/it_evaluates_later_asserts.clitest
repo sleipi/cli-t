@@ -4,11 +4,11 @@
 @poll 100
 sh -c 'echo "startup"; sleep 0.2; echo "delayed-output"'
 EXIT NEVER
-[Captures]
-bgpid: pid
-[Asserts]
+[captures]
+bgpid = pid
+[asserts]
 stdout contains "startup"
-stdout contains later "delayed-output"
+later stdout contains "delayed-output"
 
 # This entry takes time, letting background process produce more output
 sleep 0.5

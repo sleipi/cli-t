@@ -15,7 +15,7 @@ hello world
 @skip TODO: fix when API is ready
 curl -s http://localhost:8080/health
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "ok"
 
 # Test with multiple group tags

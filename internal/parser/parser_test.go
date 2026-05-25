@@ -52,7 +52,7 @@ second
 func TestParseWithAsserts(t *testing.T) {
 	input := `grep "beer" drinks.log
 EXIT 0
-[Asserts]
+[asserts]
 line 1 contains "cold beer"
 stdout matches /\d+ beers/
 stderr isEmpty
@@ -80,7 +80,7 @@ lineCount == 4
 func TestParseNegatedPredicate(t *testing.T) {
 	input := `echo "hello"
 EXIT 0
-[Asserts]
+[asserts]
 stdout not contains "error"
 `
 	entries, err := Parse(input)
@@ -98,7 +98,7 @@ stdout not contains "error"
 func TestParseExitCodeNonZero(t *testing.T) {
 	input := `cat nonexistent
 EXIT 1
-[Asserts]
+[asserts]
 stderr contains "No such file"
 `
 	entries, err := Parse(input)
@@ -111,8 +111,8 @@ stderr contains "No such file"
 func TestParseWithCaptures(t *testing.T) {
 	input := `cat /tmp/app.pid
 EXIT 0
-[Captures]
-pid: stdout
+[captures]
+pid = stdout
 `
 	entries, err := Parse(input)
 	if err != nil {
@@ -305,6 +305,159 @@ EXIT 0
 	assertEqual(t, e.Directives.SkipReason, "WIP")
 }
 
+// --- Change 2: section headers must be lowercase ---
+
+func TestParseUppercaseAssertsReturnsError(t *testing.T) {
+	input := `echo "hello"
+EXIT 0
+[Asserts]
+stdout contains "hello"
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for uppercase [Asserts], got nil")
+	}
+	if !strings.Contains(err.Error(), "lowercase") {
+		t.Fatalf("expected 'lowercase' in error, got: %v", err)
+	}
+}
+
+func TestParseUppercaseCapturesReturnsError(t *testing.T) {
+	input := `echo "hello"
+EXIT 0
+[Captures]
+val: stdout
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for uppercase [Captures], got nil")
+	}
+}
+
+func TestParseUppercasePromptsReturnsError(t *testing.T) {
+	input := `@timeout 1000
+printf "Name: " && read x && echo hi
+EXIT 0
+[Prompts]
+"Name:" => "x"
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for uppercase [Prompts], got nil")
+	}
+}
+
+// --- Change 1: # lines in implicit body are comments ---
+
+func TestParseBodyCommentIsSkipped(t *testing.T) {
+	input := `echo "hello"
+EXIT 0
+# this is a comment, not expected output
+hello
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries[0].Body) != 1 || entries[0].Body[0] != "hello" {
+		t.Fatalf("expected body [hello], got %v", entries[0].Body)
+	}
+}
+
+func TestParseBodyFencedHashIsLiteral(t *testing.T) {
+	input := "echo \"#hello\"\nEXIT 0\n```\n# literal hash line\n```\n"
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(entries[0].Body) != 1 || entries[0].Body[0] != "# literal hash line" {
+		t.Fatalf("fenced body: expected [# literal hash line], got %v", entries[0].Body)
+	}
+}
+
+// --- Change 4: capture syntax uses = instead of : ---
+
+func TestParseCaptureEqualsSign(t *testing.T) {
+	input := `echo "42"
+EXIT 0
+[captures]
+result = stdout
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c := entries[0].Captures[0]
+	assertEqual(t, c.Name, "result")
+	assertEqual(t, c.Query, "stdout")
+}
+
+func TestParseCaptureOldColonSyntaxReturnsError(t *testing.T) {
+	input := `echo "42"
+EXIT 0
+[captures]
+result: stdout
+`
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatal("expected error for old colon capture syntax, got nil")
+	}
+	if !strings.Contains(err.Error(), "=") {
+		t.Fatalf("expected '=' hint in error, got: %v", err)
+	}
+}
+
+// --- Change 6: bare-value semantics ---
+
+func TestParseBareValueNoQuotes(t *testing.T) {
+	input := `echo "hello world"
+EXIT 0
+[asserts]
+stdout contains hello world
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{
+		Query: "stdout", Predicate: "contains", Value: "hello world",
+	})
+}
+
+func TestParseBareValueQuotedAndUnquotedEquivalent(t *testing.T) {
+	quoted := `echo test
+EXIT 0
+[asserts]
+stdout contains "hello world"
+`
+	bare := `echo test
+EXIT 0
+[asserts]
+stdout contains hello world
+`
+	e1, err1 := Parse(quoted)
+	e2, err2 := Parse(bare)
+	if err1 != nil || err2 != nil {
+		t.Fatalf("unexpected errors: %v / %v", err1, err2)
+	}
+	assertAssert(t, e1[0].Asserts[0], e2[0].Asserts[0])
+}
+
+func TestParseBareValueNumeric(t *testing.T) {
+	input := `echo "42"
+EXIT 0
+[asserts]
+exit == 0
+lineCount == 1
+`
+	entries, err := Parse(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertAssert(t, entries[0].Asserts[0], types.Assert{Query: "exit", Predicate: "==", Value: "0"})
+	assertAssert(t, entries[0].Asserts[1], types.Assert{Query: "lineCount", Predicate: "==", Value: "1"})
+}
+
 // helpers
 
 func assertEqual(t *testing.T, got, want string) {
@@ -357,9 +510,9 @@ func TestParseExitNever(t *testing.T) {
 @poll 200
 sh -c 'echo "ready"; sleep 999'
 EXIT NEVER
-[Captures]
-bgpid: pid
-[Asserts]
+[captures]
+bgpid = pid
+[asserts]
 stdout contains "ready"
 `
 	entries, err := Parse(input)
@@ -416,7 +569,7 @@ func TestParsePromptsSubstring(t *testing.T) {
 	input := `@timeout 5000
 printf "Enter name: " && read name && echo "Hello $name"
 EXIT 0
-[Prompts]
+[prompts]
 "Enter name:" => "Alice"
 `
 	entries, err := Parse(input)
@@ -443,7 +596,7 @@ func TestParsePromptsRegex(t *testing.T) {
 	input := `@timeout 3000
 ./installer.sh
 EXIT 0
-[Prompts]
+[prompts]
 /Continue\? \[y\/n\]/ => "yes"
 `
 	entries, err := Parse(input)
@@ -462,7 +615,7 @@ func TestParsePromptsMultiplier(t *testing.T) {
 	input := `@timeout 3000
 ./setup.sh
 EXIT 0
-[Prompts]
+[prompts]
 "Continue?" => "yes" * 3
 `
 	entries, err := Parse(input)
@@ -479,7 +632,7 @@ func TestParsePromptsMultipleEntries(t *testing.T) {
 	input := `@timeout 5000
 php bin/console app:create-user
 EXIT 0
-[Prompts]
+[prompts]
 "Enter username:" => "alice"
 "Enter email:" => "alice@example.com"
 /Confirm .* \[yes\]/ => "yes"
@@ -504,9 +657,9 @@ func TestParsePromptsWithAsserts(t *testing.T) {
 	input := `@timeout 5000
 printf "Name: " && read name && echo "Hi $name"
 EXIT 0
-[Prompts]
+[prompts]
 "Name:" => "Bob"
-[Asserts]
+[asserts]
 stdout contains "Hi Bob"
 `
 	entries, err := Parse(input)
@@ -526,9 +679,9 @@ func TestParseLaterModifier(t *testing.T) {
 	input := `@timeout 5000
 sh -c 'echo "ready"; sleep 999'
 EXIT NEVER
-[Asserts]
+[asserts]
 stderr contains "ready"
-stderr contains later "later output"
+later stderr contains "later output"
 `
 	entries, err := Parse(input)
 	if err != nil {
@@ -545,8 +698,8 @@ stderr contains later "later output"
 func TestParseLaterWithNegation(t *testing.T) {
 	input := `sh -c 'sleep 999'
 EXIT NEVER
-[Asserts]
-stdout not contains later "error"
+[asserts]
+later stdout not contains "error"
 `
 	entries, err := Parse(input)
 	if err != nil {
@@ -560,9 +713,9 @@ func TestParseFinallySection(t *testing.T) {
 	input := `@timeout 5000
 sh -c 'echo "ready"; sleep 999'
 EXIT NEVER
-[Asserts]
+[asserts]
 stderr contains "ready"
-[Finally]
+[finally]
 TERM EXIT 0 timeout 3000
 stderr contains "shutdown"
 `
@@ -592,7 +745,7 @@ stderr contains "shutdown"
 func TestParseFinallyDefaultTimeout(t *testing.T) {
 	input := `sh -c 'sleep 999'
 EXIT NEVER
-[Finally]
+[finally]
 KILL EXIT 137
 `
 	entries, err := Parse(input)
@@ -607,19 +760,19 @@ KILL EXIT 137
 func TestParseFinallyOnNonExitNeverFails(t *testing.T) {
 	input := `echo hello
 EXIT 0
-[Finally]
+[finally]
 TERM EXIT 0
 `
 	_, err := Parse(input)
 	if err == nil {
-		t.Fatal("expected error for [Finally] on non-EXIT NEVER entry")
+		t.Fatal("expected error for [finally] on non-EXIT NEVER entry")
 	}
 }
 
 func TestParseFinallyInvalidSignal(t *testing.T) {
 	input := `sh -c 'sleep 999'
 EXIT NEVER
-[Finally]
+[finally]
 USR1 EXIT 0
 `
 	_, err := Parse(input)
@@ -733,7 +886,7 @@ EXIT 0
 func TestParseMultilineAssert_Basic(t *testing.T) {
 	input := `printf "hello\nworld"
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
 hello
 world
@@ -751,7 +904,7 @@ world
 func TestParseMultilineAssert_SingleLineContent(t *testing.T) {
 	input := `echo hello
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
 hello
 """
@@ -768,7 +921,7 @@ hello
 func TestParseMultilineAssert_EmptyContent(t *testing.T) {
 	input := `echo -n ""
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
 """
 `
@@ -784,7 +937,7 @@ stdout == """
 func TestParseMultilineAssert_Contains(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains """
 foo
 bar
@@ -802,7 +955,7 @@ bar
 func TestParseMultilineAssert_StartsWith(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout startsWith """
 foo
 """
@@ -819,7 +972,7 @@ foo
 func TestParseMultilineAssert_EndsWith(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout endsWith """
 bar
 """
@@ -836,7 +989,7 @@ bar
 func TestParseMultilineAssert_MatchesRejected(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout matches """
 .*
 """
@@ -850,7 +1003,7 @@ stdout matches """
 func TestParseMultilineAssert_Negated(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout not contains """
 bad
 stuff
@@ -868,8 +1021,8 @@ stuff
 func TestParseMultilineAssert_LaterModifier(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
-stdout contains later """
+[asserts]
+later stdout contains """
 foo
 """
 `
@@ -885,7 +1038,7 @@ foo
 func TestParseMultilineAssert_PreservesIndentation(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
   indented
     more
@@ -903,7 +1056,7 @@ stdout == """
 func TestParseMultilineAssert_BlankLinesInContent(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
 foo
 
@@ -922,7 +1075,7 @@ bar
 func TestParseMultilineAssert_Unclosed(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
 hello
 `
@@ -935,7 +1088,7 @@ hello
 func TestParseMultilineAssert_EqualsOperator(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout == """
 hello
 """
@@ -952,7 +1105,7 @@ hello
 func TestParseMultilineAssert_MixedWithSingleLine(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains """
 hello
 world
@@ -977,7 +1130,7 @@ exit == 0
 func TestParseMultilineAssert_LineNQuery(t *testing.T) {
 	input := `echo test
 EXIT 0
-[Asserts]
+[asserts]
 line 1 == """
 foo
 """

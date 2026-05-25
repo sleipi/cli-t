@@ -14,7 +14,7 @@ Heavily inspired by [Hurl](https://hurl.dev) — which does the same for HTTP re
 # Verify JSON output from our API tool
 my-cli export --format json
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "version"
 stdout matches /"\d+\.\d+\.\d+"/
 lineCount == 1
@@ -110,7 +110,7 @@ my-command --flag value
 EXIT 0
 expected output line 1
 expected output line 2
-[Asserts]
+[asserts]
 stdout contains "success"
 stdout matches /took \d+ms/
 lineCount == 2
@@ -123,7 +123,7 @@ lineCount == 2
 | Command      | Yes      | Shell command executed via `sh -c`             |
 | EXIT         | No       | Expected exit code (defaults to `0`)           |
 | Body         | No       | Exact stdout match                             |
-| [Asserts]    | No       | Rich assertions against stdout/stderr          |
+| [asserts]    | No       | Rich assertions against stdout/stderr          |
 
 ---
 

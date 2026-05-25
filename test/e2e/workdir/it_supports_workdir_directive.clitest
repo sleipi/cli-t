@@ -1,33 +1,33 @@
 # Entry-level @workdir with relative path
 ./clitest test/_fixtures/workdir/entry_relative.clitest
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "pass: 1"
 stdout not contains "fail:"
 
 # File-level @workdir applies to all entries
 ./clitest test/_fixtures/workdir/file_level.clitest
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "pass: 1"
 stdout not contains "fail:"
 
 # Entry-level @workdir overrides file-level
 ./clitest test/_fixtures/workdir/entry_overrides_file.clitest
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "pass: 2"
 stdout not contains "fail:"
 
 # Missing workdir directory produces error
 ./clitest test/_fixtures/workdir/missing_dir.clitest
 EXIT 1
-[Asserts]
+[asserts]
 stdout contains "fail: 1"
 
 # @defer inherits file-level workdir
 ./clitest test/_fixtures/workdir/defer_inherits.clitest
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "pass: 1"
 stdout not contains "fail:"

@@ -1,7 +1,7 @@
 # Glob pattern resolves matching files
 ./clitest "examples/0*.clitest"
 EXIT 0
-[Asserts]
+[asserts]
 stdout contains "01_basic.clitest"
 stdout contains "02_errors.clitest"
 stdout contains "03_asserts.clitest"
