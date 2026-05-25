@@ -18,5 +18,19 @@ archives:
 checksum:
   name_template: checksums.txt
 
+brews:
+  - repository:
+      owner: sleipi
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/sleipi/cli-t
+    description: "Declarative CLI testing tool"
+    license: MIT
+    install: |
+      bin.install "clitest"
+    test: |
+      assert_match version.to_s, shell_output("#{bin}/clitest --version")
+
 release:
   prerelease: auto
