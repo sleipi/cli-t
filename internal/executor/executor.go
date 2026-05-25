@@ -100,12 +100,16 @@ func evaluateResult(entry types.Entry, result runner.Result, captures map[string
 		}
 	}
 
+	var warnings []string
 	for _, c := range entry.Captures {
-		val := vars.ResolveCapture(c.Query, result)
+		val := vars.ResolveCapture(c, result)
 		captures[c.Name] = val
+		if c.Regex != nil && val == "" {
+			warnings = append(warnings, fmt.Sprintf("capture %q: regex /%s/ did not match", c.Name, c.Regex.String()))
+		}
 	}
 
-	return Result{Pass: passed, Failures: failures, Runner: result}
+	return Result{Pass: passed, Failures: failures, Warnings: warnings, Runner: result}
 }
 
 // SplitDeferEntries separates defer entries from regular entries.

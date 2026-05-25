@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -32,6 +33,7 @@ func collectAsserts(lines []string, i int, current *entryBuilder) (int, error) {
 }
 
 const tripleQuote = `"""`
+const predicateMatches = "matches"
 
 // tryParseMultilineAssert attempts to parse a multi-line assert starting at lines[i].
 // Returns (assert, nextIndex, wasMultiline, error).
@@ -74,7 +76,7 @@ func tryParseMultilineAssert(lines []string, i int) (assert types.Assert, nextIn
 	}
 
 	// Reject matches with triple-quote
-	if predicate == "matches" {
+	if predicate == predicateMatches {
 		return types.Assert{}, 0, false, fmt.Errorf("multi-line triple-quote values are not supported with 'matches' predicate")
 	}
 
@@ -158,6 +160,13 @@ func parseAssert(line string) (types.Assert, error) {
 	// Extract predicate and value
 	predicate, value, _ := extractPredicate(rest)
 
+	// Validate regex at parse time
+	if predicate == predicateMatches && value != "" {
+		if _, err := regexp.Compile(value); err != nil {
+			return types.Assert{}, fmt.Errorf("invalid regex in assert: %w", err)
+		}
+	}
+
 	return types.Assert{
 		Query:     query,
 		Predicate: predicate,
@@ -207,7 +216,7 @@ func extractPredicate(s string) (predicate, value string, later bool) {
 	// "not" is handled upstream in parseAssert — "not contains" here is not needed.
 	// Bare-value semantics: everything after the predicate is the value;
 	// quotes are optional but stripped if present ("hello" → hello, /pat/ → pat).
-	predicates := []string{"contains", "startsWith", "endsWith", "matches", "==", "!=", ">=", "<=", ">", "<"}
+	predicates := []string{"contains", "startsWith", "endsWith", predicateMatches, "==", "!=", ">=", "<=", ">", "<"}
 	for _, p := range predicates {
 		if strings.HasPrefix(s, p+" ") || s == p {
 			val := strings.TrimSpace(strings.TrimPrefix(s, p))
@@ -244,10 +253,44 @@ func parseCapture(line string) (types.Capture, error) {
 		}
 		return types.Capture{}, fmt.Errorf("invalid capture: %s (expected: name = query)", line)
 	}
-	return types.Capture{
-		Name:  strings.TrimSpace(parts[0]),
-		Query: strings.TrimSpace(parts[1]),
-	}, nil
+	name := strings.TrimSpace(parts[0])
+	query := strings.TrimSpace(parts[1])
+
+	switch {
+	case query == "stdout":
+		return types.Capture{Name: name, Source: types.CaptureStdout}, nil
+	case query == "stderr":
+		return types.Capture{Name: name, Source: types.CaptureStderr}, nil
+	case query == "lineCount":
+		return types.Capture{Name: name, Source: types.CaptureLineCount}, nil
+	case query == "pid":
+		return types.Capture{Name: name, Source: types.CapturePid}, nil
+	case strings.HasPrefix(query, "line "):
+		numStr := strings.TrimPrefix(query, "line ")
+		n, err := strconv.Atoi(numStr)
+		if err != nil || n < 1 {
+			return types.Capture{}, fmt.Errorf("invalid line number in capture: %s", query)
+		}
+		return types.Capture{Name: name, Source: types.CaptureLine, LineNum: n}, nil
+	case strings.HasPrefix(query, "stdout regex "), strings.HasPrefix(query, "stderr regex "):
+		var source types.CaptureSource
+		var rest string
+		if strings.HasPrefix(query, "stdout regex ") {
+			source = types.CaptureStdout
+			rest = strings.TrimPrefix(query, "stdout regex ")
+		} else {
+			source = types.CaptureStderr
+			rest = strings.TrimPrefix(query, "stderr regex ")
+		}
+		pattern := unquoteValue(strings.TrimSpace(rest))
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return types.Capture{}, fmt.Errorf("invalid regex in capture: %w", err)
+		}
+		return types.Capture{Name: name, Source: source, Regex: re}, nil
+	default:
+		return types.Capture{}, fmt.Errorf("unknown capture query: %s", query)
+	}
 }
 
 func parsePrompt(line string) (types.Prompt, error) {

@@ -1,5 +1,7 @@
 package types
 
+import "regexp"
+
 // EntryDirectives holds interpreted directives for an entry.
 type EntryDirectives struct {
 	Groups     []string
@@ -54,10 +56,23 @@ type Assert struct {
 	Later     bool   // if true, evaluated at file-end instead of during polling
 }
 
+// CaptureSource identifies what a capture reads from.
+type CaptureSource string
+
+const (
+	CaptureStdout    CaptureSource = "stdout"
+	CaptureStderr    CaptureSource = "stderr"
+	CaptureLine      CaptureSource = "line"
+	CaptureLineCount CaptureSource = "lineCount"
+	CapturePid       CaptureSource = "pid"
+)
+
 // Capture represents a variable capture from command output.
 type Capture struct {
-	Name  string // variable name
-	Query string // e.g. "stdout", "line 1"
+	Name    string         // variable name
+	Source  CaptureSource  // what to read from
+	LineNum int            // 1-indexed, only meaningful when Source == CaptureLine
+	Regex   *regexp.Regexp // compiled pattern, nil unless regex capture
 }
 
 // Prompt represents an interactive prompt/response pair.

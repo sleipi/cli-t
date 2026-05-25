@@ -1,0 +1,6 @@
+# Verbose mode shows warning when regex capture does not match
+./clitest -v test/_fixtures/regex_no_match.clitest
+EXIT 0
+[asserts]
+stdout contains "WARN"
+stdout contains "did not match"

@@ -33,6 +33,7 @@ type entryOutcome struct {
 	ExitCode    int
 	AssertCount int
 	Failures    []string
+	Warnings    []string
 	Stdout      string
 	Stderr      string
 }
@@ -107,6 +108,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 				ExitCode:    er.Runner.ExitCode,
 				AssertCount: assertCount,
 				Failures:    er.Failures,
+				Warnings:    er.Warnings,
 				Stdout:      er.Runner.Stdout,
 				Stderr:      er.Runner.Stderr,
 			})
@@ -158,6 +160,7 @@ func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.P
 			ExitCode:    o.ExitCode,
 			AssertCount: o.AssertCount,
 			Failures:    o.Failures,
+			Warnings:    o.Warnings,
 			Stdout:      o.Stdout,
 			Stderr:      o.Stderr,
 		})

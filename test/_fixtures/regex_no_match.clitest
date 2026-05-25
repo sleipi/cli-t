@@ -1,0 +1,7 @@
+# Regex capture that does not match
+echo "no numbers here"
+[captures]
+num = stdout regex /\d+/
+
+echo "got:{{num}}"
+got:

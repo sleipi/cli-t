@@ -41,6 +41,7 @@ func (d *VerboseDisplay) EntryResult(info EntryInfo) {
 			ColorGreen, ColorReset, TruncateCmd(info.Command, 60),
 			ColorGray, info.ExitCode, info.AssertCount, ColorReset)
 		if d.verbose {
+			d.printWarnings(info)
 			d.printOutput(info)
 		}
 	} else {
@@ -48,6 +49,7 @@ func (d *VerboseDisplay) EntryResult(info EntryInfo) {
 		for _, msg := range info.Failures {
 			fmt.Fprintf(d.w, "    %sFAIL: %s%s\n", ColorRed, msg, ColorReset)
 		}
+		d.printWarnings(info)
 		d.printOutput(info)
 	}
 }
@@ -61,6 +63,12 @@ func (d *VerboseDisplay) DeferResult(command string) {
 	fmt.Fprintf(d.w, "  %s~%s %s %s[defer]%s\n",
 		ColorGray, ColorReset, TruncateCmd(command, 60),
 		ColorGray, ColorReset)
+}
+
+func (d *VerboseDisplay) printWarnings(info EntryInfo) {
+	for _, w := range info.Warnings {
+		fmt.Fprintf(d.w, "    %sWARN: %s%s\n", ColorYellow, w, ColorReset)
+	}
 }
 
 func (d *VerboseDisplay) printOutput(info EntryInfo) {

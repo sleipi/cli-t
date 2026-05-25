@@ -126,7 +126,7 @@ func pollBackgroundAsserts(entry types.Entry, bp *runner.BackgroundProcess, cmd 
 
 	if allPass {
 		for _, c := range entry.Captures {
-			val := vars.ResolveCapture(c.Query, lastResult)
+			val := vars.ResolveCapture(c, lastResult)
 			captures[c.Name] = val
 		}
 		if keepAlive {

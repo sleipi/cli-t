@@ -249,6 +249,20 @@ Format:
 <name> = <query>
 ```
 
+#### Supported queries
+
+| Query | Description |
+|-------|-------------|
+| `stdout` | Trimmed stdout output |
+| `stderr` | Trimmed stderr output |
+| `line N` | Nth line of stdout (1-indexed). Returns empty string if out of bounds. |
+| `lineCount` | Number of stdout lines as string. Returns `"0"` for empty output. |
+| `pid` | Process ID (only available on `EXIT NEVER` entries) |
+| `stdout regex /pattern/` | First capture group match from stdout. Full match if no group. Empty string if no match. |
+| `stderr regex /pattern/` | First capture group match from stderr. Full match if no group. Empty string if no match. |
+
+Regex patterns are validated at parse time. An invalid regex causes a parse error (fail-fast).
+
 Example:
 
 ```
@@ -260,7 +274,15 @@ id = stdout
 
 The captured value can then be used in later entries as `{{id}}`.
 
-> **Planned**: Regex capture groups: `token = stdout regex /token=(\w+)/`
+Regex capture example:
+
+```
+echo "version 1.2.3 built 2024"
+[captures]
+ver = stdout regex /version (\d+\.\d+\.\d+)/
+```
+
+`{{ver}}` resolves to `1.2.3`.
 
 ---
 
@@ -851,7 +873,10 @@ REGEX      = '/' [^/]* '/'
 BARE       = \S+
 TRIPLE_QUOTE = '"""'
 
-capture    = NAME ":" SPACE query
+capture    = NAME ":" SPACE capture_query
+capture_query = "stdout" | "stderr" | "lineCount" | "pid"
+             | "line" SPACE INTEGER
+             | ("stdout" | "stderr") SPACE "regex" SPACE REGEX
 
 prompt     = (QUOTED | REGEX) SPACE "=>" SPACE QUOTED [SPACE "*" SPACE INTEGER]
 ```

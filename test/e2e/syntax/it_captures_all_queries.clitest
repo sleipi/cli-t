@@ -1,0 +1,83 @@
+# Capture: stdout
+echo "hello world"
+[captures]
+out = stdout
+
+echo "{{out}}"
+hello world
+
+# Capture: stderr
+echo "oops" >&2
+EXIT 0
+[captures]
+err = stderr
+
+echo "{{err}}"
+oops
+
+# Capture: line N (1-indexed)
+printf "first\nsecond\nthird"
+[captures]
+l1 = line 1
+l2 = line 2
+l3 = line 3
+
+echo "{{l1}} {{l2}} {{l3}}"
+first second third
+
+# Capture: lineCount
+printf "a\nb\nc"
+[captures]
+count = lineCount
+
+echo "{{count}}"
+3
+
+# Capture: lineCount empty
+true
+[captures]
+empty_count = lineCount
+
+echo "{{empty_count}}"
+0
+
+# Capture: stdout regex with capture group
+echo "version 1.2.3 built 2024"
+[captures]
+ver = stdout regex /version (\d+\.\d+\.\d+)/
+
+echo "{{ver}}"
+1.2.3
+
+# Capture: stdout regex without capture group (full match)
+echo "abc123def"
+[captures]
+num = stdout regex /\d+/
+
+echo "{{num}}"
+123
+
+# Capture: stderr regex
+echo "error: code=42" >&2
+EXIT 0
+[captures]
+code = stderr regex /code=(\d+)/
+
+echo "{{code}}"
+42
+
+# Capture: regex no match returns empty
+echo "no numbers"
+[captures]
+empty = stdout regex /\d+/
+
+echo "got:'{{empty}}'"
+got:''
+
+# Capture: line N out-of-bounds returns empty
+echo "only one line"
+[captures]
+oob = line 99
+
+echo "got:'{{oob}}'"
+got:''

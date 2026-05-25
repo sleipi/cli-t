@@ -24,6 +24,7 @@ type EntryInfo struct {
 	ExitCode    int
 	AssertCount int
 	Failures    []string
+	Warnings    []string
 	Stdout      string
 	Stderr      string
 }
