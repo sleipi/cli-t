@@ -1,5 +1,8 @@
 # CLI-Testing — Declarative Test Runner for Shell Commands
 
+[![CI](https://github.com/sleipi/cli-t/actions/workflows/ci.yml/badge.svg)](https://github.com/sleipi/cli-t/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **Stop writing fragile bash scripts to test your CLI tools.** Write what you expect, and let CLI-Testing do the rest.
 
 CLI-Testing is a single-binary, zero-dependency test runner for shell commands. You describe your expected outputs in simple, readable `.clitest` files — no test framework, no scripting, no boilerplate. If your tool runs in a terminal, CLI-Testing can test it.
@@ -61,6 +64,10 @@ You read it, you understand it, your teammates understand it. Done.
 ---
 
 ## Installation
+
+Download a pre-built binary from the [latest release](https://github.com/sleipi/cli-t/releases/latest), extract it, and place it in your `$PATH`.
+
+Or install via `go install`:
 
 ```bash
 go install github.com/sleipi/cli-t/cmd/clitest@latest
@@ -147,4 +154,4 @@ See [SPEC.md](SPEC.md) for the complete syntax reference.
 
 ## License
 
-MIT
+[MIT](LICENSE)
