@@ -1,0 +1,22 @@
+version: 2
+
+builds:
+  - main: ./cmd/clitest/
+    binary: clitest
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [tar.gz]
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  prerelease: auto
