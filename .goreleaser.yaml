@@ -18,20 +18,23 @@ archives:
 checksum:
   name_template: checksums.txt
 
-brews:
-  - repository:
+homebrew_casks:
+  - name: cli-t
+    binaries:
+      - clitest
+    repository:
       owner: sleipi
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
     homepage: https://github.com/sleipi/cli-t
     description: "Declarative CLI testing tool"
-    license: MIT
-    install: |
-      bin.install "clitest"
-    test: |
-      assert_match version.to_s, shell_output("#{bin}/clitest --version")
     caveats: "CLITest installed! Run 'clitest' to start."
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/clitest"]
+          end
 
 release:
   prerelease: auto
