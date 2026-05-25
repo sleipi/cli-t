@@ -31,6 +31,7 @@ brews:
       bin.install "clitest"
     test: |
       assert_match version.to_s, shell_output("#{bin}/clitest --version")
+    caveats: "CLITest installed! Run 'clitest' to start."
 
 release:
   prerelease: auto
