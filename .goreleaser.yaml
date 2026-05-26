@@ -31,7 +31,7 @@ nfpms:
     apk:
       signature:
         key_file: "{{ .Env.NFPM_APK_KEY_FILE }}"
-        key_name: clitest.rsa
+        key_name: clitest
 
 homebrew_casks:
   - name: cli-t
