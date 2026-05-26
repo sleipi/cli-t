@@ -24,7 +24,7 @@ podman run --rm \
 
 ```bash
 cd packaging/alpine
-openssl genrsa -traditional -out clitest.rsa 2048
+openssl genrsa -traditional -out clitest.rsa 4096
 openssl rsa -in clitest.rsa -pubout -out clitest.rsa.pub
 ```
 
