@@ -73,6 +73,18 @@ Or install via `go install`:
 go install github.com/sleipi/cli-t/cmd/clitest@latest
 ```
 
+On Alpine Linux:
+
+```bash
+# Add the signing key (one-time)
+wget -O /etc/apk/keys/clitest.rsa.pub \
+  https://github.com/sleipi/cli-t/releases/download/v1.0.0/clitest.rsa.pub
+
+# Download and install the .apk
+wget https://github.com/sleipi/cli-t/releases/download/v1.0.0/clitest-1.0.0-r0-x86_64.apk
+apk add clitest-1.0.0-r0-x86_64.apk
+```
+
 Or build from source:
 
 ```bash
