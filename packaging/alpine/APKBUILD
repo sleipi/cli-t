@@ -1,0 +1,25 @@
+# Maintainer: sleipi <https://github.com/sleipi>
+pkgname=clitest
+pkgver=0.0.0
+pkgrel=0
+pkgdesc="Declarative CLI testing tool"
+url="https://github.com/sleipi/cli-t"
+arch="all"
+license="MIT"
+makedepends="go"
+source="$pkgname-$pkgver.tar.gz::https://github.com/sleipi/cli-t/archive/v$pkgver.tar.gz"
+
+build() {
+	cd "cli-t-$pkgver"
+	go build -ldflags "-s -w -X main.version=$pkgver" -o clitest ./cmd/clitest/
+}
+
+check() {
+	cd "cli-t-$pkgver"
+	go test ./...
+}
+
+package() {
+	cd "cli-t-$pkgver"
+	install -Dm755 clitest "$pkgdir"/usr/bin/clitest
+}

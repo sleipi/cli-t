@@ -18,6 +18,21 @@ archives:
 checksum:
   name_template: checksums.txt
 
+nfpms:
+  - id: clitest
+    package_name: clitest
+    formats:
+      - apk
+    vendor: sleipi
+    homepage: https://github.com/sleipi/cli-t
+    maintainer: sleipi
+    description: "Declarative CLI testing tool"
+    license: MIT
+    apk:
+      signature:
+        key_file: "{{ .Env.NFPM_APK_KEY_FILE }}"
+        key_name: clitest
+
 homebrew_casks:
   - name: cli-t
     binaries:
