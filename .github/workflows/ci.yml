@@ -9,7 +9,7 @@ jobs:
   test-dash:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     container: golang:1.26-alpine
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: apk add --no-cache make
       - run: make test
       - run: make e2e
@@ -30,7 +30,7 @@ jobs:
   test-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
