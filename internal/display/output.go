@@ -3,7 +3,6 @@ package display
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -64,7 +63,7 @@ func PrintHeader(w io.Writer, version string, resolved []ResolvedArg, parallel i
 	fmt.Fprintln(w)
 }
 
-// PrintSummary prints the test run summary.
+// PrintSummary prints the test run summary. failedFiles are display names.
 func PrintSummary(w io.Writer, totalPass, totalFail, totalSkip, totalWarnings int, failedFiles []string, elapsed time.Duration) {
 	fmt.Fprintf(w, "%s━━━ Summary ━━━%s\n", ColorBold, ColorReset)
 	fmt.Fprintf(w, "  %spass: %d%s\n", ColorGreen, totalPass, ColorReset)
@@ -77,15 +76,15 @@ func PrintSummary(w io.Writer, totalPass, totalFail, totalSkip, totalWarnings in
 	if totalFail > 0 {
 		fmt.Fprintf(w, "  %sfail: %d%s\n", ColorRed, totalFail, ColorReset)
 		for _, f := range failedFiles {
-			fmt.Fprintf(w, "  %s  - %s%s\n", ColorRed, filepath.Base(f), ColorReset)
+			fmt.Fprintf(w, "  %s  - %s%s\n", ColorRed, f, ColorReset)
 		}
 	}
 	fmt.Fprintf(w, "  %stook: %s%s\n", ColorGray, FormatDuration(elapsed), ColorReset)
 }
 
-// PrintFailureDetails prints detailed failure output for compact mode.
-func PrintFailureDetails(w io.Writer, failures []CompactFailure, file string) {
-	fmt.Fprintf(w, "%s▶ %s%s\n", ColorBold, filepath.Base(file), ColorReset)
+// PrintFailureDetails prints detailed failure output for compact mode. name is the display name.
+func PrintFailureDetails(w io.Writer, failures []CompactFailure, name string) {
+	fmt.Fprintf(w, "%s▶ %s%s\n", ColorBold, name, ColorReset)
 	for _, f := range failures {
 		fmt.Fprintf(w, "  %s✗%s %s\n", ColorRed, ColorReset, TruncateCmd(f.Command, 60))
 		for _, msg := range f.Failures {

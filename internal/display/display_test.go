@@ -196,6 +196,17 @@ func TestVerboseDisplay_ShowsFileHeader(t *testing.T) {
 	}
 }
 
+func TestVerboseDisplay_ShowsFileHeaderWithSubdirPath(t *testing.T) {
+	var buf bytes.Buffer
+	d := NewVerboseDisplay(&buf, false)
+	d.BeginFile("orders/import/it_handles_order.clitest")
+
+	output := buf.String()
+	if !strings.Contains(output, "▶ orders/import/it_handles_order.clitest") {
+		t.Errorf("expected full display path (not stripped to basename), got:\n%s", output)
+	}
+}
+
 func TestCountLines(t *testing.T) {
 	tests := []struct {
 		input    string

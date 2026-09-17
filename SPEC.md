@@ -726,6 +726,8 @@ clitest [options] <path...>
 
 `<path...>` — one or more `.clitest` files, directories, or glob patterns (quoted). Directories are scanned recursively for `*.clitest` files by default. Glob patterns (containing `*`, `?`, or `[`) are expanded by clitest itself. Non-`.clitest` files passed as arguments are skipped with a warning.
 
+When a directory is scanned recursively, files are displayed by their path relative to that directory (e.g. `orders/import/it_handles_order.clitest`), not just the filename — this disambiguates same-named files in different subdirectories. Files sitting directly in the scanned directory show just their filename, unchanged.
+
 ### Options
 
 | Flag              | Description                                |

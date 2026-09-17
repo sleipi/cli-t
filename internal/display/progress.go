@@ -3,7 +3,6 @@ package display
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -67,13 +66,15 @@ func NewProgressDisplay(w io.Writer, dynamic bool, maxDynamic int) *ProgressDisp
 	return &ProgressDisplay{w: w, dynamic: dynamic, maxDynamic: maxDynamic}
 }
 
-func (d *ProgressDisplay) Start(files []string) {
+// Start initializes the display list. names are the display names shown to
+// the user (not necessarily the paths used to read the files).
+func (d *ProgressDisplay) Start(names []string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.files = make([]fileState, len(files))
-	for i, f := range files {
-		d.files[i] = fileState{name: filepath.Base(f), status: StatusRun, startTime: time.Now()}
+	d.files = make([]fileState, len(names))
+	for i, name := range names {
+		d.files[i] = fileState{name: name, status: StatusRun, startTime: time.Now()}
 	}
 }
 

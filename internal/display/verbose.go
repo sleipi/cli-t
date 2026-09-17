@@ -3,7 +3,6 @@ package display
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 )
 
@@ -21,8 +20,9 @@ func NewVerboseDisplay(w io.Writer, verbose bool) *VerboseDisplay {
 	return &VerboseDisplay{w: w, verbose: verbose}
 }
 
-func (d *VerboseDisplay) BeginFile(filename string) {
-	fmt.Fprintf(d.w, "%s▶ %s%s\n", ColorBold, filepath.Base(filename), ColorReset)
+// BeginFile prints the file header. name is the display name shown to the user.
+func (d *VerboseDisplay) BeginFile(name string) {
+	fmt.Fprintf(d.w, "%s▶ %s%s\n", ColorBold, name, ColorReset)
 }
 
 func (d *VerboseDisplay) EntryResult(info EntryInfo) {
