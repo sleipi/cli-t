@@ -881,6 +881,114 @@ EXIT 0
 	assertEqual(t, f.Entries[0].Directives.Env["X"], "second")
 }
 
+func TestParseVarDirective_FileLevel(t *testing.T) {
+	input := `---
+@var SCENARIO=checkout/case-a
+@var PHP=php81
+---
+
+echo test
+EXIT 0
+`
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
+	}
+	v := f.Directives.Var
+	if len(v) != 2 {
+		t.Fatalf("expected 2 file-level vars, got %d", len(v))
+	}
+	assertEqual(t, v["SCENARIO"], "checkout/case-a")
+	assertEqual(t, v["PHP"], "php81")
+}
+
+func TestParseVarDirective_ValueContainsEquals(t *testing.T) {
+	input := `---
+@var CONN=host=localhost;port=5432
+---
+
+echo test
+EXIT 0
+`
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
+	}
+	assertEqual(t, f.Directives.Var["CONN"], "host=localhost;port=5432")
+}
+
+func TestParseVarDirective_EmptyValue(t *testing.T) {
+	input := `---
+@var KEY=
+---
+
+echo test
+EXIT 0
+`
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
+	}
+	val, exists := f.Directives.Var["KEY"]
+	if !exists {
+		t.Fatal("expected KEY to exist in var")
+	}
+	if val != "" {
+		t.Errorf("expected empty value, got %q", val)
+	}
+}
+
+func TestParseVarDirective_NoEquals_Error(t *testing.T) {
+	input := `---
+@var NOVALUE
+---
+
+echo test
+EXIT 0
+`
+	_, errs := ParseFile(input)
+	if len(errs) == 0 {
+		t.Fatal("expected error for @var without =, got none")
+	}
+	if !strings.Contains(errs[0].Error(), "@var") {
+		t.Fatalf("expected @var error, got: %v", errs[0])
+	}
+}
+
+func TestParseVarDirective_DuplicateKey_Error(t *testing.T) {
+	input := `---
+@var X=first
+@var X=second
+---
+
+echo test
+EXIT 0
+`
+	_, errs := ParseFile(input)
+	if len(errs) == 0 {
+		t.Fatal("expected error for duplicate @var key, got none")
+	}
+	if !strings.Contains(errs[0].Error(), "@var") || !strings.Contains(errs[0].Error(), "X") {
+		t.Fatalf("expected @var duplicate-key error mentioning X, got: %v", errs[0])
+	}
+}
+
+func TestParseVarDirective_EntryLevelIgnored(t *testing.T) {
+	// @var after the frontmatter is an unknown entry directive — silently
+	// ignored, same as any other unrecognized @directive (SPEC.md).
+	input := `@var NAME=foo
+echo {{NAME}}
+EXIT 0
+`
+	f, errs := ParseFile(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected error: %v", errs)
+	}
+	if f.Entries[0].Command != "echo {{NAME}}" {
+		t.Errorf("expected placeholder left literal, got %q", f.Entries[0].Command)
+	}
+}
+
 // --- Multi-line assert (triple-quote) tests ---
 
 func TestParseMultilineAssert_Basic(t *testing.T) {

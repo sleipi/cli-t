@@ -162,3 +162,30 @@ func TestResolveCapture_StderrRegex(t *testing.T) {
 		t.Errorf("expected '42', got %q", got)
 	}
 }
+
+func TestSeedCaptures_CopiesValues(t *testing.T) {
+	fileVars := map[string]string{"NAME": "world"}
+	got := SeedCaptures(fileVars)
+	if got["NAME"] != "world" {
+		t.Errorf("expected 'world', got %q", got["NAME"])
+	}
+}
+
+func TestSeedCaptures_DoesNotAliasInput(t *testing.T) {
+	fileVars := map[string]string{"NAME": "world"}
+	got := SeedCaptures(fileVars)
+	got["NAME"] = "mutated"
+	if fileVars["NAME"] != "world" {
+		t.Errorf("expected original map untouched, got %q", fileVars["NAME"])
+	}
+}
+
+func TestSeedCaptures_NilInput(t *testing.T) {
+	got := SeedCaptures(nil)
+	if got == nil {
+		t.Fatal("expected non-nil map for nil input")
+	}
+	if len(got) != 0 {
+		t.Errorf("expected empty map, got %d entries", len(got))
+	}
+}

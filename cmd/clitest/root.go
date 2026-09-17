@@ -236,13 +236,13 @@ func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.Progre
 		var buf bytes.Buffer
 		vd := display.NewVerboseDisplay(&buf, true)
 		vd.BeginFile(f.Display)
-		pass, fail, skip := runEntriesVerbose(cfg, vd, pd, idx, entries)
+		pass, fail, skip := runEntriesVerbose(cfg, vd, pd, idx, entries, parsed.Directives.Var)
 		vd.EndFile()
 		pd.FinishFile(idx, fail == 0, buf.String())
 		return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display}
 	}
 
-	pass, fail, skip, details := runEntriesCompact(cfg, pd, idx, entries)
+	pass, fail, skip, details := runEntriesCompact(cfg, pd, idx, entries, parsed.Directives.Var)
 	pd.FinishFile(idx, fail == 0, "")
 	return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, failures: details}
 }

@@ -120,6 +120,18 @@ func interpretFileDirectives(f *types.File, directives []directive) []error {
 				}
 				f.Directives.Env[parts[0]] = parts[1]
 			}
+		case "var":
+			parts := strings.SplitN(d.Value, "=", 2)
+			if len(parts) < 2 || parts[0] == "" {
+				errs = append(errs, &DirectiveError{Line: d.Line, Directive: d.Name, Message: fmt.Sprintf("value must be KEY=VALUE with non-empty key, got %q", d.Value)})
+			} else if _, exists := f.Directives.Var[parts[0]]; exists {
+				errs = append(errs, &DirectiveError{Line: d.Line, Directive: d.Name, Message: fmt.Sprintf("duplicate key %q (already defined earlier in this file)", parts[0])})
+			} else {
+				if f.Directives.Var == nil {
+					f.Directives.Var = make(map[string]string)
+				}
+				f.Directives.Var[parts[0]] = parts[1]
+			}
 		}
 	}
 	return errs

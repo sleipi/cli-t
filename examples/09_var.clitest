@@ -1,0 +1,13 @@
+---
+@var SCENARIO=checkout/case-a
+---
+
+# All entries in this file see {{SCENARIO}}
+echo "running {{SCENARIO}}"
+EXIT 0
+running checkout/case-a
+
+# A sibling file for case-b would differ only in the frontmatter line above
+echo "path: tests/{{SCENARIO}}/seller.json"
+EXIT 0
+path: tests/checkout/case-a/seller.json

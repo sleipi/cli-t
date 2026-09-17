@@ -1,0 +1,7 @@
+---
+@var NAME=file_value
+---
+
+# --var (passed on the command line invoking this fixture) beats @var
+echo "{{NAME}}"
+cli_value

@@ -22,6 +22,7 @@ type FileDirectives struct {
 	Timeout    *int              // @timeout in ms (nil = not set, 0 = no timeout)
 	Workdir    string            // @workdir path (empty = not set)
 	Env        map[string]string // @env KEY=VALUE (nil = not set)
+	Var        map[string]string // @var KEY=VALUE (nil = not set, file-level only)
 }
 
 // Finally represents a [Finally] section for EXIT NEVER entries.

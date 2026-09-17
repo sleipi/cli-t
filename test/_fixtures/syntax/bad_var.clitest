@@ -1,0 +1,6 @@
+---
+@var NOEQUALS
+---
+
+echo hello
+EXIT 0

@@ -1,0 +1,13 @@
+---
+@var NAME=default_val
+---
+
+# Capture a value under the same key as the file-level var
+echo "captured_val"
+EXIT 0
+[captures]
+NAME = stdout
+
+# Subsequent entries see the captured value, not the file-level default
+echo "{{NAME}}"
+captured_val

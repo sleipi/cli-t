@@ -22,3 +22,21 @@ stdout contains "KEY=VALUE"
 # Validates that file-level @timeout is inherited by entries
 ./clitest test/_fixtures/syntax/file_timeout_inherit.clitest
 EXIT 0
+
+# Validates that --var overrides file-level @var
+./clitest --var NAME=cli_value test/_fixtures/syntax/var_cli_override.clitest
+EXIT 0
+
+# Validates that malformed @var is rejected at parse time
+./clitest test/_fixtures/syntax/bad_var.clitest
+EXIT 1
+[asserts]
+stdout contains "@var"
+stdout contains "KEY=VALUE"
+
+# Validates that duplicate @var key is rejected at parse time
+./clitest test/_fixtures/syntax/duplicate_var.clitest
+EXIT 1
+[asserts]
+stdout contains "@var"
+stdout contains "duplicate"

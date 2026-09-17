@@ -432,7 +432,8 @@ EXIT 0
 Variables are resolved from (in priority order):
 1. `--var NAME=VALUE` CLI flags
 2. `[captures]` from previous entries
-3. Environment variables (via `$VAR` or `${VAR}` syntax)
+3. `@var NAME=VALUE` file-level frontmatter directive
+4. Environment variables (via `$VAR` or `${VAR}` syntax)
 
 ### Environment Variable Expansion
 
@@ -497,6 +498,7 @@ EXIT 0
 | `@defer`  | entry | `@defer` | Marks entry as cleanup — runs at file end (LIFO), always, not a test |
 | `@workdir` | file, entry | `@workdir <path>` | Run command in specified directory |
 | `@env`    | file, entry | `@env KEY=VALUE` | Set environment variable for child process |
+| `@var`    | file        | `@var KEY=VALUE` | Set a default for `{{KEY}}` template substitution, scoped to this file |
 
 #### `@group`
 
@@ -621,6 +623,34 @@ EXIT 0
 stdout == "false"
 ```
 
+#### `@var`
+
+Sets a file-scoped default value for `{{KEY}}` template substitution. File-level only (frontmatter) — placing `@var` after the frontmatter has no effect (unknown entry directives are silently ignored). One `KEY=VALUE` per directive. A duplicate key within the same file's frontmatter is a parse error.
+
+**Precedence:** `--var` (CLI) > `[captures]` > `@var` (file) — see [Variables](#variables).
+
+**Values:** The value is everything after the first `=`. Values may contain `=`, spaces, and special characters. Empty values (`@var KEY=`) are valid. Malformed directives without `=` are rejected at parse time, as is a repeated key.
+
+**Scope:** `@var` substitution expands `{{KEY}}` in the entry's command line only — it does NOT expand in the entry's expected body or `[asserts]` values. `--var`, by contrast, expands everywhere (command, body, and asserts), since it runs as a raw text substitution over the whole file before parsing.
+
+**Variable substitution:** `--var` placeholders (`{{name}}`) in `@var` values are expanded (since substitution runs before parsing).
+
+**Use case:** sibling `.clitest` files that differ by exactly one value (a scenario directory, a tool version) can express that value once, instead of repeating it on every line that needs it:
+
+```
+---
+@var SCENARIO=checkout/case-a
+---
+
+hurl --test tests/{{SCENARIO}}/stubs/_register.hurl
+EXIT 0
+
+php bin/console app:seed tests/{{SCENARIO}}/seller.json
+EXIT 0
+```
+
+A sibling file for `case-b` differs from this one only in the frontmatter line.
+
 #### Directive Validation
 
 All directives are validated at parse time. If any directive has an invalid value, clitest reports the error(s) and does not execute the file. Multiple errors may be reported at once.
@@ -632,6 +662,7 @@ All directives are validated at parse time. If any directive has an invalid valu
 | `@timeout` | Integer >= 0 (milliseconds) | `0` means no timeout (infinite wait). No duration suffixes. |
 | `@poll` | Integer > 0 (milliseconds) | Must be positive. No duration suffixes. |
 | `@env` | `KEY=VALUE` with non-empty key | Empty value after `=` is valid. Missing `=` is rejected. |
+| `@var` | `KEY=VALUE` with non-empty key | Empty value after `=` is valid. Missing `=` is rejected. Duplicate key within one file is rejected. |
 
 Unknown directives are silently ignored.
 

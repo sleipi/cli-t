@@ -1,0 +1,7 @@
+---
+@var NAME=world
+---
+
+# File-level var resolves in the command
+echo "hello {{NAME}}"
+hello world

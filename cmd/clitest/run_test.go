@@ -67,7 +67,7 @@ func TestRunEntries_FailFastCancels(t *testing.T) {
 	cfg := &runConfig{FailFast: true, Cancelled: cancelled}
 	pd := newTestProgressDisplay()
 
-	pass, fail, skip, _ := runEntries(cfg, pd, 0, entries, nil)
+	pass, fail, skip, _ := runEntries(cfg, pd, 0, entries, nil, nil)
 
 	if fail != 1 {
 		t.Errorf("expected 1 failure, got %d", fail)
@@ -94,7 +94,7 @@ func TestRunEntries_PreCancelledSkipsAll(t *testing.T) {
 	cfg := &runConfig{FailFast: false, Cancelled: cancelled}
 	pd := newTestProgressDisplay()
 
-	pass, fail, skip, _ := runEntries(cfg, pd, 0, entries, nil)
+	pass, fail, skip, _ := runEntries(cfg, pd, 0, entries, nil, nil)
 
 	if skip != 2 {
 		t.Errorf("expected 2 skipped, got %d", skip)
@@ -104,6 +104,54 @@ func TestRunEntries_PreCancelledSkipsAll(t *testing.T) {
 	}
 	if fail != 0 {
 		t.Errorf("expected 0 fail, got %d", fail)
+	}
+}
+
+func TestRunEntries_FileVarResolvesInCommand(t *testing.T) {
+	entries := []types.Entry{
+		{Command: "echo {{NAME}}", Asserts: []types.Assert{{Query: "stdout", Predicate: "contains", Value: "world"}}},
+	}
+	fileVars := map[string]string{"NAME": "world"}
+
+	cancelled := &atomic.Bool{}
+	cfg := &runConfig{FailFast: false, Cancelled: cancelled}
+	pd := newTestProgressDisplay()
+
+	pass, fail, _, _ := runEntries(cfg, pd, 0, entries, fileVars, nil)
+
+	if fail != 0 {
+		t.Errorf("expected 0 failures, got %d", fail)
+	}
+	if pass != 1 {
+		t.Errorf("expected 1 pass, got %d", pass)
+	}
+}
+
+func TestRunEntries_CaptureOverridesFileVar(t *testing.T) {
+	entries := []types.Entry{
+		{
+			Command:  "echo captured_val",
+			Captures: []types.Capture{{Name: "NAME", Source: types.CaptureStdout}},
+			Asserts:  []types.Assert{{Query: "exit", Predicate: "==", Value: "0"}},
+		},
+		{
+			Command: "echo {{NAME}}",
+			Asserts: []types.Assert{{Query: "stdout", Predicate: "contains", Value: "captured_val"}},
+		},
+	}
+	fileVars := map[string]string{"NAME": "default_val"}
+
+	cancelled := &atomic.Bool{}
+	cfg := &runConfig{FailFast: false, Cancelled: cancelled}
+	pd := newTestProgressDisplay()
+
+	pass, fail, _, _ := runEntries(cfg, pd, 0, entries, fileVars, nil)
+
+	if fail != 0 {
+		t.Errorf("expected 0 failures, got %d", fail)
+	}
+	if pass != 2 {
+		t.Errorf("expected 2 pass, got %d", pass)
 	}
 }
 
