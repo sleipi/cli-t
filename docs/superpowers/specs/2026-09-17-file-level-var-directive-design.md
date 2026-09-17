@@ -50,13 +50,20 @@ literal in the parsed `entry.Command` string.
 touches `entry.Command`, not asserts/body — an existing limitation,
 unchanged here.
 
-`@var` slots in at that same runtime step: the map passed to
-`SubstituteCaptures` becomes `merge(fileVars, captures)`, with
-`captures` overwriting `fileVars` on key collision. Because `--var`
-already consumed matching placeholders at load time (before this step
-ever runs), and `captures` overwrite `@var` in the merge, the net
-effect is exactly `--var > captures > @var` with no change to the
-load-time substitution pass and no per-entry re-architecture.
+`@var` slots into that same runtime step, but even more directly than
+originally planned: the `captures` map is a single instance, created
+once per file run (`cmd/clitest/run.go:47`, `captures := map[string]string{}`)
+and threaded by reference through every executor function that reads
+or writes it — all 5 `SubstituteCaptures` call sites use this same
+instance. Seeding that map with `f.Directives.Var` at creation (a
+copy, so the original `FileDirectives.Var` is never mutated) means
+every one of those call sites picks up `@var` values automatically,
+with zero changes inside the executor package. Real captures
+(`captures[c.Name] = val`, written as entries execute) then overwrite
+the seeded value for the same key on the same map — ordinary map
+write semantics, no merge function needed. Net effect is exactly
+`--var > captures > @var`, with no change to the load-time
+substitution pass and no per-entry re-architecture.
 
 ## Changes
 
@@ -74,12 +81,18 @@ load-time substitution pass and no per-entry re-architecture.
 - `interpretEntryDirectives`: no change.
 
 **`internal/vars/vars.go`**
-- `MergeCaptures(fileVars, captures map[string]string) map[string]string`
-  — returns a new map, `captures` entries win over `fileVars` on
-  collision. Used at all 5 existing `SubstituteCaptures` call sites
-  (`cmd/clitest/run.go` ×2, `internal/executor/executor.go` ×2,
-  `internal/executor/background.go` ×1) in place of the bare
-  `captures` map.
+- `SeedCaptures(fileVars map[string]string) map[string]string` —
+  returns a fresh copy of `fileVars` (empty map if `fileVars` is nil),
+  never the original map. Used once, in place of the literal
+  `map[string]string{}` at `cmd/clitest/run.go:47`, to initialize the
+  `captures` map that's threaded through the rest of the run.
+
+**`cmd/clitest/run.go` / `cmd/clitest/root.go`**
+- `runEntries`, `runEntriesVerbose`, `runEntriesCompact` each gain a
+  `fileVars map[string]string` parameter, threaded from
+  `parsed.Directives.Var` in `root.go` (where `parsed` is the
+  `*types.File` returned by `loadAndParse`) down to the `captures :=`
+  initialization in `runEntries`.
 
 **`SPEC.md`**
 - Variables → priority list: insert `@var` between `[captures]` and
@@ -93,7 +106,8 @@ load-time substitution pass and no per-entry re-architecture.
 
 - **Unit** — `internal/parser/directives_test.go`: parses `@var`,
   rejects malformed (no `=`), rejects duplicate key.
-  `internal/vars/vars_test.go`: `MergeCaptures` precedence.
+  `internal/vars/vars_test.go`: `SeedCaptures` (copies, doesn't alias
+  the input map; nil input yields empty map).
 - **e2e** — `test/e2e/var/` (pattern: `test/e2e/env/`):
   - `it_sets_file_level_var.clitest`
   - `it_var_available_to_all_entries.clitest`
