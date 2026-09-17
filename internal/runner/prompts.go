@@ -27,6 +27,12 @@ type PromptResult struct {
 	TimedOut         bool
 }
 
+// promptReadResult carries the outcome of draining a command's stdout.
+type promptReadResult struct {
+	stdout    string
+	ambiguous string
+}
+
 // promptState tracks remaining matches for a single prompt definition.
 type promptState struct {
 	def       PromptDef
@@ -147,21 +153,36 @@ func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int, env map[
 		return PromptResult{Result: Result{ExitCode: -1, Stderr: fmt.Sprintf("start error: %v", err)}}
 	}
 
-	// Read stdout and match prompts in background
-	type readResult struct {
-		stdout    string
-		ambiguous string
-	}
-	readDone := make(chan readResult, 1)
+	// Read stdout and match prompts in background. cmd.Wait must not be called
+	// until this goroutine has fully drained stdout: Wait() closes the stdout
+	// pipe as soon as the process exits, and racing it against our own Read
+	// here can truncate the last chunk of output.
+	readDone := make(chan promptReadResult, 1)
 	go func() {
 		stdout, ambiguous := readAndMatch(stdoutPipe, stdinPipe, states)
-		readDone <- readResult{stdout, ambiguous}
+		readDone <- promptReadResult{stdout, ambiguous}
 	}()
 
-	// Wait for process with timeout
-	timedOut, exitCode := waitWithTimeout(cmd, timeoutMs)
+	timedOut := false
+	var rr promptReadResult
+	timer := time.NewTimer(time.Duration(timeoutMs) * time.Millisecond)
+	select {
+	case rr = <-readDone:
+		timer.Stop()
+	case <-timer.C:
+		_ = cmd.Process.Kill()
+		rr = <-readDone
+		timedOut = true
+	}
 
-	rr := <-readDone
+	exitCode := 0
+	if waitErr := cmd.Wait(); waitErr != nil {
+		exitCode = -1
+		var exitErr *exec.ExitError
+		if errors.As(waitErr, &exitErr) {
+			exitCode = exitErr.ExitCode()
+		}
+	}
 	duration := time.Since(start).Milliseconds()
 
 	return PromptResult{
@@ -174,29 +195,5 @@ func RunWithPrompts(command string, prompts []PromptDef, timeoutMs int, env map[
 		UnmatchedPrompts: collectUnmatched(states),
 		AmbiguousMatch:   rr.ambiguous,
 		TimedOut:         timedOut,
-	}
-}
-
-// waitWithTimeout waits for process exit or kills on timeout. Returns (timedOut, exitCode).
-func waitWithTimeout(cmd *exec.Cmd, timeoutMs int) (timedOut bool, exitCode int) {
-	timer := time.NewTimer(time.Duration(timeoutMs) * time.Millisecond)
-	defer timer.Stop()
-
-	doneCh := make(chan error, 1)
-	go func() { doneCh <- cmd.Wait() }()
-
-	select {
-	case waitErr := <-doneCh:
-		if waitErr != nil {
-			var exitErr *exec.ExitError
-			if errors.As(waitErr, &exitErr) {
-				return false, exitErr.ExitCode()
-			}
-		}
-		return false, 0
-	case <-timer.C:
-		_ = cmd.Process.Kill()
-		<-doneCh
-		return true, -1
 	}
 }
