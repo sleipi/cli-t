@@ -41,10 +41,10 @@ type entryOutcome struct {
 // runEntries executes entries, reports progress, and returns counters + failure details.
 // The onResult callback is invoked for each entry outcome (including skipped entries).
 // In verbose mode, pass a callback that writes to VerboseDisplay; in compact mode, pass nil.
-func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, onResult func(entryOutcome)) (pass, fail, skip int, details []display.CompactFailure) {
+func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string, onResult func(entryOutcome)) (pass, fail, skip int, details []display.CompactFailure) {
 	regular, defers := executor.SplitDeferEntries(entries)
 	pd.UpdateProgress(fileIdx, 0, len(regular))
-	captures := map[string]string{}
+	captures := vars.SeedCaptures(fileVars)
 	var backgrounds []*executor.BackgroundResult
 
 	for i, entry := range regular {
@@ -146,7 +146,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 }
 
 // runEntriesVerbose executes entries and reports to VerboseDisplay.
-func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry) (pass, fail, skip int) {
+func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string) (pass, fail, skip int) {
 	onResult := func(o entryOutcome) {
 		if o.SkipReason == "defer" {
 			vd.DeferResult(o.Command)
@@ -165,13 +165,13 @@ func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.P
 			Stderr:      o.Stderr,
 		})
 	}
-	pass, fail, skip, _ = runEntries(cfg, pd, fileIdx, entries, onResult)
+	pass, fail, skip, _ = runEntries(cfg, pd, fileIdx, entries, fileVars, onResult)
 	return
 }
 
 // runEntriesCompact executes entries and reports progress to ProgressDisplay.
-func runEntriesCompact(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry) (pass, fail, skip int, details []display.CompactFailure) {
-	return runEntries(cfg, pd, fileIdx, entries, nil)
+func runEntriesCompact(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string) (pass, fail, skip int, details []display.CompactFailure) {
+	return runEntries(cfg, pd, fileIdx, entries, fileVars, nil)
 }
 
 // processBackgrounds evaluates later asserts and finally sections for all kept-alive background processes.
