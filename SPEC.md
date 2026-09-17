@@ -631,6 +631,10 @@ Sets a file-scoped default value for `{{KEY}}` template substitution. File-level
 
 **Values:** The value is everything after the first `=`. Values may contain `=`, spaces, and special characters. Empty values (`@var KEY=`) are valid. Malformed directives without `=` are rejected at parse time, as is a repeated key.
 
+**Scope:** `@var` substitution expands `{{KEY}}` in the entry's command line only — it does NOT expand in the entry's expected body or `[asserts]` values. `--var`, by contrast, expands everywhere (command, body, and asserts), since it runs as a raw text substitution over the whole file before parsing.
+
+**Variable substitution:** `--var` placeholders (`{{name}}`) in `@var` values are expanded (since substitution runs before parsing).
+
 **Use case:** sibling `.clitest` files that differ by exactly one value (a scenario directory, a tool version) can express that value once, instead of repeating it on every line that needs it:
 
 ```
