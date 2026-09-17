@@ -30,6 +30,17 @@ func SubstituteCaptures(input string, captures map[string]string) string {
 	return result
 }
 
+// SeedCaptures returns a new map pre-populated with fileVars, for use as the
+// starting point of an entry's captures map. The returned map never aliases
+// fileVars, so later writes (real captures) never mutate the caller's map.
+func SeedCaptures(fileVars map[string]string) map[string]string {
+	seeded := make(map[string]string, len(fileVars))
+	for k, v := range fileVars {
+		seeded[k] = v
+	}
+	return seeded
+}
+
 // ResolveCapture extracts a value from a runner.Result based on the capture definition.
 func ResolveCapture(c types.Capture, r runner.Result) string {
 	switch c.Source {
