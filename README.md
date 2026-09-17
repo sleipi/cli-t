@@ -67,6 +67,18 @@ You read it, you understand it, your teammates understand it. Done.
 
 Download a pre-built binary from the [latest release](https://github.com/sleipi/cli-t/releases/latest), extract it, and place it in your `$PATH`.
 
+Or install via Homebrew:
+
+```bash
+brew install sleipi/tap/cli-t
+```
+
+Upgrade to the latest version:
+
+```bash
+brew upgrade --cask sleipi/tap/cli-t
+```
+
 Or install via `go install`:
 
 ```bash
