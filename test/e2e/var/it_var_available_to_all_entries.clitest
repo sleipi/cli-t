@@ -1,0 +1,11 @@
+---
+@var SCENARIO=case-a
+---
+
+# First entry sees the file-level var
+echo "{{SCENARIO}}"
+case-a
+
+# Second entry also sees it
+echo "path/{{SCENARIO}}/file"
+path/case-a/file

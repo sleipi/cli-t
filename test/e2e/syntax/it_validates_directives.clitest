@@ -22,3 +22,7 @@ stdout contains "KEY=VALUE"
 # Validates that file-level @timeout is inherited by entries
 ./clitest test/_fixtures/syntax/file_timeout_inherit.clitest
 EXIT 0
+
+# Validates that --var overrides file-level @var
+./clitest --var NAME=cli_value test/_fixtures/syntax/var_cli_override.clitest
+EXIT 0
