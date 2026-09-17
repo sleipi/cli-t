@@ -1,0 +1,7 @@
+# Nested files are displayed by their path relative to the scan root, not just the basename
+./clitest --no-parallel --no-color test/_fixtures/resolve
+EXIT 0
+[asserts]
+stdout contains "deep/deep.clitest"
+stdout contains "hello.clitest"
+stdout not contains "- deep.clitest ("

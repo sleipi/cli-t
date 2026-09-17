@@ -71,7 +71,7 @@ type fileResult struct {
 	pass     int
 	fail     int
 	skip     int
-	file     string
+	display  string
 	failures []display.CompactFailure
 	hidden   bool
 }
@@ -134,7 +134,7 @@ func runMain(_ *cobra.Command, args []string) error {
 		totalFail += r.fail
 		totalSkip += r.skip
 		if r.fail > 0 {
-			failedFiles = append(failedFiles, r.file)
+			failedFiles = append(failedFiles, r.display)
 		}
 	}
 
@@ -149,7 +149,7 @@ func runMain(_ *cobra.Command, args []string) error {
 // runFiles is the unified execution function for both compact and verbose modes.
 // It uses ProgressDisplay for the dynamic running-file block at the bottom,
 // and emits finished file output (compact line or verbose block) permanently above.
-func runFiles(files []string, workers int, isTTY bool, w io.Writer) []fileResult {
+func runFiles(files []resolve.ScanFile, workers int, isTTY bool, w io.Writer) []fileResult {
 	results := make([]fileResult, len(files))
 	jobs := make(chan int, len(files))
 	var wg sync.WaitGroup
@@ -169,8 +169,13 @@ func runFiles(files []string, workers int, isTTY bool, w io.Writer) []fileResult
 		maxDynamic = 16
 	}
 
+	displays := make([]string, len(files))
+	for i, f := range files {
+		displays[i] = f.Display
+	}
+
 	pd := display.NewProgressDisplay(w, isTTY, maxDynamic)
-	pd.Start(files)
+	pd.Start(displays)
 
 	for w := 0; w < workers; w++ {
 		wg.Add(1)
@@ -191,7 +196,7 @@ func runFiles(files []string, workers int, isTTY bool, w io.Writer) []fileResult
 	if !verbose {
 		for _, r := range results {
 			if len(r.failures) > 0 {
-				display.PrintFailureDetails(os.Stdout, r.failures, r.file)
+				display.PrintFailureDetails(os.Stdout, r.failures, r.display)
 			}
 		}
 	}
@@ -199,8 +204,8 @@ func runFiles(files []string, workers int, isTTY bool, w io.Writer) []fileResult
 }
 
 // processFile handles parsing, filtering, and execution for a single file.
-func processFile(cfg *runConfig, f string, idx int, pd *display.ProgressDisplay) fileResult {
-	parsed, err := loadAndParse(f, varFlags.values)
+func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.ProgressDisplay) fileResult {
+	parsed, err := loadAndParse(f.Path, varFlags.values)
 	if err != nil {
 		errOutput := fmt.Sprintf("%s%v%s\n", display.ColorRed, err, display.ColorReset)
 		pd.FileError(idx, errOutput)
@@ -211,35 +216,35 @@ func processFile(cfg *runConfig, f string, idx int, pd *display.ProgressDisplay)
 		if cfg.FailFast {
 			cfg.Cancelled.Store(true)
 		}
-		return fileResult{fail: 1, file: f}
+		return fileResult{fail: 1, display: f.Display}
 	}
 
 	if parsed.Directives.Skip {
 		pd.UpdateProgress(idx, 0, 0)
 		pd.FinishFile(idx, true, "")
-		return fileResult{skip: len(parsed.Entries), file: f}
+		return fileResult{skip: len(parsed.Entries), display: f.Display}
 	}
 
 	entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
 
 	if len(entries) == 0 {
 		pd.HideFile(idx)
-		return fileResult{file: f, hidden: true}
+		return fileResult{display: f.Display, hidden: true}
 	}
 
 	if verbose {
 		var buf bytes.Buffer
 		vd := display.NewVerboseDisplay(&buf, true)
-		vd.BeginFile(f)
+		vd.BeginFile(f.Display)
 		pass, fail, skip := runEntriesVerbose(cfg, vd, pd, idx, entries)
 		vd.EndFile()
 		pd.FinishFile(idx, fail == 0, buf.String())
-		return fileResult{pass: pass, fail: fail, skip: skip, file: f}
+		return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display}
 	}
 
 	pass, fail, skip, details := runEntriesCompact(cfg, pd, idx, entries)
 	pd.FinishFile(idx, fail == 0, "")
-	return fileResult{pass: pass, fail: fail, skip: skip, file: f, failures: details}
+	return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, failures: details}
 }
 
 

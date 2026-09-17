@@ -67,3 +67,27 @@ func TestFiles_Directory(t *testing.T) {
 		t.Fatalf("expected 2 files (non-recursive), got %d", len(files))
 	}
 }
+
+func TestFiles_DisplayRelativeToScanRoot(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "flat.clitest"), []byte("$ echo hi\n"), 0o644)
+	os.MkdirAll(filepath.Join(dir, "orders", "import"), 0o755)
+	os.WriteFile(filepath.Join(dir, "orders", "import", "nested.clitest"), []byte("$ echo hi\n"), 0o644)
+
+	files, _, _, err := Files([]string{dir}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	displays := make(map[string]bool)
+	for _, f := range files {
+		displays[f.Display] = true
+	}
+
+	if !displays["flat.clitest"] {
+		t.Errorf("expected flat file displayed as basename, got %v", displays)
+	}
+	if !displays[filepath.Join("orders", "import", "nested.clitest")] {
+		t.Errorf("expected nested file displayed relative to scan root, got %v", displays)
+	}
+}
