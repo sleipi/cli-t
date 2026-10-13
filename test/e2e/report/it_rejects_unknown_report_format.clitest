@@ -1,5 +1,5 @@
 # Only the junit format is supported
-./clitest --report tap:out.tap test/_fixtures/failing.clitest
+./clitest --report tap:/dev/null test/_fixtures/failing.clitest
 EXIT 2
 [asserts]
 stderr contains "unsupported report format "tap""
@@ -10,3 +10,10 @@ stdout isEmpty
 EXIT 2
 [asserts]
 stderr contains "use junit:PATH"
+
+# Only one report per run
+./clitest --report junit:/dev/null --report junit:/dev/null test/_fixtures/failing.clitest
+EXIT 2
+[asserts]
+stderr contains "--report can only be given once"
+stdout isEmpty

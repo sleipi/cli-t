@@ -48,30 +48,41 @@ func TestVarMap_Type(t *testing.T) {
 	}
 }
 
-func TestParseReport_Junit(t *testing.T) {
-	format, path, err := parseReport("junit:build/report.xml")
-	if err != nil {
+func TestReportValue_Set(t *testing.T) {
+	var r reportValue
+	if err := r.Set("junit:build/report.xml"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if format != "junit" || path != "build/report.xml" {
-		t.Errorf("got format %q, path %q", format, path)
+	if r.path != "build/report.xml" {
+		t.Errorf("got path %q", r.path)
 	}
 }
 
-func TestParseReport_PathWithColon(t *testing.T) {
-	_, path, err := parseReport("junit:C:/reports/out.xml")
-	if err != nil {
+func TestReportValue_PathWithColon(t *testing.T) {
+	var r reportValue
+	if err := r.Set("junit:C:/reports/out.xml"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if path != "C:/reports/out.xml" {
-		t.Errorf("got path %q", path)
+	if r.path != "C:/reports/out.xml" {
+		t.Errorf("got path %q", r.path)
 	}
 }
 
-func TestParseReport_Invalid(t *testing.T) {
+func TestReportValue_Invalid(t *testing.T) {
 	for _, s := range []string{"junit", "junit:", "tap:out.tap", ":out.xml"} {
-		if _, _, err := parseReport(s); err == nil {
+		var r reportValue
+		if err := r.Set(s); err == nil {
 			t.Errorf("expected error for %q", s)
 		}
+	}
+}
+
+func TestReportValue_RejectsSecondReport(t *testing.T) {
+	var r reportValue
+	if err := r.Set("junit:one.xml"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := r.Set("junit:two.xml"); err == nil {
+		t.Fatal("expected error for a second --report")
 	}
 }

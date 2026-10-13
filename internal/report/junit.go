@@ -4,6 +4,7 @@ package report
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,8 +66,20 @@ type junitSuites struct {
 	Suites   []junitSuite `xml:"testsuite"`
 }
 
-// WriteJUnit writes suites as a JUnit XML file to path, creating parent directories.
-func WriteJUnit(path string, suites []Suite) error {
+// Create creates or truncates the report file at path, creating parent directories.
+func Create(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // CI artifact, read by other users (e.g. host runner after a container run)
+		return nil, fmt.Errorf("creating report: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec // CI artifact, read by other users (e.g. host runner after a container run)
+	if err != nil {
+		return nil, fmt.Errorf("creating report: %w", err)
+	}
+	return f, nil
+}
+
+// WriteJUnit writes suites as JUnit XML to w.
+func WriteJUnit(w io.Writer, suites []Suite) error {
 	doc := junitSuites{}
 	var total time.Duration
 	for _, s := range suites {
@@ -84,12 +97,9 @@ func WriteJUnit(path string, suites []Suite) error {
 	if err != nil {
 		return fmt.Errorf("encoding junit report: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // CI artifact, read by other users (e.g. host runner after a container run)
-		return fmt.Errorf("writing junit report: %w", err)
-	}
 	content := append([]byte(xml.Header), out...)
 	content = append(content, '\n')
-	if err := os.WriteFile(path, content, 0o644); err != nil { //nolint:gosec // CI artifact, read by other users (e.g. host runner after a container run)
+	if _, err := w.Write(content); err != nil {
 		return fmt.Errorf("writing junit report: %w", err)
 	}
 	return nil

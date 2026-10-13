@@ -1,6 +1,7 @@
 package report
 
 import (
+	"bytes"
 	"encoding/xml"
 	"os"
 	"path/filepath"
@@ -46,18 +47,14 @@ type parsedSuites struct {
 
 func writeAndParse(t *testing.T, suites []Suite) (got parsedSuites, raw string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "report.xml")
-	if err := WriteJUnit(path, suites); err != nil {
+	var buf bytes.Buffer
+	if err := WriteJUnit(&buf, suites); err != nil {
 		t.Fatalf("WriteJUnit: %v", err)
 	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("reading report: %v", err)
+	if err := xml.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatalf("report is not valid XML: %v\n%s", err, buf.String())
 	}
-	if err := xml.Unmarshal(content, &got); err != nil {
-		t.Fatalf("report is not valid XML: %v\n%s", err, content)
-	}
-	return got, string(content)
+	return got, buf.String()
 }
 
 func TestWriteJUnit_CountsAndCases(t *testing.T) {
@@ -134,22 +131,30 @@ func TestWriteJUnit_EmptyRun(t *testing.T) {
 	}
 }
 
-func TestWriteJUnit_CreatesParentDirectories(t *testing.T) {
+func TestCreate_CreatesParentDirectories(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "build", "reports", "junit.xml")
-	if err := WriteJUnit(path, nil); err != nil {
-		t.Fatalf("WriteJUnit: %v", err)
+	f, err := Create(path)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
 	}
+	_ = f.Close()
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("expected report file: %v", err)
 	}
 }
 
-func TestWriteJUnit_UnwritablePath(t *testing.T) {
+func TestCreate_FailsWhenPathIsADirectory(t *testing.T) {
+	if _, err := Create(t.TempDir()); err == nil {
+		t.Fatal("expected error when the path is a directory")
+	}
+}
+
+func TestCreate_FailsWhenParentIsAFile(t *testing.T) {
 	blocker := filepath.Join(t.TempDir(), "file")
-	if err := os.WriteFile(blocker, nil, 0o644); err != nil {
+	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteJUnit(filepath.Join(blocker, "report.xml"), nil); err == nil {
+	if _, err := Create(filepath.Join(blocker, "report.xml")); err == nil {
 		t.Fatal("expected error when parent is a file")
 	}
 }

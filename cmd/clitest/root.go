@@ -32,7 +32,7 @@ var (
 	excludeGroupFlags []string
 	failFast          bool
 	noColor           bool
-	reportFlag        string
+	reportFlag        reportValue
 )
 
 // cancelled is set to true when --fail-fast triggers; workers check before picking up new jobs.
@@ -64,7 +64,7 @@ func init() {
 	rootCmd.Flags().StringSliceVar(&excludeGroupFlags, "exclude-group", nil, "Skip entries with this group tag (repeatable)")
 	rootCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop after first test failure")
 	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable ANSI color codes in output")
-	rootCmd.Flags().StringVar(&reportFlag, "report", "", "Write a test report: junit:PATH")
+	rootCmd.Flags().Var(&reportFlag, "report", "Write a test report: junit:PATH")
 
 	rootCmd.SetVersionTemplate("clitest version {{.Version}}\n")
 	rootCmd.Flags().BoolP("version", "V", false, "Show version")
@@ -86,15 +86,6 @@ type fileResult struct {
 }
 
 func runMain(_ *cobra.Command, args []string) error {
-	var reportPath string
-	if reportFlag != "" {
-		_, path, err := parseReport(reportFlag)
-		if err != nil {
-			return err
-		}
-		reportPath = path
-	}
-
 	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
 
 	if noColor || os.Getenv("NO_COLOR") != "" || !isTTY {
@@ -104,6 +95,14 @@ func runMain(_ *cobra.Command, args []string) error {
 	files, resolved, warnings, err := resolve.Files(args, !noRecursive)
 	if err != nil {
 		return fmt.Errorf("%w", err)
+	}
+
+	var reportFile *os.File
+	if reportFlag.path != "" {
+		if reportFile, err = report.Create(reportFlag.path); err != nil {
+			return err
+		}
+		defer reportFile.Close()
 	}
 
 	// Print warnings to stderr unless silent
@@ -158,9 +157,12 @@ func runMain(_ *cobra.Command, args []string) error {
 
 	display.PrintSummary(os.Stdout, totalPass, totalFail, totalSkip, len(warnings), failedFiles, elapsed)
 
-	if reportPath != "" {
-		if err := report.WriteJUnit(reportPath, reportSuites(results, varFlags.values)); err != nil {
+	if reportFile != nil {
+		if err := report.WriteJUnit(reportFile, reportSuites(results, varFlags.values)); err != nil {
 			return err
+		}
+		if err := reportFile.Close(); err != nil {
+			return fmt.Errorf("writing junit report: %w", err)
 		}
 	}
 

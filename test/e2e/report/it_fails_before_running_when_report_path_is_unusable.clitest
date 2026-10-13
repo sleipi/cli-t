@@ -1,0 +1,14 @@
+mktemp -d
+EXIT 0
+[captures]
+dir = stdout
+
+@defer
+rm -rf {{dir}}
+
+# A directory as report path is rejected before any test runs
+./clitest --report junit:{{dir}} test/_fixtures/failing.clitest
+EXIT 2
+[asserts]
+stderr contains "creating report"
+stdout isEmpty
