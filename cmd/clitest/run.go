@@ -74,12 +74,16 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 		if cfg.Cancelled.Load() {
 			skip++
 			if onResult != nil {
+				reason := "cancelled by --fail-fast"
+				if entry.Directives.Skip {
+					reason = entry.Directives.SkipReason
+				}
 				onResult(entryOutcome{
 					Name:       entryName(entry),
 					Kind:       outcomeCancelled,
 					Command:    entry.Command,
 					Skipped:    true,
-					SkipReason: "cancelled by --fail-fast",
+					SkipReason: reason,
 				})
 			}
 			pd.UpdateProgress(fileIdx, i+1, len(regular))
@@ -172,7 +176,9 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 // runEntriesVerbose executes entries, reports to VerboseDisplay and passes every outcome to collect.
 func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string, collect func(entryOutcome)) (pass, fail, skip int) {
 	onResult := func(o entryOutcome) {
-		collect(o)
+		if collect != nil {
+			collect(o)
+		}
 		if o.Kind == outcomeCancelled {
 			return
 		}

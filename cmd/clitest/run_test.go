@@ -299,3 +299,26 @@ func TestRunEntries_DeferOutcomeIsMarked(t *testing.T) {
 		t.Errorf("expected defer outcome last, got %+v", outcomes)
 	}
 }
+
+func TestRunEntries_FailFastKeepsSkipReason(t *testing.T) {
+	entries := []types.Entry{
+		{Command: "false"},
+		{Command: "echo later", Directives: types.EntryDirectives{Skip: true, SkipReason: "waiting for upstream fix"}},
+	}
+
+	outcomes := collectOutcomes(entries, &runConfig{FailFast: true, Cancelled: &atomic.Bool{}})
+
+	if got := outcomes[1].SkipReason; got != "waiting for upstream fix" {
+		t.Errorf("expected the skip reason to survive fail-fast, got %q", got)
+	}
+}
+
+func TestRunEntries_SkipOutcomeKeepsReason(t *testing.T) {
+	entries := []types.Entry{{Command: "echo x", Directives: types.EntryDirectives{Skip: true, SkipReason: "wip"}}}
+
+	outcomes := collectOutcomes(entries, &runConfig{Cancelled: &atomic.Bool{}})
+
+	if !outcomes[0].Skipped || outcomes[0].SkipReason != "wip" {
+		t.Errorf("unexpected skip outcome: %+v", outcomes[0])
+	}
+}

@@ -266,7 +266,10 @@ func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.Progre
 	}
 
 	var outcomes []entryOutcome
-	collect := func(o entryOutcome) { outcomes = append(outcomes, o) }
+	var collect func(entryOutcome)
+	if reportFlag.path != "" {
+		collect = func(o entryOutcome) { outcomes = append(outcomes, o) }
+	}
 
 	if verbose {
 		var buf bytes.Buffer
