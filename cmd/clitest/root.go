@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -157,7 +159,7 @@ func runMain(_ *cobra.Command, args []string) error {
 	display.PrintSummary(os.Stdout, totalPass, totalFail, totalSkip, len(warnings), failedFiles, elapsed)
 
 	if reportPath != "" {
-		if err := report.WriteJUnit(reportPath, reportSuites(results)); err != nil {
+		if err := report.WriteJUnit(reportPath, reportSuites(results, varFlags.values)); err != nil {
 			return err
 		}
 	}
@@ -281,7 +283,9 @@ func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.Progre
 
 // reportSuites maps file results to report suites. Files hidden by group filters
 // and files never started because of --fail-fast are left out; defers are cleanup, not tests.
-func reportSuites(results []fileResult) []report.Suite {
+// --var values in test names are shown as {{NAME}}, like the header shows only var names.
+func reportSuites(results []fileResult, vars map[string]string) []report.Suite {
+	mask := varMasker(vars)
 	var suites []report.Suite
 	for _, r := range results {
 		if r.hidden || r.display == "" {
@@ -293,7 +297,7 @@ func reportSuites(results []fileResult) []report.Suite {
 				continue
 			}
 			c := report.Case{
-				Name:        o.Name,
+				Name:        mask.Replace(o.Name),
 				Time:        time.Duration(o.DurationMs) * time.Millisecond,
 				Skipped:     o.Skipped,
 				SkipMessage: o.SkipReason,
@@ -310,4 +314,26 @@ func reportSuites(results []fileResult) []report.Suite {
 		suites = append(suites, suite)
 	}
 	return suites
+}
+
+// varMasker replaces --var values with {{NAME}}. Longer values go first, so a value
+// that contains another one is masked as a whole.
+func varMasker(vars map[string]string) *strings.Replacer {
+	names := make([]string, 0, len(vars))
+	for name, value := range vars {
+		if value != "" {
+			names = append(names, name)
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if len(vars[names[i]]) != len(vars[names[j]]) {
+			return len(vars[names[i]]) > len(vars[names[j]])
+		}
+		return names[i] < names[j]
+	})
+	pairs := make([]string, 0, 2*len(names))
+	for _, name := range names {
+		pairs = append(pairs, vars[name], "{{"+name+"}}")
+	}
+	return strings.NewReplacer(pairs...)
 }

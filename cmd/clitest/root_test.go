@@ -18,7 +18,7 @@ func TestReportSuites_MapsOutcomes(t *testing.T) {
 		{display: "broken.clitest", parseErr: "parsing broken.clitest: boom"},
 	}
 
-	suites := reportSuites(results)
+	suites := reportSuites(results, nil)
 
 	if len(suites) != 2 {
 		t.Fatalf("expected 2 suites, got %d", len(suites))
@@ -42,9 +42,22 @@ func TestReportSuites_MapsOutcomes(t *testing.T) {
 }
 
 func TestReportSuites_FailureWithoutMessage(t *testing.T) {
-	suites := reportSuites([]fileResult{{display: "a.clitest", outcomes: []entryOutcome{{Name: "x"}}}})
+	suites := reportSuites([]fileResult{{display: "a.clitest", outcomes: []entryOutcome{{Name: "x"}}}}, nil)
 
 	if got := suites[0].Cases[0].Failures; len(got) != 1 || got[0] != "entry failed" {
 		t.Errorf("expected fallback failure, got %v", got)
+	}
+}
+
+func TestReportSuites_MasksVarValuesInNames(t *testing.T) {
+	results := []fileResult{{display: "a.clitest", outcomes: []entryOutcome{
+		{Name: `curl -H "Bearer ghp_secret" https://api.example.com`, Passed: true},
+	}}}
+	vars := map[string]string{"TOKEN": "ghp_secret", "HOST": "api.example.com", "EMPTY": "", "DOMAIN": "example.com"}
+
+	suites := reportSuites(results, vars)
+
+	if got := suites[0].Cases[0].Name; got != `curl -H "Bearer {{TOKEN}}" https://{{HOST}}` {
+		t.Errorf("expected masked name, got %q", got)
 	}
 }

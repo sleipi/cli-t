@@ -1,0 +1,17 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --var GREETING=hello-secret --report junit:{{report}} test/_fixtures/options/var_sub.clitest
+EXIT 0
+
+# The header shows only var names, so the report must not show var values either
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "<testcase name="echo &#34;{{GREETING}}&#34;""
+stdout not contains "hello-secret"
