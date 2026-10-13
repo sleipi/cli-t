@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -78,6 +79,7 @@ type fileResult struct {
 	fail     int
 	skip     int
 	display  string
+	path     string
 	failures []display.CompactFailure
 	hidden   bool
 	outcomes []entryOutcome
@@ -212,6 +214,7 @@ func runFiles(files []resolve.ScanFile, workers int, isTTY bool, w io.Writer) []
 					continue
 				}
 				results[idx] = processFile(cfg, files[idx], idx, pd)
+				results[idx].path = files[idx].Path
 			}
 		}()
 	}
@@ -296,7 +299,7 @@ func reportSuites(results []fileResult, vars map[string]string) []report.Suite {
 		if r.hidden || r.display == "" {
 			continue
 		}
-		suite := report.Suite{Name: r.display, Time: r.duration, Error: r.parseErr}
+		suite := report.Suite{Name: filepath.ToSlash(filepath.Clean(r.path)), Time: r.duration, Error: r.parseErr}
 		for _, o := range r.outcomes {
 			if o.Kind == outcomeDefer {
 				continue

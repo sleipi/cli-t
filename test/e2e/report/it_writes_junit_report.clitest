@@ -15,7 +15,7 @@ cat {{report}}
 EXIT 0
 [asserts]
 line 1 == "<?xml version="1.0" encoding="UTF-8"?>"
-stdout contains "<testsuite name="failing.clitest" tests="1" failures="1" errors="0" skipped="0""
-stdout contains "<testcase name="This test intentionally fails" classname="failing.clitest""
+stdout contains "<testsuite name="test/_fixtures/failing.clitest" tests="1" failures="1" errors="0" skipped="0""
+stdout contains "<testcase name="This test intentionally fails" classname="test/_fixtures/failing.clitest""
 stdout contains "<failure message="exit code: expected 1, got 0">"
 stdout contains "<system-out>hello"

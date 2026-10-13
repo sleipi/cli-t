@@ -7,7 +7,7 @@ import (
 
 func TestReportSuites_MapsOutcomes(t *testing.T) {
 	results := []fileResult{
-		{display: "a.clitest", duration: time.Second, outcomes: []entryOutcome{
+		{display: "a.clitest", path: "test/cli/a.clitest", duration: time.Second, outcomes: []entryOutcome{
 			{Name: "passes", Passed: true, DurationMs: 5, Stdout: "ignored"},
 			{Name: "fails", Failures: []string{"exit: expected 0, got 1"}, Stdout: "out"},
 			{Name: "skipped", Skipped: true, SkipReason: "later"},
@@ -15,7 +15,7 @@ func TestReportSuites_MapsOutcomes(t *testing.T) {
 		}},
 		{display: "hidden.clitest", hidden: true},
 		{},
-		{display: "broken.clitest", parseErr: "parsing broken.clitest: boom"},
+		{display: "broken.clitest", path: "./test/broken.clitest", parseErr: "parsing broken.clitest: boom"},
 	}
 
 	suites := reportSuites(results, nil)
@@ -24,7 +24,7 @@ func TestReportSuites_MapsOutcomes(t *testing.T) {
 		t.Fatalf("expected 2 suites, got %d", len(suites))
 	}
 	a := suites[0]
-	if a.Name != "a.clitest" || a.Time != time.Second || len(a.Cases) != 3 {
+	if a.Name != "test/cli/a.clitest" || a.Time != time.Second || len(a.Cases) != 3 {
 		t.Fatalf("unexpected suite: %+v", a)
 	}
 	if a.Cases[0].Time != 5*time.Millisecond || a.Cases[0].Stdout != "" || len(a.Cases[0].Failures) != 0 {
@@ -36,7 +36,7 @@ func TestReportSuites_MapsOutcomes(t *testing.T) {
 	if !a.Cases[2].Skipped || a.Cases[2].SkipMessage != "later" {
 		t.Errorf("unexpected skipped case: %+v", a.Cases[2])
 	}
-	if suites[1].Error != "parsing broken.clitest: boom" {
+	if suites[1].Name != "test/broken.clitest" || suites[1].Error != "parsing broken.clitest: boom" {
 		t.Errorf("expected parse error suite, got %+v", suites[1])
 	}
 }

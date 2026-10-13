@@ -13,5 +13,5 @@ EXIT 0
 cat {{report}}
 EXIT 0
 [asserts]
-stdout contains "<testsuite name="with_defer.clitest" tests="1" failures="0""
+stdout contains "<testsuite name="test/_fixtures/with_defer.clitest" tests="1" failures="0""
 stdout not contains "rm -f"

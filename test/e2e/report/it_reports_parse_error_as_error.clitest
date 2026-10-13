@@ -13,6 +13,6 @@ EXIT 1
 cat {{report}}
 EXIT 0
 [asserts]
-stdout contains "<testsuite name="bad_env.clitest" tests="1" failures="0" errors="1""
+stdout contains "<testsuite name="test/_fixtures/syntax/bad_env.clitest" tests="1" failures="0" errors="1""
 stdout contains "<testcase name="parse""
 stdout contains "<error message="
