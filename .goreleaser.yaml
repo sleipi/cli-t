@@ -53,3 +53,4 @@ homebrew_casks:
 
 release:
   prerelease: auto
+  replace_existing_artifacts: true
