@@ -1,0 +1,21 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+# Verbose output does not show entries cancelled by fail-fast, with or without a report
+./clitest -v --fail-fast --report junit:{{report}} test/_fixtures/fail_fast_three_entries.clitest
+EXIT 1
+[asserts]
+stdout contains "echo "second""
+stdout not contains "echo "third""
+
+# The report gets the same entries as in compact mode
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "tests="3" failures="1" errors="0" skipped="1""
+stdout contains "<failure message="exit code: expected 1, got 0">"

@@ -3,6 +3,7 @@ package report
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,7 @@ type parsedSuites struct {
 	Failures int           `xml:"failures,attr"`
 	Errors   int           `xml:"errors,attr"`
 	Skipped  int           `xml:"skipped,attr"`
+	Time     string        `xml:"time,attr"`
 	Suites   []parsedSuite `xml:"testsuite"`
 }
 
@@ -102,7 +104,7 @@ func TestWriteJUnit_ParseErrorBecomesErrorCase(t *testing.T) {
 	if s.Tests != 1 || s.Errors != 1 || got.Errors != 1 {
 		t.Errorf("unexpected counts: suite %+v, totals %+v", s, got)
 	}
-	if s.Cases[0].Name != "parse" || s.Cases[0].Error == nil || s.Cases[0].Error.Message != "line 3: unknown directive" {
+	if s.Cases[0].Name != "parse" || s.Cases[0].Error == nil || s.Cases[0].Error.Message != "line 3: unknown directive" || s.Cases[0].Error.Body != "line 3: unknown directive" {
 		t.Errorf("unexpected error case: %+v", s.Cases[0])
 	}
 }
@@ -156,5 +158,26 @@ func TestCreate_FailsWhenParentIsAFile(t *testing.T) {
 	}
 	if _, err := Create(filepath.Join(blocker, "report.xml")); err == nil {
 		t.Fatal("expected error when parent is a file")
+	}
+}
+
+func TestWriteJUnit_TotalTimeSumsSuites(t *testing.T) {
+	got, _ := writeAndParse(t, []Suite{
+		{Name: "a.clitest", Time: 1200 * time.Millisecond},
+		{Name: "b.clitest", Time: 300 * time.Millisecond},
+	})
+
+	if got.Time != "1.500" {
+		t.Errorf("expected total time 1.500, got %q", got.Time)
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("disk full") }
+
+func TestWriteJUnit_ReturnsWriteError(t *testing.T) {
+	if err := WriteJUnit(failingWriter{}, nil); err == nil || !strings.Contains(err.Error(), "disk full") {
+		t.Fatalf("expected write error, got %v", err)
 	}
 }

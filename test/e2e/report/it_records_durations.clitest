@@ -1,0 +1,18 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/report/slow.clitest
+EXIT 0
+
+# Entry, suite and total durations are in seconds
+cat {{report}}
+EXIT 0
+[asserts]
+stdout matches /<testsuites [^>]*time="0\.[2-9]/
+stdout matches /<testsuite name[^>]*time="0\.[2-9]/
+stdout matches /<testcase name="slow entry"[^>]*time="0\.[2-9]/

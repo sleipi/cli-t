@@ -1,0 +1,13 @@
+---
+@skip waiting for backend
+---
+
+# first entry
+echo one
+EXIT 0
+
+echo two
+EXIT 0
+
+@defer
+echo cleanup-entry
