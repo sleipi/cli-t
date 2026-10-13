@@ -284,7 +284,7 @@ func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.Progre
 		return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, outcomes: outcomes, duration: time.Since(start)}
 	}
 
-	pass, fail, skip, details := runEntriesCompact(cfg, pd, idx, entries, parsed.Directives.Var, collect)
+	pass, fail, skip, details := runEntries(cfg, pd, idx, entries, parsed.Directives.Var, collect)
 	pd.FinishFile(idx, fail == 0, "")
 	return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, failures: details, outcomes: outcomes, duration: time.Since(start)}
 }

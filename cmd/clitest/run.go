@@ -63,7 +63,7 @@ func entryName(entry types.Entry) string {
 
 // runEntries executes entries, reports progress, and returns counters + failure details.
 // The onResult callback is invoked for each entry outcome (including skipped entries).
-// In verbose mode, pass a callback that writes to VerboseDisplay; in compact mode, pass nil.
+// It may be nil when nobody needs the outcomes (compact mode without --report).
 func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string, onResult func(entryOutcome)) (pass, fail, skip int, details []display.CompactFailure) {
 	regular, defers := executor.SplitDeferEntries(entries)
 	pd.UpdateProgress(fileIdx, 0, len(regular))
@@ -201,11 +201,6 @@ func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.P
 	}
 	pass, fail, skip, _ = runEntries(cfg, pd, fileIdx, entries, fileVars, onResult)
 	return
-}
-
-// runEntriesCompact executes entries, reports progress to ProgressDisplay and passes every outcome to collect.
-func runEntriesCompact(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string, collect func(entryOutcome)) (pass, fail, skip int, details []display.CompactFailure) {
-	return runEntries(cfg, pd, fileIdx, entries, fileVars, collect)
 }
 
 // processBackgrounds evaluates later asserts and finally sections for all kept-alive background processes.
