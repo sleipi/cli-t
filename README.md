@@ -132,7 +132,7 @@ clitest -v test/
 # Parallel execution
 clitest --parallel test/
 
-# JUnit XML report for CI (GitLab, Jenkins, GitHub via dorny/test-reporter)
+# JUnit XML report for CI (GitLab, Jenkins, GitHub via dorny/test-reporter), see SPEC.md "Reports"
 clitest --report junit:build/clitest.xml test/
 ```
 

@@ -773,7 +773,7 @@ When a directory is scanned recursively, files are displayed by their path relat
 | `--no-parallel`  | Disable parallel execution (sequential)    |
 | `--fail-fast`    | Stop after first test failure              |
 | `--no-color`     | Disable ANSI color codes. Also auto-disables when `NO_COLOR` env is set or stdout is not a TTY. |
-| `--report FORMAT:PATH` | Write a test report after the run. Only `junit` is supported. Missing parent directories are created. See [Reports](#reports). |
+| `--report FORMAT:PATH` | Write a test report after the run. Only `junit` is supported. Can be given once. See [Reports](#reports). |
 
 #### Output Levels
 
@@ -886,8 +886,8 @@ clitest --report junit:build/clitest.xml test/
 
 | clitest | JUnit XML |
 |---------|-----------|
-| File | `<testsuite>`, `name` = displayed file path |
-| Entry | `<testcase>`, `name` = first comment line, or the first command line if the entry has no comment |
+| File | `<testsuite>`; `name` and each testcase's `classname` = file path relative to the working directory |
+| Entry | `<testcase>`, `name` = first comment line, or the first command line if the entry has no comment. `--var` values in the name are shown as `{{NAME}}`. |
 | Failed entry | `<failure>`: `message` = first failure, body = all failures, plus `<system-out>` / `<system-err>` |
 | `@skip`, or not run because of `--fail-fast` | `<skipped>` with the reason as `message` |
 | Failed `later` assert / `[finally]` section | Extra `<testcase>` named `<entry name> (later)` / `<entry name> (finally)` |
@@ -895,7 +895,38 @@ clitest --report junit:build/clitest.xml test/
 | File that does not parse | `<testsuite>` with one `<testcase name="parse">` holding an `<error>` |
 | File with frontmatter `@skip` | Every entry as `<skipped>` |
 
-Files with no entries left after `--group` / `--exclude-group` filtering, and files never started because of `--fail-fast`, are not in the report. The report is also written when tests fail; the exit code does not change. A bad `--report` value exits with code 2 before any test runs.
+Rules:
+
+- `PATH` is relative to the working directory. Missing parent directories are created, and an existing file is overwritten. `~` is not expanded.
+- The report file is created before any test runs. A bad value, an unusable path, or a second `--report` exits with code 2 right away.
+- The report is also written when tests fail; the exit code does not change.
+- Files with no entries left after `--group` / `--exclude-group` filtering, and files never started because of `--fail-fast`, are not in the report.
+- CI tools track test history by `classname` and `name`. Give entries in the same file different comments, so their names do not collide.
+- The report holds the raw stdout and stderr of failed entries. Treat it like a CI log: CI systems do not mask secrets in artifacts.
+
+GitHub Actions (clitest exits 1 on failures, so the reporter step must run anyway):
+
+```yaml
+- run: clitest --report junit:reports/clitest.xml test/
+- uses: dorny/test-reporter@v3
+  if: ${{ !cancelled() }}
+  with:
+    name: clitest
+    path: reports/clitest.xml
+    reporter: java-junit
+```
+
+GitLab CI:
+
+```yaml
+test:
+  script:
+    - clitest --report junit:reports/clitest.xml test/
+  artifacts:
+    when: always
+    reports:
+      junit: reports/clitest.xml
+```
 
 ---
 
