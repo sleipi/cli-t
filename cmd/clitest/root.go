@@ -104,7 +104,6 @@ func runMain(_ *cobra.Command, args []string) error {
 		if reportFile, err = report.Create(reportFlag.path); err != nil {
 			return err
 		}
-		defer reportFile.Close()
 	}
 
 	// Print warnings to stderr unless silent
@@ -161,6 +160,7 @@ func runMain(_ *cobra.Command, args []string) error {
 
 	if reportFile != nil {
 		if err := report.WriteJUnit(reportFile, reportSuites(results, varFlags.values)); err != nil {
+			_ = reportFile.Close()
 			return err
 		}
 		if err := reportFile.Close(); err != nil {

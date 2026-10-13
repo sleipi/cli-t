@@ -119,7 +119,7 @@ func TestEvaluateLaterAsserts_ResultCarriesEntry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to start: %v", err)
 		}
-		defer bp.Kill()
+		t.Cleanup(func() { _ = bp.Kill() })
 		bgs = append(bgs, &BackgroundResult{Entry: types.Entry{Comment: comment}, Process: bp, Command: "same"})
 	}
 

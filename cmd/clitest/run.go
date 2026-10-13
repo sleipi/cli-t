@@ -61,6 +61,22 @@ func entryName(entry types.Entry) string {
 	return strings.TrimSpace(first)
 }
 
+// cancelledOutcome reports an entry that did not run because --fail-fast stopped the run.
+// An entry with a skip directive keeps its own reason.
+func cancelledOutcome(entry types.Entry) entryOutcome {
+	reason := "cancelled by --fail-fast"
+	if entry.Directives.Skip {
+		reason = entry.Directives.SkipReason
+	}
+	return entryOutcome{
+		Name:       entryName(entry),
+		Kind:       outcomeCancelled,
+		Command:    entry.Command,
+		Skipped:    true,
+		SkipReason: reason,
+	}
+}
+
 // runEntries executes entries, reports progress, and returns counters + failure details.
 // The onResult callback is invoked for each entry outcome (including skipped entries).
 // It may be nil when nobody needs the outcomes (compact mode without --report).
@@ -74,17 +90,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 		if cfg.Cancelled.Load() {
 			skip++
 			if onResult != nil {
-				reason := "cancelled by --fail-fast"
-				if entry.Directives.Skip {
-					reason = entry.Directives.SkipReason
-				}
-				onResult(entryOutcome{
-					Name:       entryName(entry),
-					Kind:       outcomeCancelled,
-					Command:    entry.Command,
-					Skipped:    true,
-					SkipReason: reason,
-				})
+				onResult(cancelledOutcome(entry))
 			}
 			pd.UpdateProgress(fileIdx, i+1, len(regular))
 			continue
