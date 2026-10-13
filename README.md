@@ -57,6 +57,7 @@ You read it, you understand it, your teammates understand it. Done.
 - **Captures** — extract values from output and reuse them across entries
 - **Variables** — pass `--var key=value` from the CLI, use `{{key}}` in your tests
 - **Parallel execution** — run test files concurrently with `--parallel`
+- **CI reports** — write JUnit XML with `--report junit:<path>`
 - **Recursive discovery** — point it at a directory and it finds all `.clitest` files
 - **Glob support** — `clitest "tests/**/*.clitest"`
 - **Zero dependencies** — single Go binary, runs anywhere
@@ -130,6 +131,9 @@ clitest -v test/
 
 # Parallel execution
 clitest --parallel test/
+
+# JUnit XML report for CI (GitLab, Jenkins, GitHub via dorny/test-reporter), see SPEC.md "Reports"
+clitest --report junit:build/clitest.xml test/
 ```
 
 ---

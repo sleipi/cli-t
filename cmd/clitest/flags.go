@@ -23,3 +23,25 @@ func (v *varMap) Set(s string) error {
 	return nil
 }
 func (v *varMap) Type() string { return "NAME=VALUE" }
+
+// reportValue implements pflag.Value for --report FORMAT:PATH. Only one report is allowed.
+type reportValue struct {
+	path string
+}
+
+func (r *reportValue) String() string { return r.path }
+func (r *reportValue) Set(s string) error {
+	if r.path != "" {
+		return fmt.Errorf("--report can only be given once")
+	}
+	format, path, found := strings.Cut(s, ":")
+	if !found || path == "" {
+		return fmt.Errorf("invalid value %q, use junit:PATH", s)
+	}
+	if format != "junit" {
+		return fmt.Errorf("unsupported report format %q, supported: junit", format)
+	}
+	r.path = path
+	return nil
+}
+func (r *reportValue) Type() string { return "FORMAT:PATH" }

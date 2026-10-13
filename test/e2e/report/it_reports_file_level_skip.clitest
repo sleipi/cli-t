@@ -1,0 +1,19 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/report/frontmatter_skip_with_defer.clitest
+EXIT 0
+
+# Every entry of a skipped file is reported as skipped with the file's reason; defers stay out
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "tests="2" failures="0" errors="0" skipped="2""
+stdout contains "<testcase name="first entry""
+stdout contains "<skipped message="waiting for backend">"
+stdout not contains "cleanup-entry"

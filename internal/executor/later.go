@@ -30,6 +30,7 @@ func EvaluateLaterAsserts(bgs []*BackgroundResult) []LaterResult {
 		}
 
 		results = append(results, LaterResult{
+			Entry:    bg.Entry,
 			Command:  bg.Command,
 			Pass:     len(failures) == 0,
 			Failures: failures,

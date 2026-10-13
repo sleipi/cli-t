@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/sleipi/cli-t/internal/display"
 	"github.com/sleipi/cli-t/internal/filter"
+	"github.com/sleipi/cli-t/internal/report"
 	"github.com/sleipi/cli-t/internal/resolve"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -29,6 +33,7 @@ var (
 	excludeGroupFlags []string
 	failFast          bool
 	noColor           bool
+	reportFlag        reportValue
 )
 
 // cancelled is set to true when --fail-fast triggers; workers check before picking up new jobs.
@@ -40,7 +45,8 @@ var rootCmd = &cobra.Command{
 	Long:  "clitest — run and test CLI commands with declarative .clitest files",
 	Example: `  clitest test.clitest
   clitest test/e2e/
-  clitest --var HOST=localhost examples/`,
+  clitest --var HOST=localhost examples/
+  clitest --report junit:build/clitest.xml test/`,
 	Args:          cobra.MinimumNArgs(1),
 	RunE:          runMain,
 	Version:       version,
@@ -59,6 +65,7 @@ func init() {
 	rootCmd.Flags().StringSliceVar(&excludeGroupFlags, "exclude-group", nil, "Skip entries with this group tag (repeatable)")
 	rootCmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop after first test failure")
 	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable ANSI color codes in output")
+	rootCmd.Flags().Var(&reportFlag, "report", "Write a test report: junit:PATH")
 
 	rootCmd.SetVersionTemplate("clitest version {{.Version}}\n")
 	rootCmd.Flags().BoolP("version", "V", false, "Show version")
@@ -72,8 +79,12 @@ type fileResult struct {
 	fail     int
 	skip     int
 	display  string
+	path     string
 	failures []display.CompactFailure
 	hidden   bool
+	outcomes []entryOutcome
+	parseErr string
+	duration time.Duration
 }
 
 func runMain(_ *cobra.Command, args []string) error {
@@ -86,6 +97,13 @@ func runMain(_ *cobra.Command, args []string) error {
 	files, resolved, warnings, err := resolve.Files(args, !noRecursive)
 	if err != nil {
 		return fmt.Errorf("%w", err)
+	}
+
+	var reportFile *os.File
+	if reportFlag.path != "" {
+		if reportFile, err = report.Create(reportFlag.path); err != nil {
+			return err
+		}
 	}
 
 	// Print warnings to stderr unless silent
@@ -140,6 +158,16 @@ func runMain(_ *cobra.Command, args []string) error {
 
 	display.PrintSummary(os.Stdout, totalPass, totalFail, totalSkip, len(warnings), failedFiles, elapsed)
 
+	if reportFile != nil {
+		if err := report.WriteJUnit(reportFile, reportSuites(results, varFlags.values)); err != nil {
+			_ = reportFile.Close()
+			return err
+		}
+		if err := reportFile.Close(); err != nil {
+			return fmt.Errorf("writing junit report: %w", err)
+		}
+	}
+
 	if totalFail > 0 {
 		os.Exit(1)
 	}
@@ -186,6 +214,7 @@ func runFiles(files []resolve.ScanFile, workers int, isTTY bool, w io.Writer) []
 					continue
 				}
 				results[idx] = processFile(cfg, files[idx], idx, pd)
+				results[idx].path = files[idx].Path
 			}
 		}()
 	}
@@ -205,6 +234,7 @@ func runFiles(files []resolve.ScanFile, workers int, isTTY bool, w io.Writer) []
 
 // processFile handles parsing, filtering, and execution for a single file.
 func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.ProgressDisplay) fileResult {
+	start := time.Now()
 	parsed, err := loadAndParse(f.Path, varFlags.values)
 	if err != nil {
 		errOutput := fmt.Sprintf("%s%v%s\n", display.ColorRed, err, display.ColorReset)
@@ -216,13 +246,19 @@ func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.Progre
 		if cfg.FailFast {
 			cfg.Cancelled.Store(true)
 		}
-		return fileResult{fail: 1, display: f.Display}
+		return fileResult{fail: 1, display: f.Display, parseErr: err.Error(), duration: time.Since(start)}
 	}
 
 	if parsed.Directives.Skip {
 		pd.UpdateProgress(idx, 0, 0)
 		pd.FinishFile(idx, true, "")
-		return fileResult{skip: len(parsed.Entries), display: f.Display}
+		var outcomes []entryOutcome
+		for _, e := range parsed.Entries {
+			if !e.Directives.Defer {
+				outcomes = append(outcomes, entryOutcome{Name: entryName(e), Command: e.Command, Skipped: true, SkipReason: parsed.Directives.SkipReason})
+			}
+		}
+		return fileResult{skip: len(parsed.Entries), display: f.Display, outcomes: outcomes}
 	}
 
 	entries := filter.Entries(parsed, groupFlags, excludeGroupFlags)
@@ -232,19 +268,80 @@ func processFile(cfg *runConfig, f resolve.ScanFile, idx int, pd *display.Progre
 		return fileResult{display: f.Display, hidden: true}
 	}
 
+	var outcomes []entryOutcome
+	var collect func(entryOutcome)
+	if reportFlag.path != "" {
+		collect = func(o entryOutcome) { outcomes = append(outcomes, o) }
+	}
+
 	if verbose {
 		var buf bytes.Buffer
 		vd := display.NewVerboseDisplay(&buf, true)
 		vd.BeginFile(f.Display)
-		pass, fail, skip := runEntriesVerbose(cfg, vd, pd, idx, entries, parsed.Directives.Var)
+		pass, fail, skip := runEntriesVerbose(cfg, vd, pd, idx, entries, parsed.Directives.Var, collect)
 		vd.EndFile()
 		pd.FinishFile(idx, fail == 0, buf.String())
-		return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display}
+		return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, outcomes: outcomes, duration: time.Since(start)}
 	}
 
-	pass, fail, skip, details := runEntriesCompact(cfg, pd, idx, entries, parsed.Directives.Var)
+	pass, fail, skip, details := runEntries(cfg, pd, idx, entries, parsed.Directives.Var, collect)
 	pd.FinishFile(idx, fail == 0, "")
-	return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, failures: details}
+	return fileResult{pass: pass, fail: fail, skip: skip, display: f.Display, failures: details, outcomes: outcomes, duration: time.Since(start)}
 }
 
+// reportSuites maps file results to report suites. Files hidden by group filters
+// and files never started because of --fail-fast are left out; defers are cleanup, not tests.
+// --var values in test names are shown as {{NAME}}, like the header shows only var names.
+func reportSuites(results []fileResult, vars map[string]string) []report.Suite {
+	mask := varMasker(vars)
+	var suites []report.Suite
+	for _, r := range results {
+		if r.hidden || r.display == "" {
+			continue
+		}
+		suite := report.Suite{Name: filepath.ToSlash(filepath.Clean(r.path)), Time: r.duration, Error: r.parseErr}
+		for _, o := range r.outcomes {
+			if o.Kind == outcomeDefer {
+				continue
+			}
+			c := report.Case{
+				Name:        mask.Replace(o.Name),
+				Time:        time.Duration(o.DurationMs) * time.Millisecond,
+				Skipped:     o.Skipped,
+				SkipMessage: o.SkipReason,
+			}
+			if !o.Passed && !o.Skipped {
+				c.Failures = o.Failures
+				if len(c.Failures) == 0 {
+					c.Failures = []string{"entry failed"}
+				}
+				c.Stdout, c.Stderr = o.Stdout, o.Stderr
+			}
+			suite.Cases = append(suite.Cases, c)
+		}
+		suites = append(suites, suite)
+	}
+	return suites
+}
 
+// varMasker replaces --var values with {{NAME}}. Longer values go first, so a value
+// that contains another one is masked as a whole.
+func varMasker(vars map[string]string) *strings.Replacer {
+	names := make([]string, 0, len(vars))
+	for name, value := range vars {
+		if value != "" {
+			names = append(names, name)
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if len(vars[names[i]]) != len(vars[names[j]]) {
+			return len(vars[names[i]]) > len(vars[names[j]])
+		}
+		return names[i] < names[j]
+	})
+	pairs := make([]string, 0, 2*len(names))
+	for _, name := range names {
+		pairs = append(pairs, vars[name], "{{"+name+"}}")
+	}
+	return strings.NewReplacer(pairs...)
+}

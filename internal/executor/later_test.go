@@ -111,3 +111,21 @@ func TestEvaluateLaterAsserts_SkipsNonLater(t *testing.T) {
 		t.Fatalf("expected pass, got: %v", results[0].Failures)
 	}
 }
+
+func TestEvaluateLaterAsserts_ResultCarriesEntry(t *testing.T) {
+	var bgs []*BackgroundResult
+	for _, comment := range []string{"# first", "# second"} {
+		bp, err := runner.RunBackground(`sh -c 'echo ready; sleep 10'`, "")
+		if err != nil {
+			t.Fatalf("failed to start: %v", err)
+		}
+		t.Cleanup(func() { _ = bp.Kill() })
+		bgs = append(bgs, &BackgroundResult{Entry: types.Entry{Comment: comment}, Process: bp, Command: "same"})
+	}
+
+	results := EvaluateLaterAsserts(bgs)
+
+	if len(results) != 2 || results[0].Entry.Comment != "# first" || results[1].Entry.Comment != "# second" {
+		t.Fatalf("expected results to carry their entries, got %+v", results)
+	}
+}

@@ -47,3 +47,42 @@ func TestVarMap_Type(t *testing.T) {
 		t.Errorf("expected 'NAME=VALUE', got %q", v.Type())
 	}
 }
+
+func TestReportValue_Set(t *testing.T) {
+	var r reportValue
+	if err := r.Set("junit:build/report.xml"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if r.path != "build/report.xml" {
+		t.Errorf("got path %q", r.path)
+	}
+}
+
+func TestReportValue_PathWithColon(t *testing.T) {
+	var r reportValue
+	if err := r.Set("junit:C:/reports/out.xml"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if r.path != "C:/reports/out.xml" {
+		t.Errorf("got path %q", r.path)
+	}
+}
+
+func TestReportValue_Invalid(t *testing.T) {
+	for _, s := range []string{"junit", "junit:", "tap:out.tap", ":out.xml"} {
+		var r reportValue
+		if err := r.Set(s); err == nil {
+			t.Errorf("expected error for %q", s)
+		}
+	}
+}
+
+func TestReportValue_RejectsSecondReport(t *testing.T) {
+	var r reportValue
+	if err := r.Set("junit:one.xml"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := r.Set("junit:two.xml"); err == nil {
+		t.Fatal("expected error for a second --report")
+	}
+}

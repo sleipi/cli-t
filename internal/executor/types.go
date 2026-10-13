@@ -23,6 +23,7 @@ type BackgroundResult struct {
 
 // LaterResult holds the result of evaluating later asserts for one background entry.
 type LaterResult struct {
+	Entry    types.Entry
 	Command  string
 	Pass     bool
 	Failures []string
@@ -31,6 +32,7 @@ type LaterResult struct {
 
 // FinallyResult holds the result of executing a [Finally] section.
 type FinallyResult struct {
+	Entry    types.Entry
 	Command  string
 	Pass     bool
 	Failures []string

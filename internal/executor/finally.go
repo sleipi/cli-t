@@ -47,6 +47,7 @@ func ExecuteFinally(bgs []*BackgroundResult) []FinallyResult {
 		// Send signal
 		if err := bg.Process.Signal(sig); err != nil {
 			results = append(results, FinallyResult{
+				Entry:    bg.Entry,
 				Command:  bg.Command,
 				Pass:     false,
 				Failures: []string{fmt.Sprintf("failed to send %s signal: %v", fin.Signal, err)},
@@ -58,6 +59,7 @@ func ExecuteFinally(bgs []*BackgroundResult) []FinallyResult {
 		timeout := time.Duration(fin.Timeout) * time.Millisecond
 		if !bg.Process.Wait(timeout) {
 			results = append(results, FinallyResult{
+				Entry:    bg.Entry,
 				Command:  bg.Command,
 				Pass:     false,
 				Failures: []string{fmt.Sprintf("[finally] timeout: process did not exit within %dms after %s", fin.Timeout, fin.Signal)},
@@ -88,6 +90,7 @@ func ExecuteFinally(bgs []*BackgroundResult) []FinallyResult {
 		}
 
 		results = append(results, FinallyResult{
+			Entry:    bg.Entry,
 			Command:  bg.Command,
 			Pass:     len(failures) == 0,
 			Failures: failures,

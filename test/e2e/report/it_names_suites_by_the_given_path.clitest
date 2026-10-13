@@ -1,0 +1,18 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/resolve/
+EXIT 0
+
+# Suites use the path as found from the working directory, not relative to the scanned directory,
+# so files with the same name in different directories stay apart
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "<testsuite name="test/_fixtures/resolve/deep/deep.clitest""
+stdout contains "classname="test/_fixtures/resolve/hello.clitest""

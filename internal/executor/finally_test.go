@@ -181,14 +181,14 @@ func TestExecuteFinally_LIFO(t *testing.T) {
 
 	bgs := []*BackgroundResult{
 		{
-			Entry:   types.Entry{Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000}},
+			Entry:   types.Entry{Comment: "# first", Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000}},
 			Process: bp1,
-			Command: "first",
+			Command: "same",
 		},
 		{
-			Entry:   types.Entry{Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000}},
+			Entry:   types.Entry{Comment: "# second", Finally: &types.Finally{Signal: "TERM", ExitCode: 0, Timeout: 3000}},
 			Process: bp2,
-			Command: "second",
+			Command: "same",
 		},
 	}
 
@@ -196,11 +196,11 @@ func TestExecuteFinally_LIFO(t *testing.T) {
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
 	}
-	if results[0].Command != "second" {
-		t.Fatalf("expected LIFO order, first result should be 'second', got %q", results[0].Command)
+	if results[0].Entry.Comment != "# second" {
+		t.Fatalf("expected LIFO order, first result should be 'second', got %q", results[0].Entry.Comment)
 	}
-	if results[1].Command != "first" {
-		t.Fatalf("expected LIFO order, second result should be 'first', got %q", results[1].Command)
+	if results[1].Entry.Comment != "# first" {
+		t.Fatalf("expected LIFO order, second result should be 'first', got %q", results[1].Entry.Comment)
 	}
 }
 
