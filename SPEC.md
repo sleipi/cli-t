@@ -773,6 +773,7 @@ When a directory is scanned recursively, files are displayed by their path relat
 | `--no-parallel`  | Disable parallel execution (sequential)    |
 | `--fail-fast`    | Stop after first test failure              |
 | `--no-color`     | Disable ANSI color codes. Also auto-disables when `NO_COLOR` env is set or stdout is not a TTY. |
+| `--report FORMAT:PATH` | Write a test report after the run. Only `junit` is supported. Missing parent directories are created. See [Reports](#reports). |
 
 #### Output Levels
 
@@ -874,6 +875,27 @@ clitest v<VERSION>
 ### Parallel Execution
 
 Files are executed concurrently using a worker pool (default: 8 workers). Entries within a file always run sequentially to preserve capture dependencies. Output is buffered per file and printed in deterministic order (sorted file paths).
+
+### Reports
+
+`--report junit:PATH` writes a JUnit XML file that CI systems read natively (GitLab, Jenkins, Azure DevOps; GitHub via `dorny/test-reporter` or `mikepenz/action-junit-report`).
+
+```bash
+clitest --report junit:build/clitest.xml test/
+```
+
+| clitest | JUnit XML |
+|---------|-----------|
+| File | `<testsuite>`, `name` = displayed file path |
+| Entry | `<testcase>`, `name` = first comment line, or the first command line if the entry has no comment |
+| Failed entry | `<failure>`: `message` = first failure, body = all failures, plus `<system-out>` / `<system-err>` |
+| `@skip`, or not run because of `--fail-fast` | `<skipped>` with the reason as `message` |
+| Failed `later` assert / `[finally]` section | Extra `<testcase>` named `<entry name> (later)` / `<entry name> (finally)` |
+| `@defer` | Not in the report (cleanup, not a test) |
+| File that does not parse | `<testsuite>` with one `<testcase name="parse">` holding an `<error>` |
+| File with frontmatter `@skip` | Every entry as `<skipped>` |
+
+Files with no entries left after `--group` / `--exclude-group` filtering, and files never started because of `--fail-fast`, are not in the report. The report is also written when tests fail; the exit code does not change. A bad `--report` value exits with code 2 before any test runs.
 
 ---
 

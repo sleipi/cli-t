@@ -1,0 +1,18 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/syntax/bad_env.clitest
+EXIT 1
+
+# A file that does not parse becomes a suite with one errored case
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "<testsuite name="bad_env.clitest" tests="1" failures="0" errors="1""
+stdout contains "<testcase name="parse""
+stdout contains "<error message="

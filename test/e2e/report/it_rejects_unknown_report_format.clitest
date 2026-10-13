@@ -1,0 +1,12 @@
+# Only the junit format is supported
+./clitest --report tap:out.tap test/_fixtures/failing.clitest
+EXIT 2
+[asserts]
+stderr contains "unsupported report format "tap""
+stdout isEmpty
+
+# A value without a path is rejected
+./clitest --report junit test/_fixtures/failing.clitest
+EXIT 2
+[asserts]
+stderr contains "use junit:PATH"

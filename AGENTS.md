@@ -68,6 +68,7 @@ cmd/clitest/flags.go           varMap pflag type for --var
 internal/display/              Rendering: ProgressDisplay, VerboseDisplay, ANSI colors, header/summary/failure output
 internal/resolve/              File discovery: glob expansion, recursive dir walk, path resolution
 internal/filter/               Group tag filtering (include/exclude)
+internal/report/               Test reports for CI (JUnit XML via --report)
 internal/vars/                 Variable substitution (--var, captures, env expansion)
 internal/executor/             Entry execution, background processes, defer handling
 internal/parser/               .clitest format parser (entry builder, assert/capture parsing)
@@ -80,6 +81,7 @@ test/e2e/output/               E2E tests for header/footer/summary output and pr
 test/e2e/options/              E2E tests for CLI flags (--var, --parallel, -v, --group)
 test/e2e/resolve/              E2E tests for file discovery (recursive, glob, skip warnings)
 test/e2e/background/           E2E tests for EXIT NEVER, @defer, @poll
+test/e2e/report/               E2E tests for --report output
 test/_fixtures/                Shared test fixtures (e.g. intentionally failing .clitest files)
 ```
 

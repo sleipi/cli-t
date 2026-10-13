@@ -47,3 +47,31 @@ func TestVarMap_Type(t *testing.T) {
 		t.Errorf("expected 'NAME=VALUE', got %q", v.Type())
 	}
 }
+
+func TestParseReport_Junit(t *testing.T) {
+	format, path, err := parseReport("junit:build/report.xml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if format != "junit" || path != "build/report.xml" {
+		t.Errorf("got format %q, path %q", format, path)
+	}
+}
+
+func TestParseReport_PathWithColon(t *testing.T) {
+	_, path, err := parseReport("junit:C:/reports/out.xml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if path != "C:/reports/out.xml" {
+		t.Errorf("got path %q", path)
+	}
+}
+
+func TestParseReport_Invalid(t *testing.T) {
+	for _, s := range []string{"junit", "junit:", "tap:out.tap", ":out.xml"} {
+		if _, _, err := parseReport(s); err == nil {
+			t.Errorf("expected error for %q", s)
+		}
+	}
+}

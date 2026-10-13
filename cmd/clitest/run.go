@@ -24,8 +24,18 @@ type runConfig struct {
 	Cancelled *atomic.Bool
 }
 
+// Outcome kinds that are not a plain entry result.
+const (
+	outcomeLater     = "later"
+	outcomeFinally   = "finally"
+	outcomeDefer     = "defer"
+	outcomeCancelled = "cancelled"
+)
+
 // entryOutcome holds the result of executing a single entry for reporting.
 type entryOutcome struct {
+	Name        string
+	Kind        string
 	Command     string
 	Passed      bool
 	Skipped     bool
@@ -36,6 +46,19 @@ type entryOutcome struct {
 	Warnings    []string
 	Stdout      string
 	Stderr      string
+	DurationMs  int64
+}
+
+// entryName is the first comment line of an entry, or its first command line.
+func entryName(entry types.Entry) string {
+	if entry.Comment != "" {
+		first, _, _ := strings.Cut(entry.Comment, "\n")
+		if name := strings.TrimSpace(strings.TrimLeft(first, "#")); name != "" {
+			return name
+		}
+	}
+	first, _, _ := strings.Cut(entry.Command, "\n")
+	return strings.TrimSpace(first)
 }
 
 // runEntries executes entries, reports progress, and returns counters + failure details.
@@ -50,6 +73,15 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 	for i, entry := range regular {
 		if cfg.Cancelled.Load() {
 			skip++
+			if onResult != nil {
+				onResult(entryOutcome{
+					Name:       entryName(entry),
+					Kind:       outcomeCancelled,
+					Command:    entry.Command,
+					Skipped:    true,
+					SkipReason: "cancelled by --fail-fast",
+				})
+			}
 			pd.UpdateProgress(fileIdx, i+1, len(regular))
 			continue
 		}
@@ -58,6 +90,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 			skip++
 			if onResult != nil {
 				onResult(entryOutcome{
+					Name:       entryName(entry),
 					Command:    entry.Command,
 					Skipped:    true,
 					SkipReason: entry.Directives.SkipReason,
@@ -103,6 +136,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 
 		if onResult != nil {
 			onResult(entryOutcome{
+				Name:        entryName(entry),
 				Command:     cmd,
 				Passed:      er.Pass,
 				ExitCode:    er.Runner.ExitCode,
@@ -111,6 +145,7 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 				Warnings:    er.Warnings,
 				Stdout:      er.Runner.Stdout,
 				Stderr:      er.Runner.Stderr,
+				DurationMs:  er.Runner.DurationMs,
 			})
 		}
 
@@ -118,37 +153,30 @@ func runEntries(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entrie
 	}
 
 	// Process backgrounds (later asserts + finally)
-	bgFail, bgDetails := processBackgrounds(cfg, backgrounds)
+	bgFail, bgDetails := processBackgrounds(cfg, backgrounds, onResult)
 	fail += bgFail
 	details = append(details, bgDetails...)
-	if onResult != nil {
-		for _, d := range bgDetails {
-			onResult(entryOutcome{
-				Command:  d.Command,
-				Passed:   false,
-				Failures: d.Failures,
-				Stdout:   d.Stdout,
-				Stderr:   d.Stderr,
-			})
-		}
-	}
 
 	// Execute defers
 	for _, entry := range defers {
 		cmd := vars.SubstituteCaptures(entry.Command, captures)
 		runner.Run(cmd, entry.Directives.Workdir)
 		if onResult != nil {
-			onResult(entryOutcome{Command: cmd, Passed: true, Skipped: true, SkipReason: "defer"})
+			onResult(entryOutcome{Name: entryName(entry), Kind: outcomeDefer, Command: cmd, Passed: true, Skipped: true, SkipReason: "defer"})
 		}
 	}
 
 	return
 }
 
-// runEntriesVerbose executes entries and reports to VerboseDisplay.
-func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string) (pass, fail, skip int) {
+// runEntriesVerbose executes entries, reports to VerboseDisplay and passes every outcome to collect.
+func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string, collect func(entryOutcome)) (pass, fail, skip int) {
 	onResult := func(o entryOutcome) {
-		if o.SkipReason == "defer" {
+		collect(o)
+		if o.Kind == outcomeCancelled {
+			return
+		}
+		if o.Kind == outcomeDefer {
 			vd.DeferResult(o.Command)
 			return
 		}
@@ -169,49 +197,56 @@ func runEntriesVerbose(cfg *runConfig, vd *display.VerboseDisplay, pd *display.P
 	return
 }
 
-// runEntriesCompact executes entries and reports progress to ProgressDisplay.
-func runEntriesCompact(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string) (pass, fail, skip int, details []display.CompactFailure) {
-	return runEntries(cfg, pd, fileIdx, entries, fileVars, nil)
+// runEntriesCompact executes entries, reports progress to ProgressDisplay and passes every outcome to collect.
+func runEntriesCompact(cfg *runConfig, pd *display.ProgressDisplay, fileIdx int, entries []types.Entry, fileVars map[string]string, collect func(entryOutcome)) (pass, fail, skip int, details []display.CompactFailure) {
+	return runEntries(cfg, pd, fileIdx, entries, fileVars, collect)
 }
 
 // processBackgrounds evaluates later asserts and finally sections for all kept-alive background processes.
-func processBackgrounds(cfg *runConfig, backgrounds []*executor.BackgroundResult) (fail int, details []display.CompactFailure) {
+// Each failure is also passed to onResult, named after its entry and marked with its kind.
+func processBackgrounds(cfg *runConfig, backgrounds []*executor.BackgroundResult, onResult func(entryOutcome)) (fail int, details []display.CompactFailure) {
 	if len(backgrounds) == 0 {
 		return 0, nil
 	}
 
-	laterResults := executor.EvaluateLaterAsserts(backgrounds)
-	for _, lr := range laterResults {
-		if lr.Pass {
-			continue
-		}
-		fail++
-		if cfg.FailFast {
-			cfg.Cancelled.Store(true)
-		}
-		details = append(details, display.CompactFailure{
-			Command:  lr.Command,
-			Failures: lr.Failures,
-			Stdout:   lr.Runner.Stdout,
-			Stderr:   lr.Runner.Stderr,
-		})
+	names := make(map[string]string, len(backgrounds))
+	for _, bg := range backgrounds {
+		names[bg.Command] = entryName(bg.Entry)
 	}
 
-	finallyResults := executor.ExecuteFinally(backgrounds)
-	for _, fr := range finallyResults {
-		if fr.Pass {
-			continue
-		}
+	recordFailure := func(kind, command string, failures []string, r runner.Result) {
 		fail++
 		if cfg.FailFast {
 			cfg.Cancelled.Store(true)
 		}
 		details = append(details, display.CompactFailure{
-			Command:  fr.Command,
-			Failures: fr.Failures,
-			Stdout:   fr.Runner.Stdout,
-			Stderr:   fr.Runner.Stderr,
+			Command:  command,
+			Failures: failures,
+			Stdout:   r.Stdout,
+			Stderr:   r.Stderr,
 		})
+		if onResult != nil {
+			onResult(entryOutcome{
+				Name:     names[command] + " (" + kind + ")",
+				Kind:     kind,
+				Command:  command,
+				Failures: failures,
+				Stdout:   r.Stdout,
+				Stderr:   r.Stderr,
+			})
+		}
+	}
+
+	for _, lr := range executor.EvaluateLaterAsserts(backgrounds) {
+		if !lr.Pass {
+			recordFailure(outcomeLater, lr.Command, lr.Failures, lr.Runner)
+		}
+	}
+
+	for _, fr := range executor.ExecuteFinally(backgrounds) {
+		if !fr.Pass {
+			recordFailure(outcomeFinally, fr.Command, fr.Failures, fr.Runner)
+		}
 	}
 
 	return

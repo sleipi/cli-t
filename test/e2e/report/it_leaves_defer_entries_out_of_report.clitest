@@ -1,0 +1,17 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/with_defer.clitest
+EXIT 0
+
+# Defer entries are cleanup, not tests
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "<testsuite name="with_defer.clitest" tests="1" failures="0""
+stdout not contains "rm -f"

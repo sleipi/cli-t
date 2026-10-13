@@ -1,0 +1,18 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --fail-fast --report junit:{{report}} test/_fixtures/fail_fast_three_entries.clitest
+EXIT 1
+
+# Entries cancelled by fail-fast show up as skipped, not as missing
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "tests="3" failures="1" errors="0" skipped="1""
+stdout contains "<testcase name="Entry 3 - should be skipped by fail-fast""
+stdout contains "<skipped message="cancelled by --fail-fast">"

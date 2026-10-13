@@ -1,0 +1,21 @@
+# Report run on a failing file still exits 1
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/failing.clitest
+EXIT 1
+
+# Report holds one suite per file and one case per entry with the failure details
+cat {{report}}
+EXIT 0
+[asserts]
+line 1 == "<?xml version="1.0" encoding="UTF-8"?>"
+stdout contains "<testsuite name="failing.clitest" tests="1" failures="1" errors="0" skipped="0""
+stdout contains "<testcase name="This test intentionally fails" classname="failing.clitest""
+stdout contains "<failure message="exit code: expected 1, got 0">"
+stdout contains "<system-out>hello"

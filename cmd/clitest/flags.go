@@ -23,3 +23,15 @@ func (v *varMap) Set(s string) error {
 	return nil
 }
 func (v *varMap) Type() string { return "NAME=VALUE" }
+
+// parseReport splits a --report value of the form FORMAT:PATH.
+func parseReport(s string) (format, path string, err error) {
+	format, path, found := strings.Cut(s, ":")
+	if !found || path == "" {
+		return "", "", fmt.Errorf("invalid --report value %q, use junit:PATH", s)
+	}
+	if format != "junit" {
+		return "", "", fmt.Errorf("unsupported report format %q, supported: junit", format)
+	}
+	return format, path, nil
+}

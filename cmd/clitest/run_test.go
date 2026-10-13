@@ -162,7 +162,7 @@ func TestProcessBackgrounds_FailFastOnLaterFailure(t *testing.T) {
 	cancelled := &atomic.Bool{}
 	cfg := &runConfig{FailFast: true, Cancelled: cancelled}
 
-	fail, details := processBackgrounds(cfg, nil)
+	fail, details := processBackgrounds(cfg, nil, nil)
 	if fail != 0 {
 		t.Errorf("expected 0 fail for empty backgrounds, got %d", fail)
 	}
@@ -230,5 +230,72 @@ func TestResolveEnvs_NilEnvBoth(t *testing.T) {
 	resolveEnvs(f)
 	if f.Entries[0].Directives.Env != nil {
 		t.Errorf("expected nil env, got %v", f.Entries[0].Directives.Env)
+	}
+}
+
+func collectOutcomes(entries []types.Entry, cfg *runConfig) []entryOutcome {
+	var outcomes []entryOutcome
+	runEntries(cfg, newTestProgressDisplay(), 0, entries, nil, func(o entryOutcome) {
+		outcomes = append(outcomes, o)
+	})
+	return outcomes
+}
+
+func TestRunEntries_OutcomeNamePrefersFirstCommentLine(t *testing.T) {
+	entries := []types.Entry{
+		{Comment: "# says hello\n# second line", Command: "echo hello"},
+		{Command: "echo plain"},
+	}
+
+	outcomes := collectOutcomes(entries, &runConfig{Cancelled: &atomic.Bool{}})
+
+	if len(outcomes) != 2 {
+		t.Fatalf("expected 2 outcomes, got %d", len(outcomes))
+	}
+	if outcomes[0].Name != "says hello" {
+		t.Errorf("expected name from comment, got %q", outcomes[0].Name)
+	}
+	if outcomes[1].Name != "echo plain" {
+		t.Errorf("expected name from command, got %q", outcomes[1].Name)
+	}
+}
+
+func TestRunEntries_OutcomeRecordsDuration(t *testing.T) {
+	entries := []types.Entry{{Command: "sleep 0.05"}}
+
+	outcomes := collectOutcomes(entries, &runConfig{Cancelled: &atomic.Bool{}})
+
+	if outcomes[0].DurationMs < 50 {
+		t.Errorf("expected duration >= 50ms, got %d", outcomes[0].DurationMs)
+	}
+}
+
+func TestRunEntries_FailFastReportsCancelledEntries(t *testing.T) {
+	entries := []types.Entry{
+		{Command: "false"},
+		{Comment: "# never runs", Command: "echo second"},
+	}
+
+	outcomes := collectOutcomes(entries, &runConfig{FailFast: true, Cancelled: &atomic.Bool{}})
+
+	if len(outcomes) != 2 {
+		t.Fatalf("expected 2 outcomes, got %d", len(outcomes))
+	}
+	c := outcomes[1]
+	if !c.Skipped || c.Kind != outcomeCancelled || c.Name != "never runs" {
+		t.Errorf("unexpected cancelled outcome: %+v", c)
+	}
+}
+
+func TestRunEntries_DeferOutcomeIsMarked(t *testing.T) {
+	entries := []types.Entry{
+		{Command: "true"},
+		{Command: "true", Directives: types.EntryDirectives{Defer: true}},
+	}
+
+	outcomes := collectOutcomes(entries, &runConfig{Cancelled: &atomic.Bool{}})
+
+	if len(outcomes) != 2 || outcomes[1].Kind != outcomeDefer {
+		t.Errorf("expected defer outcome last, got %+v", outcomes)
 	}
 }
