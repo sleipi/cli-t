@@ -209,12 +209,7 @@ func processBackgrounds(cfg *runConfig, backgrounds []*executor.BackgroundResult
 		return 0, nil
 	}
 
-	names := make(map[string]string, len(backgrounds))
-	for _, bg := range backgrounds {
-		names[bg.Command] = entryName(bg.Entry)
-	}
-
-	recordFailure := func(kind, command string, failures []string, r runner.Result) {
+	recordFailure := func(kind string, entry types.Entry, command string, failures []string, r runner.Result) {
 		fail++
 		if cfg.FailFast {
 			cfg.Cancelled.Store(true)
@@ -227,7 +222,7 @@ func processBackgrounds(cfg *runConfig, backgrounds []*executor.BackgroundResult
 		})
 		if onResult != nil {
 			onResult(entryOutcome{
-				Name:     names[command] + " (" + kind + ")",
+				Name:     entryName(entry) + " (" + kind + ")",
 				Kind:     kind,
 				Command:  command,
 				Failures: failures,
@@ -239,13 +234,13 @@ func processBackgrounds(cfg *runConfig, backgrounds []*executor.BackgroundResult
 
 	for _, lr := range executor.EvaluateLaterAsserts(backgrounds) {
 		if !lr.Pass {
-			recordFailure(outcomeLater, lr.Command, lr.Failures, lr.Runner)
+			recordFailure(outcomeLater, lr.Entry, lr.Command, lr.Failures, lr.Runner)
 		}
 	}
 
 	for _, fr := range executor.ExecuteFinally(backgrounds) {
 		if !fr.Pass {
-			recordFailure(outcomeFinally, fr.Command, fr.Failures, fr.Runner)
+			recordFailure(outcomeFinally, fr.Entry, fr.Command, fr.Failures, fr.Runner)
 		}
 	}
 

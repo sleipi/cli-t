@@ -1,0 +1,16 @@
+# first server
+@timeout 2000
+sh -c 'echo up; sleep 5'
+EXIT NEVER
+[asserts]
+stdout contains "up"
+later stdout contains "never printed"
+
+# second server
+@timeout 2000
+sh -c 'echo up; sleep 5'
+EXIT NEVER
+[asserts]
+stdout contains "up"
+[finally]
+KILL EXIT 99 timeout 2000

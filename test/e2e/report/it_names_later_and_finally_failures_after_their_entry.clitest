@@ -1,0 +1,19 @@
+mktemp
+EXIT 0
+[captures]
+report = stdout
+
+@defer
+rm -f {{report}}
+
+./clitest --silent --report junit:{{report}} test/_fixtures/report/same_command_backgrounds.clitest
+EXIT 1
+
+# Both entries run the same command; each failure keeps the name of its own entry
+cat {{report}}
+EXIT 0
+[asserts]
+stdout contains "tests="4" failures="2""
+stdout contains "<testcase name="first server (later)""
+stdout contains "<testcase name="second server (finally)""
+stdout not contains "second server (later)"
